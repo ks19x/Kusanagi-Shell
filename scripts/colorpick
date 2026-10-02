@@ -1,0 +1,6 @@
+#!/bin/sh
+# kusanagi colorpick — click a pixel, its hex goes to the clipboard
+pos=$(slurp -p) || exit 0
+hex=$(grim -g "$pos" -t ppm - | magick - -format '#%[hex:p{0,0}]' info:-) || exit 1
+printf '%s' "$hex" | wl-copy
+notify-send -a "Colour picker" "$hex" "copied to clipboard"

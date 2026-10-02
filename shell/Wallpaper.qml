@@ -1,6 +1,6 @@
 // Wallpaper.qml — Kusanagi draws the wallpaper itself (replaces awww) on every monitor.
-// Follows ~/.config/rices/zei/current-wallpaper (written by zei/wallpaper, which also re-themes),
-// so picking one anywhere animates to it here. Config.wallpaper: transition (fade | blur | wipe |
+// Follows ~/.config/kusanagi/wallpaper (written by `kusanagi wallpaper <file>`, which also re-colours
+// everything), so picking one anywhere animates to it here. Config.wallpaper: transition (fade | blur | wipe |
 // grow | slide | zoom | blinds | random), duration, fill, parallax on workspace change, dim, slideshow.
 //
 // Two slots take turns: the new picture decodes into the free slot, is revealed over the old one,
@@ -10,8 +10,6 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Widgets
-import Quickshell.Hyprland
-import Quickshell.WindowManager
 import QtQuick
 import QtQuick.Effects
 import Qt.labs.folderlistmodel
@@ -20,12 +18,10 @@ Scope {
     id: root
 
     readonly property bool enabled: Config.wallpaper.renderer === "kusanagi"
-    readonly property string rice: Quickshell.env("HOME") + "/.config/rices/zei"
-    readonly property bool mango: !!Quickshell.env("MANGO_INSTANCE_SIGNATURE")
 
     FileView {
         id: state
-        path: root.rice + "/current-wallpaper"
+        path: Quickshell.env("HOME") + "/.config/kusanagi/wallpaper"
         watchChanges: true
         onFileChanged: reload()
         printErrors: false
@@ -41,14 +37,7 @@ Scope {
         Quickshell.execDetached(["sh", "-c", "pkill -x awww-daemon; pkill -x swaybg"])
     }
 
-    // ---- active workspace index for parallax (1-based) ----
-    readonly property int wsIndex: {
-        if (mango) {
-            const w = WindowManager.windowsets.find(s => s.active && /^[1-9]$/.test(s.name))
-            return w ? parseInt(w.name) : 1
-        }
-        return Hyprland.focusedWorkspace ? Math.max(1, Math.min(10, Hyprland.focusedWorkspace.id)) : 1
-    }
+    readonly property int wsIndex: Wm.activeIndex     // parallax pans with it
 
     // ---- slideshow: a random wallpaper every N minutes, re-themed like a manual pick ----
     FolderListModel {
@@ -64,7 +53,7 @@ Scope {
         onTriggered: {
             let f = root.current
             while (f === root.current) f = folder.get(Math.floor(Math.random() * folder.count), "filePath")
-            Quickshell.execDetached([root.rice + "/wallpaper", f])
+            Quickshell.execDetached(["kusanagi", "wallpaper", f])
         }
     }
 

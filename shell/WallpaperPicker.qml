@@ -1,5 +1,5 @@
 // WallpaperPicker.qml — thumbnail grid of Config.wallpaper.folder (Super+A).
-// Type to filter, arrows to move, Enter / click to apply (zei/wallpaper: awww transition + re-theme
+// Type to filter, arrows to move, Enter / click to apply (`kusanagi wallpaper`: transition + re-colour
 // everything from it), R for a random one, Esc to close. Loaded only while open.
 import Quickshell
 import Quickshell.Io
@@ -28,8 +28,7 @@ PanelWindow {
 
     readonly property string home: Quickshell.env("HOME")
     readonly property string folder: Config.wallpaper.folder.replace(/^~/, home)
-    readonly property string thumbs: home + "/.cache/rice/thumbs"
-    readonly property string rice: home + "/.config/rices/zei"
+    readonly property string thumbs: (Quickshell.env("XDG_CACHE_HOME") || home + "/.cache") + "/kusanagi/thumbs"
     property string current: ""
 
     onShowingChanged: if (showing) {
@@ -41,7 +40,7 @@ PanelWindow {
         focusLater.restart()             // the grid fills now that it's visible
     }
 
-    FileView { id: currentFile; path: root.rice + "/current-wallpaper"; blockLoading: true; printErrors: false }
+    FileView { id: currentFile; path: Quickshell.env("HOME") + "/.config/kusanagi/wallpaper"; blockLoading: true; printErrors: false }
 
     // fill in thumbnails for new wallpapers (same cache + size as zei/wallpaper)
     Process {
@@ -81,7 +80,7 @@ PanelWindow {
 
     function apply(item) {
         if (!item) return
-        Quickshell.execDetached([root.rice + "/wallpaper", item.path])
+        Quickshell.execDetached(["kusanagi", "wallpaper", item.path])
         current = item.path
         close()
     }

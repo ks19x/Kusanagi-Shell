@@ -21,11 +21,10 @@ Scope {
     property int fails: 0
     signal failed()
 
-    readonly property string rice: Quickshell.env("HOME") + "/.config/rices/zei"
 
     function lock() {
         if (Config.lock.engine !== "kusanagi") {
-            Quickshell.execDetached(["sh", "-c", "pidof hyprlock || hyprlock -c $HOME/.config/rices/zei/generated/hyprlock.conf || swaylock -f"])
+            Quickshell.execDetached(["sh", "-c", "pidof hyprlock || { c=\"$HOME/.config/rices/zei/generated/hyprlock.conf\"; if [ -f \"$c\" ]; then hyprlock -c \"$c\"; else hyprlock; fi; } || swaylock -f"])
             return
         }
         testMode = false
@@ -59,7 +58,7 @@ Scope {
     // test mode safety net
     Timer { id: failsafe; interval: 30000; onTriggered: if (root.testMode) root.release() }
 
-    FileView { id: wallFile; path: root.rice + "/current-wallpaper"; blockLoading: true; printErrors: false }
+    FileView { id: wallFile; path: Quickshell.env("HOME") + "/.config/kusanagi/wallpaper"; blockLoading: true; printErrors: false }
     readonly property string wallpaper: wallFile.text().trim()
 
     PamContext {

@@ -1,7 +1,7 @@
+pragma Singleton
 // Config.qml — every user-facing Kusanagi setting, stored in ~/.config/kusanagi/settings.json.
 // Change a value anywhere (Config.bar.style = "solid") and it is saved and applied live;
 // editing settings.json by hand works too (watched). Missing keys fall back to the defaults below.
-pragma Singleton
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -63,7 +63,7 @@ Singleton {
                      fill: "fill", parallax: 0.04, dim: 0, slideshow: 0 },
         lock: { engine: "hyprlock", blur: 0.8, dim: 0.35, clock: "HH:mm", avatar: true, media: true, greeting: "" },
         display: { nightTemp: 4000 },
-        gamemode: { effects: true, feral: true, quiet: true, dnd: true, grace: 800, announce: "manual" },
+        gamemode: { auto: true, effects: true, feral: true, quiet: true, dnd: true, grace: 800, announce: "manual" },
         screenshot: { position: "bottom-right", timeout: 6000, editor: "swappy -f" }
     })
 
@@ -203,6 +203,7 @@ Singleton {
             }
 
             property JsonObject gamemode: JsonObject {
+                property bool auto: true              // turn on when the focused window goes fullscreen
                 property bool effects: true           // blur / shadows / animations off
                 property bool feral: true             // feral gamemode (performance governor)
                 property bool quiet: true             // pause Kusanagi's stats, marquee, slideshow

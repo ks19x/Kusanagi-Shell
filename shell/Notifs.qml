@@ -1,5 +1,5 @@
-// Notifs.qml — notification daemon (replaces mako): history, popups, do-not-disturb
 pragma Singleton
+// Notifs.qml — notification daemon (replaces mako): history, popups, do-not-disturb
 import Quickshell
 import Quickshell.Services.Notifications
 import QtQuick

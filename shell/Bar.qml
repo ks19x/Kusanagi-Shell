@@ -21,9 +21,7 @@ PanelWindow {
 
     required property var shell     // shell.qml, for the control panel / settings panels
 
-    readonly property bool mango: !!Quickshell.env("MANGO_INSTANCE_SIGNATURE")
     readonly property string font: Theme.fontFamily
-    readonly property string rice: Quickshell.env("HOME") + "/.config/rices/zei"
 
     readonly property bool bottom: Config.bar.position === "bottom"
     readonly property int h: Config.bar.height
@@ -35,7 +33,7 @@ PanelWindow {
     implicitHeight: h
     // Hyprland puts windows gaps_out top=3 under the bar; Mango's outer gap is one value (8)
     // for top and bottom, so reserve 5 less there to land on the same 3px
-    exclusiveZone: mango && !bottom ? h - 5 : h
+    exclusiveZone: Wm.kind === "mango" && !bottom ? h - 5 : h
     color: "transparent"
     WlrLayershell.namespace: "quickshell-bar"
     WlrLayershell.layer: WlrLayer.Top
@@ -196,40 +194,10 @@ PanelWindow {
 
     // ---------------------------------------------------------------- left: workspaces
 
-    // Hyprland: 1..shown always, plus any other normal workspace that exists.
-    // Mango (ext-workspace): tags 1..shown always, the rest only while they have windows or are shown.
-    readonly property var workspaces: {
-        const list = []
-        if (mango) {
-            for (const w of WindowManager.windowsets) {
-                const n = parseInt(w.name)
-                if (!(n >= 1 && n <= 9)) continue
-                if (n > Config.workspaces.shown && !w.shouldDisplay && !w.active) continue
-                list.push({ n: n, active: w.active, occupied: w.shouldDisplay, urgent: w.urgent, ws: w })
-            }
-        } else {
-            const byId = {}
-            for (const w of Hyprland.workspaces.values) if (w.id > 0) byId[w.id] = w
-            const focused = Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : -1
-            const ids = Array.from({ length: Config.workspaces.shown }, (_, i) => i + 1)
-            for (const id in byId) if (!ids.includes(+id)) ids.push(+id)
-            for (const id of ids) {
-                const w = byId[id]
-                list.push({ n: id, active: id === focused, ws: null,
-                            occupied: !!w && w.toplevels.values.length > 0, urgent: !!w && w.urgent })
-            }
-        }
-        return list.sort((a, b) => a.n - b.n)
-    }
-
-    function goto(entry) {
-        if (mango) entry.ws.activate()
-        else run(["hyprctl", "dispatch", `hl.dsp.focus({workspace="${entry.n}"})`])
-    }
-    function scrollWorkspace(steps) {
-        if (mango) run(["mmsg", "dispatch", steps > 0 ? "viewtoleft,0" : "viewtoright,0"])
-        else run(["hyprctl", "dispatch", `hl.dsp.focus({workspace="e${steps > 0 ? "-1" : "+1"}"})`])
-    }
+    // workspaces / tags come from the compositor layer (Mango, Hyprland, niri)
+    readonly property var workspaces: Wm.workspaces
+    function goto(entry) { Wm.focusWorkspace(entry) }
+    function scrollWorkspace(steps) { Wm.scroll(steps) }
 
     Island {
         // dwl tags run the full bar height from the edge; everything else sits in an island
@@ -466,7 +434,7 @@ PanelWindow {
             grow: false
             padR: 6         // ⏻: Qt's advance is 4px wider than GTK's
             marR: 10
-            onClicked: bar.run([bar.rice + "/wlogout/wlogout.sh"])
+            onClicked: bar.run(["kusanagi", "msg", "power", "toggle"])
         }
     }
 

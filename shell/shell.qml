@@ -10,6 +10,7 @@
 //   settings  toggle | open | page <name> | sound | network wallpaper toggle      clipboard toggle
 //   notifs    toggle | open | close | dnd | clear            lock      lock | test
 //   preset    apply <name> | next
+//   power     toggle | open
 //   osd       preview <volume|mic|game>                      bar       media | traymenu <n>   gamemode toggle
 import Quickshell
 import Quickshell.Io
@@ -26,7 +27,7 @@ ShellRoot {
     ScreenshotOsd {}
     NotificationPopups {}
     // Hyprland's global shortcuts (kusanagi:mediaToggle …); Mango has no such protocol
-    LazyLoader { active: !Quickshell.env("MANGO_INSTANCE_SIGNATURE"); Shortcuts { shell: shell } }
+    LazyLoader { active: Wm.kind === "hyprland"; Shortcuts { shell: shell } }
 
     // ---------- on-demand surfaces ----------
 
@@ -54,6 +55,7 @@ ShellRoot {
     OnDemand { id: launcher; Launcher {} }
     OnDemand { id: wallpapers; WallpaperPicker {} }
     OnDemand { id: clipboard; Clipboard {} }
+    OnDemand { id: power; PowerMenu {} }
     OnDemand { id: settings; keep: false; Settings {} }     // a normal window, opened rarely
 
     // settings remembers its page across being unloaded
@@ -66,6 +68,8 @@ ShellRoot {
         const w = settings.get()
         w.show(page || settingsPage)
     }
+
+    function openPower() { power.get().open() }
 
     function panelTab(i) {
         const p = panel.get()
@@ -114,6 +118,11 @@ ShellRoot {
     IpcHandler {
         target: "wallpaper"
         function toggle(): void { wallpapers.get().toggle() }
+    }
+    IpcHandler {
+        target: "power"
+        function toggle(): void { power.get().toggle() }
+        function open(): void { power.get().open() }
     }
     IpcHandler {
         target: "clipboard"

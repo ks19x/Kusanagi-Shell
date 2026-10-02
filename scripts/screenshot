@@ -1,0 +1,11 @@
+#!/bin/sh
+# kusanagi screenshot [region|full] — save to ~/Pictures/Screenshots, copy to the clipboard, show the flyout
+dir="${KUSANAGI_SCREENSHOTS:-$HOME/Pictures/Screenshots}"
+mkdir -p "$dir"
+file="$dir/$(date +%Y-%m-%d_%H-%M-%S).png"
+case "${1:-region}" in
+    full) grim "$file" ;;
+    *)    geo=$(slurp -d) || exit 0; grim -g "$geo" "$file" ;;
+esac || exit 1
+wl-copy --type image/png < "$file"
+kusanagi msg screenshot notify "$file" >/dev/null 2>&1 || notify-send -a Screenshot -i "$file" "Screenshot saved" "$file"

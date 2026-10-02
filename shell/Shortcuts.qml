@@ -13,7 +13,6 @@ Scope {
         const ps = Mpris.players.values
         return ps.find(p => p.isPlaying) ?? ps[0] ?? null
     }
-    readonly property string scripts: Quickshell.env("HOME") + "/.config/mango/scripts"
 
     component Key: GlobalShortcut { appid: "kusanagi" }
 
@@ -21,8 +20,8 @@ Scope {
     Key { name: "mediaNext"; onPressed: if (root.player) root.player.next() }
     Key { name: "mediaPrev"; onPressed: if (root.player) root.player.previous() }
     Key { name: "mediaStop"; onPressed: if (root.player) root.player.stop() }
-    Key { name: "session"; onPressed: Quickshell.execDetached([Quickshell.env("HOME") + "/.config/rices/zei/wlogout/wlogout.sh"]) }
+    Key { name: "session"; onPressed: root.shell.openPower() }
     Key { name: "showall"; onPressed: root.shell.panelTab(0) }
-    Key { name: "screenshot"; onPressed: Quickshell.execDetached([root.scripts + "/screenshot", "region"]) }
-    Key { name: "screenshotFreeze"; onPressed: Quickshell.execDetached([root.scripts + "/screenshot", "region"]) }
+    Key { name: "screenshot"; onPressed: Quickshell.execDetached(["kusanagi", "screenshot", "region"]) }
+    Key { name: "screenshotFreeze"; onPressed: Quickshell.execDetached(["kusanagi", "screenshot", "region"]) }
 }

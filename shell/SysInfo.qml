@@ -1,7 +1,7 @@
+pragma Singleton
 // SysInfo.qml — system stats for the bar and the control panel, straight from /proc and /sys.
 // Nothing is read unless something on screen shows it: the bar's enabled modules keep the
 // cheap counters ticking (paused in game mode); `panelOpen` turns on the detailed set (temps, clocks, disk, history).
-pragma Singleton
 import Quickshell
 import Quickshell.Io
 import QtQuick

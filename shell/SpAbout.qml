@@ -10,7 +10,6 @@ Column {
     Component.onCompleted: SysInfo.settingsOpen = true
     Component.onDestruction: SysInfo.settingsOpen = false
 
-    readonly property bool mango: !!Quickshell.env("MANGO_INSTANCE_SIGNATURE")
     property string distro: "…"
     property string cpuModel: "…"
     property string gpuModel: "…"
@@ -24,7 +23,8 @@ Column {
             ". /etc/os-release; echo \"$PRETTY_NAME\";" +
             "grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//';" +
             "lspci -mm 2>/dev/null | grep -iE 'vga|3d' | head -1 | cut -d'\"' -f6 | sed 's/.*\\[\\(.*\\)\\].*/\\1/';" +
-            (page.mango ? "mango -v 2>&1 | head -1;" : "hyprctl version -j 2>/dev/null | grep -m1 '\"tag\"' | cut -d'\"' -f4 | sed 's/^/Hyprland /';") +
+            (({ mango: "mango -v 2>&1 | head -1;", niri: "niri --version | head -1;",
+               hyprland: "hyprctl version -j 2>/dev/null | grep -m1 '\"tag\"' | cut -d'\"' -f4 | sed 's/^/Hyprland /';" })[Wm.kind] ?? "echo Wayland;") +
             "qs --version | head -1"]
         stdout: StdioCollector {
             onStreamFinished: {

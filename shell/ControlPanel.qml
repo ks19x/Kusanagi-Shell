@@ -172,11 +172,11 @@ PanelWindow {
                     }
                     CpIconButton {
                         icon: 0xf033e
-                        onClicked: root.runClosed(["sh", "-c", "pidof hyprlock || hyprlock -c $HOME/.config/rices/zei/generated/hyprlock.conf || swaylock -f"])
+                        onClicked: root.runClosed(["kusanagi", "msg", "lock", "lock"])
                     }
                     CpIconButton {
                         icon: 0xf0425
-                        onClicked: root.runClosed([Quickshell.env("HOME") + "/.config/rices/zei/wlogout/wlogout.sh"])
+                        onClicked: { root.close(); root.shellRef.openPower() }
                     }
                 }
             }

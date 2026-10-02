@@ -7,24 +7,11 @@ Column {
     id: page
     spacing: 22
 
-    readonly property bool mango: !!Quickshell.env("MANGO_INSTANCE_SIGNATURE")
     property var monitors: []          // [{ name, w, h, hz, scale, x, y }]
-
     Process {
-        running: true
-        command: page.mango ? ["mmsg", "get", "all-monitors"] : ["hyprctl", "monitors", "-j"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const d = JSON.parse(text)
-                    const list = page.mango ? (d.monitors || d.all_monitors || []) : d
-                    page.monitors = list.map(m => ({
-                        name: m.name, w: m.width, h: m.height,
-                        hz: m.refreshRate ?? m.refresh ?? 0, scale: m.scale ?? 1, x: m.x ?? 0, y: m.y ?? 0
-                    }))
-                } catch (e) {}
-            }
-        }
+        running: Wm.monitorsCommand.length > 0
+        command: Wm.monitorsCommand
+        stdout: StdioCollector { onStreamFinished: page.monitors = Wm.parseMonitors(text) }
     }
 
     // gammastep running?
@@ -57,9 +44,10 @@ Column {
             }
         }
         CpChip {
-            label: page.mango ? "Edit monitor config (Mango)" : "Edit monitor config (Hyprland)"
+            visible: Wm.configFile !== ""
+            label: "Edit " + Wm.name + " config"
             icon: 0xf107b
-            onClicked: Quickshell.execDetached(["mousepad", Quickshell.env("HOME") + (page.mango ? "/.config/mango/config.conf" : "/.config/caelestia/hypr-user.lua")])
+            onClicked: Quickshell.execDetached(["xdg-open", Wm.configFile])
         }
     }
 

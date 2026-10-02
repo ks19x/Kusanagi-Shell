@@ -8,6 +8,8 @@
 #   kusanagi preset [name|next|list]    apply a look (default: list them)
 #   kusanagi settings [page]    open Settings (optionally on a page: bar, presets, wallpaper…)
 #   kusanagi log [-f]           the current log (-f follows it)
+#   kusanagi wallpaper [file|restore|get]   set the wallpaper (and re-colour everything from it)
+#   kusanagi screenshot [region|full] · kusanagi colorpick
 #   kusanagi edit               open settings.json in your editor
 #   kusanagi doctor             check that everything Kusanagi uses is installed
 #   kusanagi version | help
@@ -17,13 +19,48 @@ ROOT=$(dirname "$(dirname "$(readlink -f "$0")")")
 SHELL_DIR="$ROOT/shell"
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/kusanagi"
 VERSION=$(cat "$ROOT/VERSION" 2>/dev/null || echo dev)
+WALL="$CONF/wallpaper"                    # path of the current wallpaper
+HOOK="$CONF/hooks/wallpaper"              # optional: run after a wallpaper change (gets the path)
 
 qsp() { qs -p "$SHELL_DIR" "$@"; }
-running() { qsp ipc show >/dev/null 2>&1; }
+# a wedged instance mustn't hang us: every probe gets 2 s
+running() { timeout 2 qs -p "$SHELL_DIR" ipc show >/dev/null 2>&1; }
+instance_pids() { pgrep -f "^qs -p $SHELL_DIR\$"; }
 die() { echo "kusanagi: $*" >&2; exit 1; }
+
+# set the wallpaper: remember it, build colours from it, run the user's hook (e.g. re-theme a rice)
+wallpaper_set() {
+    f=$(readlink -f "$1") || die "no such file: $1"
+    [ -f "$f" ] || die "no such file: $1"
+    mkdir -p "$CONF"
+    printf '%s\n' "$f" > "$WALL"
+    python3 "$ROOT/lib/palette.py" "$f" "$CONF/colors.json" 2>/dev/null || echo "kusanagi: couldn't build colours (needs python3 + ImageMagick)" >&2
+    [ -x "$HOOK" ] && "$HOOK" "$f" >/dev/null 2>&1 &
+    # renderer "awww" (Settings → Wallpaper): hand the picture to awww instead of drawing it ourselves
+    if grep -q '"renderer": "awww"' "$CONF/settings.json" 2>/dev/null && command -v awww >/dev/null; then
+        pgrep -x awww-daemon >/dev/null || { setsid -f awww-daemon >/dev/null 2>&1 </dev/null; sleep 0.3; }
+        awww img "$f" -t random --transition-duration 1 >/dev/null 2>&1 &
+    fi
+    return 0
+}
+
+# first run: pick up a wallpaper from an older setup, and make sure colours exist
+first_run() {
+    mkdir -p "$CONF"
+    if [ ! -s "$WALL" ]; then
+        for old in "$HOME/.config/rices/zei/current-wallpaper" "$HOME/.cache/wal/wal"; do
+            [ -s "$old" ] && { head -1 "$old" > "$WALL"; break; }
+        done
+    fi
+    if [ ! -s "$CONF/colors.json" ] && [ -s "$WALL" ]; then
+        python3 "$ROOT/lib/palette.py" "$(cat "$WALL")" "$CONF/colors.json" 2>/dev/null || true
+    fi
+}
 
 start() {
     running && { echo "kusanagi is already running"; return 0; }
+    [ -n "$(instance_pids)" ] && stop >/dev/null     # there but not answering: replace it
+    first_run
     command -v qs >/dev/null || die "quickshell (qs) isn't installed"
     # threaded renderer = smooth animations; jemalloc told to hand freed memory straight back
     QSG_RENDER_LOOP=threaded \
@@ -34,9 +71,11 @@ start() {
 }
 
 stop() {
-    running || { echo "kusanagi isn't running"; return 0; }
-    qsp kill >/dev/null 2>&1
-    i=0; while [ $i -lt 30 ] && running; do sleep 0.1; i=$((i + 1)); done
+    [ -n "$(instance_pids)" ] || { echo "kusanagi isn't running"; return 0; }
+    timeout 3 qs -p "$SHELL_DIR" kill >/dev/null 2>&1
+    i=0; while [ $i -lt 20 ] && [ -n "$(instance_pids)" ]; do sleep 0.1; i=$((i + 1)); done
+    # still there (wedged): make sure it goes
+    pids=$(instance_pids); [ -n "$pids" ] && { kill $pids 2>/dev/null; sleep 0.5; pids=$(instance_pids); [ -n "$pids" ] && kill -9 $pids 2>/dev/null; }
     echo "kusanagi stopped"
 }
 
@@ -60,6 +99,14 @@ case "$cmd" in
                   qs log "$d" 2>/dev/null | head -3 | grep -q "$SHELL_DIR" && { f=$d; break; }; done
               [ -n "$f" ] || die "no log found (is it running?)"
               if [ "${1:-}" = -f ]; then qs log -f "$f"; else qs log "$f"; fi ;;
+    wallpaper) case "${1:-get}" in
+                  get)     cat "$WALL" 2>/dev/null ;;
+                  restore) [ -s "$WALL" ] && wallpaper_set "$(cat "$WALL")" ;;
+                  pick)    qsp ipc call wallpaper toggle ;;
+                  *)       wallpaper_set "$1" ;;
+              esac ;;
+    screenshot) exec "$ROOT/scripts/screenshot" "${1:-region}" ;;
+    colorpick)  exec "$ROOT/scripts/colorpick" ;;
     edit)     ${VISUAL:-${EDITOR:-mousepad}} "$CONF/settings.json" ;;
     doctor)   ok=0
               for b in qs:quickshell wl-copy:wl-clipboard cliphist:cliphist grim:grim slurp:slurp magick:ImageMagick \
@@ -71,6 +118,6 @@ case "$cmd" in
               running && echo "  ✓ running" || echo "  · not running (kusanagi start)"
               exit $ok ;;
     version|-v|--version) echo "kusanagi $VERSION" ;;
-    help|-h|--help) sed -n '2,15s/^# \{0,1\}//p' "$0" ;;
+    help|-h|--help) sed -n '2,/^set -u$/{/^#/s/^# \{0,1\}//p}' "$0" ;;
     *)        die "unknown command '$cmd' — try: kusanagi help" ;;
 esac

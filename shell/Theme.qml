@@ -1,7 +1,7 @@
-// Theme.qml
-// Colours are read live from ../generated/qs-colors.json (written by theme.py on every
-// wallpaper change), so every panel re-themes instantly without restarting Quickshell.
 pragma Singleton
+// Theme.qml
+// Colours are read live from ~/.config/kusanagi/colors.json (lib/palette.py, run on every
+// wallpaper change), so every panel re-themes instantly without restarting Quickshell.
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -59,7 +59,7 @@ Singleton {
     }
 
     FileView {
-        path: Quickshell.env("HOME") + "/.config/rices/zei/generated/qs-colors.json"
+        path: Quickshell.env("HOME") + "/.config/kusanagi/colors.json"     // written by `kusanagi wallpaper`
         watchChanges: true
         onFileChanged: reload()
         blockLoading: true

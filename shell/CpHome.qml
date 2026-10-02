@@ -12,8 +12,6 @@ Column {
 
     spacing: 12
 
-    readonly property string rice: Quickshell.env("HOME") + "/.config/rices/zei"
-    readonly property string scripts: Quickshell.env("HOME") + "/.config/mango/scripts"
 
     // ---- audio ----
     readonly property PwNode sink: Pipewire.defaultAudioSink
@@ -68,9 +66,9 @@ Column {
         case "dnd": Notifs.dnd = !Notifs.dnd; break
         case "mic": if (sourceReady) source.audio.muted = !source.audio.muted; break
         case "gamemode": GameMode.toggle(); break
-        case "screenshot": panel.runClosed([scripts + "/screenshot", "region"]); break
+        case "screenshot": panel.runClosed(["kusanagi", "screenshot", "region"]); break
         case "record": panel.runClosed(["gsr-ui-cli", "toggle-record"]); break
-        case "colorpicker": panel.runClosed([scripts + "/colorpick"]); break
+        case "colorpicker": panel.runClosed(["kusanagi", "colorpick"]); break
         case "wallpaper": panel.runClosed(ipc(["wallpaper", "toggle"])); break
         case "clipboard": panel.runClosed(ipc(["clipboard", "toggle"])); break
         case "lock": panel.runClosed(ipc(["lock", "lock"])); break

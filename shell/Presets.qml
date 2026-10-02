@@ -1,8 +1,8 @@
+pragma Singleton
 // Presets.qml — whole looks in one click. A preset sets the look-related settings (bar, workspaces,
 // motion, surfaces, OSD / notification / launcher style, sometimes palette + font) and leaves the rest
 // (wallpaper, lock, game mode, modules you rely on…) alone, unless the preset is about them.
 // Your own: "Save current look" snapshots those sections into ~/.config/kusanagi/presets.json.
-pragma Singleton
 import Quickshell
 import Quickshell.Io
 import QtQuick

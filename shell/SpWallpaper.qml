@@ -7,14 +7,13 @@ Column {
     id: page
     spacing: 22
 
-    readonly property string rice: Quickshell.env("HOME") + "/.config/rices/zei"
-    FileView { id: cur; path: page.rice + "/current-wallpaper"; watchChanges: true; onFileChanged: reload(); printErrors: false }
+    FileView { id: cur; path: Quickshell.env("HOME") + "/.config/kusanagi/wallpaper"; watchChanges: true; onFileChanged: reload(); printErrors: false }
 
     // re-apply the current wallpaper's neighbour to see the transition
     function tryIt() {
         Quickshell.execDetached(["sh", "-c",
-            "cur=$(cat \"$1\"); f=$(ls -1 \"$2\"/*.jpg \"$2\"/*.png 2>/dev/null | grep -vxF \"$cur\" | shuf -n1); [ -n \"$f\" ] && \"$3\" \"$f\"",
-            "sh", page.rice + "/current-wallpaper", Config.wallpaper.folder.replace(/^~/, Quickshell.env("HOME")), page.rice + "/wallpaper"])
+            "cur=$(cat \"$1\"); f=$(ls -1 \"$2\"/*.jpg \"$2\"/*.png 2>/dev/null | grep -vxF \"$cur\" | shuf -n1); [ -n \"$f\" ] && \"$3\" wallpaper \"$f\"",
+            "sh", Quickshell.env("HOME") + "/.config/kusanagi/wallpaper", Config.wallpaper.folder.replace(/^~/, Quickshell.env("HOME")), "kusanagi"])
     }
 
     SpGroup {
@@ -62,7 +61,7 @@ Column {
             onPicked: v => {
                 Config.wallpaper.renderer = v
                 // hand it straight over (awww needs to be told to draw again)
-                if (v === "awww") Quickshell.execDetached(["sh", "-c", "sleep 0.4; \"$1\" --restore", "sh", page.rice + "/wallpaper"])
+                if (v === "awww") Quickshell.execDetached(["sh", "-c", "sleep 0.4; kusanagi wallpaper restore"])
             }
         }
     }
