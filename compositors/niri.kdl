@@ -1,0 +1,16 @@
+// Kusanagi for niri — autostart + keybinds. install.sh adds `include "kusanagi.kdl"` to config.kdl.
+spawn-at-startup "kusanagi"
+
+binds {
+    Mod+Space hotkey-overlay-title="Kusanagi: apps" { spawn "kusanagi" "msg" "launcher" "toggle"; }
+    Mod+A { spawn "kusanagi" "msg" "wallpaper" "toggle"; }
+    Mod+V { spawn "kusanagi" "msg" "clipboard" "toggle"; }
+    Mod+N { spawn "kusanagi" "msg" "notifs" "toggle"; }
+    Mod+I { spawn "kusanagi" "msg" "settings" "toggle"; }
+    Mod+L allow-when-locked=false { spawn "kusanagi" "msg" "lock" "lock"; }
+    Mod+G { spawn "kusanagi" "msg" "gamemode" "toggle"; }
+    Mod+Grave { spawn "kusanagi" "msg" "power" "toggle"; }
+    Print { spawn "kusanagi" "screenshot" "full"; }
+    Mod+Shift+S { spawn "kusanagi" "screenshot" "region"; }
+    Mod+Shift+C { spawn "kusanagi" "colorpick"; }
+}

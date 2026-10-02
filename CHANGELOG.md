@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 — 2026-10-03
+- Runs on niri and Hyprland (Lua and classic config) as well as MangoWM: workspaces, scroll, fullscreen /
+  game mode effects, logout and monitor list all go through one compositor layer (`Wm`)
+- `install.sh` rewritten: installs dependencies + chosen compositors per distro (Void, Arch/Artix/CachyOS/…,
+  Fedora, Gentoo, Debian/Ubuntu, openSUSE), enables services for systemd/runit/OpenRC/dinit/s6,
+  wires each compositor with one validated include line; `--dry-run`, `--uninstall`
+- `compositors/`: ready autostart + keybinds for each compositor
+- Built-in power menu (lock / log out / suspend / reboot / shut down) via `kusanagi msg power toggle`
+
 ## 0.1.0 — 2026-10-03
 First release as its own program (was a Quickshell config in ~/.config/quickshell/kusanagi).
 - `kusanagi` command: start/stop/restart/status, msg/ipc, preset, settings, log, edit, doctor
