@@ -1,0 +1,76 @@
+#!/bin/sh
+# kusanagi — sig's desktop shell (Quickshell/QML), as one command.
+#   kusanagi [start]            start it (detached, lean memory settings) — does nothing if it's running
+#   kusanagi stop | restart     stop / restart it
+#   kusanagi status [-q]        is it running? (-q: exit code only)
+#   kusanagi msg <target> <fn> [args]   talk to the running shell, e.g.  kusanagi msg launcher toggle
+#   kusanagi ipc                list every target and function msg understands
+#   kusanagi preset [name|next|list]    apply a look (default: list them)
+#   kusanagi settings [page]    open Settings (optionally on a page: bar, presets, wallpaper…)
+#   kusanagi log [-f]           the current log (-f follows it)
+#   kusanagi edit               open settings.json in your editor
+#   kusanagi doctor             check that everything Kusanagi uses is installed
+#   kusanagi version | help
+set -u
+
+ROOT=$(dirname "$(dirname "$(readlink -f "$0")")")
+SHELL_DIR="$ROOT/shell"
+CONF="${XDG_CONFIG_HOME:-$HOME/.config}/kusanagi"
+VERSION=$(cat "$ROOT/VERSION" 2>/dev/null || echo dev)
+
+qsp() { qs -p "$SHELL_DIR" "$@"; }
+running() { qsp ipc show >/dev/null 2>&1; }
+die() { echo "kusanagi: $*" >&2; exit 1; }
+
+start() {
+    running && { echo "kusanagi is already running"; return 0; }
+    command -v qs >/dev/null || die "quickshell (qs) isn't installed"
+    # threaded renderer = smooth animations; jemalloc told to hand freed memory straight back
+    QSG_RENDER_LOOP=threaded \
+    MALLOC_CONF=narenas:1,tcache:false,dirty_decay_ms:0,muzzy_decay_ms:0,retain:false \
+        setsid -f qs -p "$SHELL_DIR" >/dev/null 2>&1 </dev/null
+    i=0; while [ $i -lt 30 ] && ! running; do sleep 0.1; i=$((i + 1)); done
+    running && echo "kusanagi $VERSION started" || die "didn't come up — see: kusanagi log"
+}
+
+stop() {
+    running || { echo "kusanagi isn't running"; return 0; }
+    qsp kill >/dev/null 2>&1
+    i=0; while [ $i -lt 30 ] && running; do sleep 0.1; i=$((i + 1)); done
+    echo "kusanagi stopped"
+}
+
+cmd=${1:-start}; [ $# -gt 0 ] && shift
+case "$cmd" in
+    start)    start ;;
+    stop)     stop ;;
+    restart)  stop >/dev/null; start ;;
+    status)   if running; then [ "${1:-}" = -q ] || echo "kusanagi $VERSION is running"; exit 0
+              else [ "${1:-}" = -q ] || echo "kusanagi isn't running"; exit 1; fi ;;
+    msg)      [ $# -ge 2 ] || die "usage: kusanagi msg <target> <function> [args]  (see: kusanagi ipc)"
+              qsp ipc call "$@" ;;
+    ipc)      qsp ipc show ;;
+    preset)   case "${1:-list}" in
+                  list) sed -n 's/^ *id: "\([^"]*\)", name: "\([^"]*\)", note: "\([^"]*\)".*/  \1\t\2 — \3/p' "$SHELL_DIR/Presets.qml" ;;
+                  next) qsp ipc call preset next ;;
+                  *)    qsp ipc call preset apply "$1" ;;
+              esac ;;
+    settings) if [ $# -ge 1 ]; then qsp ipc call settings page "$1"; else qsp ipc call settings open; fi ;;
+    log)      f=""; for d in $(ls -t /run/user/"$(id -u)"/quickshell/by-id/*/log.qslog 2>/dev/null); do
+                  qs log "$d" 2>/dev/null | head -3 | grep -q "$SHELL_DIR" && { f=$d; break; }; done
+              [ -n "$f" ] || die "no log found (is it running?)"
+              if [ "${1:-}" = -f ]; then qs log -f "$f"; else qs log "$f"; fi ;;
+    edit)     ${VISUAL:-${EDITOR:-mousepad}} "$CONF/settings.json" ;;
+    doctor)   ok=0
+              for b in qs:quickshell wl-copy:wl-clipboard cliphist:cliphist grim:grim slurp:slurp magick:ImageMagick \
+                       gammastep:gammastep gamemoded:gamemode swappy:swappy hyprlock:hyprlock nmcli:NetworkManager \
+                       pavucontrol:pavucontrol foot:foot; do
+                  if command -v "${b%%:*}" >/dev/null; then printf '  ✓ %s\n' "${b#*:}"; else printf '  ✗ %s  (missing)\n' "${b#*:}"; ok=1; fi
+              done
+              for f in JetBrainsMono; do fc-list | grep -qi "$f Nerd" && printf '  ✓ %s Nerd Font\n' "$f" || { printf '  ✗ %s Nerd Font (missing)\n' "$f"; ok=1; }; done
+              running && echo "  ✓ running" || echo "  · not running (kusanagi start)"
+              exit $ok ;;
+    version|-v|--version) echo "kusanagi $VERSION" ;;
+    help|-h|--help) sed -n '2,15s/^# \{0,1\}//p' "$0" ;;
+    *)        die "unknown command '$cmd' — try: kusanagi help" ;;
+esac

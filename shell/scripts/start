@@ -1,0 +1,3 @@
+#!/bin/sh
+# kept for old callers — Kusanagi is started with the `kusanagi` command now
+exec "$(dirname "$(dirname "$(dirname "$(readlink -f "$0")")")")/bin/kusanagi" start
