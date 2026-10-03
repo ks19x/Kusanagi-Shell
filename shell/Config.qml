@@ -21,6 +21,7 @@ Singleton {
     readonly property alias display: adapter.display
     readonly property alias gamemode: adapter.gamemode
     readonly property alias screenshot: adapter.screenshot
+    readonly property alias weather: adapter.weather
 
     // animation durations scaled by the chosen speed (off 0 / snappy 0.7 / smooth 1 / relaxed 1.4)
     function ms(base) { return Math.max(1, Math.round(base * adapter.look.animSpeed)) }
@@ -29,7 +30,7 @@ Singleton {
 
     // every tile the control panel knows; panel.tiles picks which show and in what order
     readonly property var allTiles: ["nightlight", "dnd", "mic", "gamemode", "screenshot", "record", "colorpicker",
-                                     "wallpaper", "clipboard", "lock", "settings", "launcher"]
+                                     "wallpaper", "clipboard", "lock", "settings", "launcher", "caffeine"]
 
     // restore one section (or everything) to the defaults
     function reset(section) {
@@ -54,7 +55,7 @@ Singleton {
                modules: { title: false, media: true, cpu: true, ram: true, gpu: false, temp: false,
                           volume: true, network: true, tray: true, power: true } },
         workspaces: { style: "pills", shown: 5, glow: true, icons: "", activeColor: "accent" },
-        panel: { opacity: 0.95, width: 560, defaultTab: 0, showMedia: true, showStats: true, morph: "island",
+        panel: { opacity: 0.95, width: 560, defaultTab: 0, showMedia: true, showStats: true, showWeather: true, morph: "island",
                  tiles: ["nightlight", "dnd", "mic", "gamemode", "screenshot", "record", "colorpicker", "wallpaper"] },
         osd: { position: "top", timeout: 1400, volume: true, mic: true, gamemode: true, style: "pill", showValue: true },
         notifications: { position: "top-right", timeout: 5000, max: 5, style: "comfortable", progress: true, images: true },
@@ -64,7 +65,8 @@ Singleton {
         lock: { engine: "hyprlock", blur: 0.8, dim: 0.35, clock: "HH:mm", avatar: true, media: true, greeting: "" },
         display: { nightTemp: 4000 },
         gamemode: { auto: true, effects: true, feral: true, quiet: true, dnd: true, grace: 800, announce: "manual" },
-        screenshot: { position: "bottom-right", timeout: 6000, editor: "swappy -f" }
+        screenshot: { position: "bottom-right", timeout: 6000, editor: "swappy -f" },
+        weather: { location: "", units: "metric" }
     })
 
     FileView {
@@ -143,9 +145,10 @@ Singleton {
             property JsonObject panel: JsonObject {
                 property real opacity: 0.95
                 property int width: 560
-                property int defaultTab: 0            // 0 home · 1 system · 2 inbox · 3 quick settings
+                property int defaultTab: 0            // 0 home · 1 system · 2 inbox · 3 quick · 4 sound · 5 network
                 property bool showMedia: true
                 property bool showStats: true
+                property bool showWeather: true
                 property string morph: "island"       // island (grows out of the clock) | drop (slides down) | fade
                 property var tiles: ["nightlight", "dnd", "mic", "gamemode", "screenshot", "record", "colorpicker", "wallpaper"]
             }
@@ -220,6 +223,11 @@ Singleton {
 
             property JsonObject display: JsonObject {
                 property int nightTemp: 4000          // night light colour temperature (K)
+            }
+
+            property JsonObject weather: JsonObject {
+                property string location: ""          // "" = guessed from your IP; or a city ("Berlin")
+                property string units: "metric"       // metric | imperial
             }
         }
     }

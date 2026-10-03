@@ -8,7 +8,7 @@ Column {
     readonly property var tileNames: ({
         nightlight: "Night light", dnd: "Do not disturb", mic: "Microphone", gamemode: "Game mode",
         screenshot: "Screenshot", record: "Record", colorpicker: "Colour picker", wallpaper: "Wallpaper",
-        clipboard: "Clipboard", lock: "Lock", settings: "Settings", launcher: "Apps"
+        clipboard: "Clipboard", lock: "Lock", settings: "Settings", launcher: "Apps", caffeine: "Caffeine"
     })
 
     SpGroup {
@@ -20,8 +20,10 @@ Column {
         CpRow {
             width: parent.width; label: "Opens on"
             CpSegmented {
-                width: 360; current: Config.panel.defaultTab
-                options: [{ label: "Home", value: 0 }, { label: "System", value: 1 }, { label: "Inbox", value: 2 }, { label: "Quick", value: 3 }]
+                width: 400; current: Config.panel.defaultTab
+                fontSize: 10
+                options: [{ label: "Home", value: 0 }, { label: "Sound", value: 4 }, { label: "Net", value: 5 }, { label: "System", value: 1 },
+                          { label: "Inbox", value: 2 }, { label: "Quick", value: 3 }]
                 onPicked: v => Config.panel.defaultTab = v
             }
         }
@@ -36,6 +38,19 @@ Column {
         }
         CpRow { width: parent.width; label: "Now playing card"; CpSwitch { on: Config.panel.showMedia; onToggled: v => Config.panel.showMedia = v } }
         CpRow { width: parent.width; label: "Quick stats row"; CpSwitch { on: Config.panel.showStats; onToggled: v => Config.panel.showStats = v } }
+        CpRow { width: parent.width; label: "Weather card"; hint: "wttr.in, refreshed every 30 min while the panel is open"; CpSwitch { on: Config.panel.showWeather; onToggled: v => Config.panel.showWeather = v } }
+        CpRow {
+            width: parent.width; label: "Weather location"; hint: "Empty = guessed from your connection"
+            CpField { width: 220; text: Config.weather.location; placeholder: "e.g. Berlin"; onAccepted: t => Config.weather.location = t.trim() }
+        }
+        CpRow {
+            width: parent.width; label: "Units"
+            CpSegmented {
+                width: 220; current: Config.weather.units
+                options: [{ label: "°C · km/h", value: "metric" }, { label: "°F · mph", value: "imperial" }]
+                onPicked: v => Config.weather.units = v
+            }
+        }
     }
 
     SpGroup {

@@ -6,7 +6,7 @@
 // so they open on the first frame; settings loads on demand.
 //
 // IPC (kusanagi msg <target> <fn>):
-//   panel     toggle | home | system | inbox | quick        launcher  toggle | open | close | search <text> | actions
+//   panel     toggle | home | sound | network | system | inbox | quick        launcher  toggle | open | close | search <text> | actions
 //   settings  toggle | open | page <name> | sound | network wallpaper toggle      clipboard toggle
 //   notifs    toggle | open | close | dnd | clear            lock      lock | test
 //   preset    apply <name> | next
@@ -87,6 +87,14 @@ ShellRoot {
         function system(): void { shell.panelTab(1) }
         function inbox(): void { shell.panelTab(2) }
         function quick(): void { shell.panelTab(3) }
+        function sound(): void { shell.panelTab(4) }
+        function network(): void { shell.panelTab(5) }
+    }
+    IpcHandler {
+        target: "caffeine"
+        function toggle(): void { Caffeine.toggle() }
+        function on(): void { Caffeine.active = true }
+        function off(): void { Caffeine.active = false }
     }
     IpcHandler {
         target: "notifs"

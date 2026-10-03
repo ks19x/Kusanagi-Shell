@@ -51,6 +51,7 @@ Column {
         case "lock": return { icon: 0xf033e, label: "Lock", sub: "Lock screen" }
         case "settings": return { icon: 0xf0493, label: "Settings", sub: "Kusanagi" }
         case "launcher": return { icon: 0xf003b, label: "Apps", sub: "Launcher" }
+        case "caffeine": return { icon: 0xf0176, label: "Caffeine", sub: Caffeine.active ? "Staying awake" : "Off", on: Caffeine.active }
         }
         return { icon: 0, label: id, sub: "" }
     }
@@ -74,6 +75,7 @@ Column {
         case "lock": panel.runClosed(ipc(["lock", "lock"])); break
         case "settings": panel.runClosed(ipc(["settings", "open"])); break
         case "launcher": panel.runClosed(ipc(["launcher", "open"])); break
+        case "caffeine": Caffeine.toggle(); break
         }
     }
 
@@ -117,6 +119,65 @@ Column {
         muted: root.sourceReady && root.source.audio.muted
         onMoved: v => { if (root.sourceReady) root.source.audio.volume = v }
         onIconClicked: if (root.sourceReady) root.source.audio.muted = !root.source.audio.muted
+    }
+
+    // ---------- weather ----------
+    Component.onCompleted: Weather.wanted = Config.panel.showWeather
+    Component.onDestruction: Weather.wanted = false
+
+    CpCard {
+        id: weatherCard
+        width: parent.width
+        height: 84
+        visible: Config.panel.showWeather && (Weather.current !== null || Weather.loading || Weather.error !== "")
+        color: Theme.alpha(Theme.text, weatherArea.containsMouse ? 0.07 : 0.045)
+        Behavior on color { ColorAnimation { duration: Config.ms(160) } }
+
+        CpIcon {
+            id: wIcon
+            x: 16; anchors.verticalCenter: parent.verticalCenter
+            cp: Weather.icon
+            font.pixelSize: 38
+            color: Theme.accent
+        }
+        Column {
+            anchors { left: wIcon.right; leftMargin: 14; verticalCenter: parent.verticalCenter }
+            spacing: 1
+            Row {
+                spacing: 8
+                CpText { text: Weather.current ? Weather.temp + Weather.unit : "—"; font.pixelSize: 24; font.bold: true }
+                CpText {
+                    topPadding: 11
+                    text: Weather.current ? "feels " + Weather.feels + "°" : ""
+                    font.pixelSize: 11; color: Theme.textDim
+                }
+            }
+            CpText {
+                text: Weather.error && !Weather.current ? Weather.error : Weather.loading && !Weather.current ? "Loading…"
+                    : [Weather.desc, Weather.place].filter(s => s).join("  ·  ")
+                font.pixelSize: 11
+                color: Theme.textDim
+                width: Math.max(80, weatherCard.width - wIcon.width - forecast.width - 70)
+                elide: Text.ElideRight
+            }
+        }
+        // today + 2 days
+        Row {
+            id: forecast
+            anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
+            spacing: 14
+            Repeater {
+                model: Weather.days
+                Column {
+                    required property var modelData
+                    spacing: 2
+                    CpText { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.day; font.pixelSize: 10; font.bold: true; color: Theme.textDim }
+                    CpIcon { anchors.horizontalCenter: parent.horizontalCenter; cp: modelData.icon; font.pixelSize: 18; color: Theme.text }
+                    CpText { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.hi + "° " + modelData.lo + "°"; font.pixelSize: 10; color: Theme.textDim }
+                }
+            }
+        }
+        MouseArea { id: weatherArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Weather.refresh(true) }
     }
 
     // ---------- now playing ----------

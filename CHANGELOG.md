@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+- Control panel **Sound** tab: switch output / input device in one click, their volumes, per-app volume
+  sliders. The bar's volume module opens it (middle-click = Sound settings)
+- Control panel **Net** tab: connection + live speeds graph, Wi-Fi list / connect / on-off (when there is a
+  Wi-Fi card), Mullvad on/off with location, which DNS resolver answers. The bar's network module opens it
+- **Caffeine**: panel tile, `kusanagi msg caffeine toggle|on|off`; a coffee cup in the bar while the screen
+  is kept awake (idle inhibitor), click it to turn off
+- **Weather** card on Home (wttr.in, cached, refreshed every 30 min only while the panel is open; 3-day
+  forecast); location + units in Settings → Panel
+
 ## 0.2.0 — 2026-10-03
 - Runs on niri and Hyprland (Lua and classic config) as well as MangoWM: workspaces, scroll, fullscreen /
   game mode effects, logout and monitor list all go through one compositor layer (`Wm`)

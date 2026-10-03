@@ -38,6 +38,9 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell-bar"
     WlrLayershell.layer: WlrLayer.Top
 
+    // caffeine: the bar is always mapped, so it carries the idle inhibitor
+    IdleInhibitor { window: bar; enabled: Caffeine.active }
+
     // ---------------------------------------------------------------- building blocks
 
     component Island: Rectangle {
@@ -325,6 +328,18 @@ PanelWindow {
             }
         }
 
+        // caffeine on: a coffee cup; click to let the screen sleep again
+        Module {
+            shown: Caffeine.active
+            accent: true
+            grow: false
+            fontSize: Config.bar.fontSize + 2
+            padR: 7
+            text: String.fromCodePoint(0xf0176)
+            tooltip: "Caffeine: the screen won't sleep or lock — click to turn off"
+            onClicked: Caffeine.active = false
+        }
+
         Module { shown: Config.bar.modules.cpu; rich: true; text: `${bar.lbl("CPU")} ${SysInfo.cpu}%`; onScrolled: steps => bar.scrollAction(Config.bar.scrollStats, steps) }
 
         Module {
@@ -359,7 +374,8 @@ PanelWindow {
                 : ["", "", ""][Math.min(2, Math.floor(bar.volume / 33))] + "  " + bar.volume + "%"
             onClicked: b => {
                 if (b === Qt.RightButton) bar.sink.audio.muted = !bar.sink.audio.muted
-                else if (b === Qt.LeftButton) bar.shell.openSettings("sound")
+                else if (b === Qt.LeftButton) bar.shell.panelTab(4)
+                else if (b === Qt.MiddleButton) bar.shell.openSettings("sound")
             }
             onScrolled: steps => bar.changeVolume(steps)
         }
@@ -372,7 +388,10 @@ PanelWindow {
             padR: 7         // Qt's advance for the nerd glyph is 3px wider than GTK's
             text: !SysInfo.netUp ? String.fromCodePoint(0xf05aa) : SysInfo.netWifi ? "\uf1eb" : String.fromCodePoint(0xf0200)
             tooltip: SysInfo.netUp ? `${SysInfo.netIf}  ${SysInfo.netIp}\n⇣ ${SysInfo.rate(SysInfo.netDown)}  ⇡ ${SysInfo.rate(SysInfo.netUpRate)}` : ""
-            onClicked: b => { if (b === Qt.LeftButton) bar.shell.openSettings("network") }
+            onClicked: b => {
+                if (b === Qt.LeftButton) bar.shell.panelTab(5)
+                else if (b === Qt.MiddleButton) bar.shell.openSettings("network")
+            }
         }
 
         // tray: padding 0 6px 0 10px, 14px icons 8px apart

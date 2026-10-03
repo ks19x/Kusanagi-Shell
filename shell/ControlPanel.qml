@@ -43,6 +43,8 @@ PanelWindow {
     Component.onCompleted: SysInfo.panelOpen = showing
     Component.onDestruction: SysInfo.panelOpen = false
     onTabChanged: Qt.callLater(() => lastTab = tab)
+    // display order of the tabs (values stay put so panel.defaultTab and IPC keep their meaning)
+    readonly property var tabOrder: [0, 4, 5, 1, 2, 3]
 
     // ---- the morph ----
     property real open: 0
@@ -76,7 +78,7 @@ PanelWindow {
         color: Theme.alpha("#000000", Config.look.backdrop * 0.75 * root.open)
         focus: root.showing
         Keys.onEscapePressed: root.close()
-        Keys.onTabPressed: root.tab = (root.tab + 1) % 4
+        Keys.onTabPressed: root.tab = root.tabOrder[(root.tabOrder.indexOf(root.tab) + 1) % root.tabOrder.length]
         MouseArea { anchors.fill: parent; onClicked: root.close() }
     }
 
@@ -185,8 +187,11 @@ PanelWindow {
                 width: parent.width
                 height: 34
                 current: root.tab
+                fontSize: 10
                 options: [
                     { label: "Home", value: 0, icon: 0xf02dc },
+                    { label: "Sound", value: 4, icon: 0xf057e },
+                    { label: "Net", value: 5, icon: 0xf06f3 },
                     { label: "System", value: 1, icon: 0xf012a },
                     { label: Notifs.count ? "Inbox " + Notifs.count : "Inbox", value: 2, icon: 0xf009a },
                     { label: "Quick", value: 3, icon: 0xf0493 }
@@ -209,9 +214,9 @@ PanelWindow {
                     width: parent.width
                     // the page only exists while the panel is on screen (the window itself stays ready)
                     active: root.visible
-                    sourceComponent: [home, system, inbox, customize][root.tab]
+                    sourceComponent: [home, system, inbox, customize, sound, network][root.tab]
                     onLoaded: {
-                        slideIn.from = root.tab >= root.lastTab ? 28 : -28
+                        slideIn.from = root.tabOrder.indexOf(root.tab) >= root.tabOrder.indexOf(root.lastTab) ? 28 : -28
                         if (root.tab === root.lastTab) slideIn.from = 0
                         pageIn.restart()
                     }
@@ -232,4 +237,6 @@ PanelWindow {
     Component { id: system; CpSystem {} }
     Component { id: inbox; CpInbox {} }
     Component { id: customize; CpCustomize { panel: root } }
+    Component { id: sound; CpSound { panel: root } }
+    Component { id: network; CpNetwork { panel: root } }
 }
