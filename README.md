@@ -1,4 +1,6 @@
-# Kusanagi
+<p align="center"><img src="assets/logo.svg" width="160" alt="Kusanagi logo: a K run through by a katana"></p>
+
+# Kusanagi 草薙
 
 sig's desktop shell for Wayland (MangoWM, Hyprland and niri): wallpaper, bar, control panel, launcher,
 notifications, OSD, lock screen, clipboard, wallpaper picker, settings — one program, configured from
@@ -25,7 +27,7 @@ Print / Super+Shift+S screenshots, Super+Shift+C colour picker.
 ```
 bin/kusanagi     the command
 shell/           the shell itself (QML) — shell.qml is the entry point
-compositors/     autostart + keybinds for mango, Hyprland (Lua + classic) and niri
+assets/logo.svg  the logo
 lib/palette.py   wallpaper → colours
 install.sh       installs deps + compositors, enables services, wires it up
 ```
@@ -36,17 +38,22 @@ Your saved looks: `~/.config/kusanagi/presets.json`.
 ## Install
 
 ```
-./install.sh                              interactive: pick compositors, see the plan, confirm
-./install.sh --dry-run                    show every command, change nothing
+./install.sh                              the TUI: compositors → your keybinds → the plan → install
+./install.sh --dry-run                    walk through it, change nothing
+./install.sh --plain                      plain output instead of the TUI
 ./install.sh -y --compositors=niri,hyprland
 ./install.sh --no-packages | --no-services | --no-config
 ./install.sh --uninstall                  remove links + includes (settings stay)
+./install.sh --print=niri                 just print the autostart + keys (mango | hyprland | niri)
 ```
 
 - **Distros:** Void (xbps), Arch and friends — Artix, CachyOS, EndeavourOS, Manjaro, Garuda (pacman,
   AUR via paru/yay), Fedora (dnf + COPR), Gentoo (emerge + GURU), Debian/Ubuntu (apt), openSUSE (zypper).
 - **Inits:** systemd, runit, OpenRC, dinit, s6 — it enables dbus, elogind/seatd and NetworkManager
   only if they exist and aren't already on (on Artix it pulls the `-<init>` service packages).
+- **Keybinds:** got a config already? Keep your binds and pick free keys for Kusanagi in the TUI
+  (clashes are blocked), or let Kusanagi's keys win (mango: clashing lines get commented out and
+  `--uninstall` restores them; Hyprland: `unbind`; niri: included last), or add no keys at all.
 - **Compositors:** installs whichever of MangoWM, Hyprland and niri you pick if missing, then adds one
   include line to each config (backup first, validated, reverted if invalid). Already-wired configs are left alone.
 

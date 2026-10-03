@@ -7,6 +7,10 @@
   Fedora, Gentoo, Debian/Ubuntu, openSUSE), enables services for systemd/runit/OpenRC/dinit/s6,
   wires each compositor with one validated include line; `--dry-run`, `--uninstall`
 - `compositors/`: ready autostart + keybinds for each compositor
+- Installer is a centred TUI with the logo; per-compositor keybind picker that reads your existing
+  binds (mango, Hyprland classic/Lua — live via hyprctl when running — and niri) and blocks clashes
+- Logo: a K run through by a katana (assets/logo.svg), shown in Settings → About
+- Presets trimmed to 10 (dropped Text only, Retro, Rosé, Monochrome)
 - Built-in power menu (lock / log out / suspend / reboot / shut down) via `kusanagi msg power toggle`
 
 ## 0.1.0 — 2026-10-03
