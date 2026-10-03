@@ -17,5 +17,5 @@ First release as its own program (was a Quickshell config in ~/.config/quickshel
 - Workspaces: pills, dots, numbers, roman, kanji, dwl blocks, custom icons
 - Control panel (Home / System / Inbox / Quick), launcher (list/grid, calculator, run, app actions),
   clipboard, wallpaper picker, notifications, OSD, screenshot flyout, lock screen (with test mode)
-- 14 presets + your own saved looks; 10 palettes; game mode with clean switching
+- presets + your own saved looks; 10 palettes; game mode with clean switching
 - Settings app with 15 pages

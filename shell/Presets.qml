@@ -40,15 +40,6 @@ Singleton {
             panel: { morph: "island" }, osd: { style: "pill" }, notifications: { style: "comfortable" }, launcher: { layout: "grid", iconSize: 40 }
         },
         {
-            id: "clear", name: "Text only", note: "No backgrounds at all — text floating over the wallpaper",
-            look: { radius: 14, animSpeed: 1.0, bounce: 0.8, backdrop: 0.25, borders: false, borderAccent: false, shadows: true , palette: "wallpaper" },
-            bar: { style: "clear", position: "top", height: 28, layout: "classic", accentLabels: true, opacity: 0.5, radius: 10,
-                   fontSize: 12, outline: false, clockBold: true, hoverGrow: false,
-                   modules: { title: true, media: true, cpu: true, ram: true, gpu: false, temp: false, volume: true, network: true, tray: true, power: true } },
-            workspaces: { style: "numbers", shown: 5, glow: false, activeColor: "accent" },
-            panel: { morph: "drop" }, osd: { style: "minimal" }, notifications: { style: "comfortable" }, launcher: { layout: "list", iconSize: 32 }
-        },
-        {
             id: "zen", name: "Zen", note: "Bottom bar, clock left, dots centred, almost no stats, unhurried",
             look: { radius: 18, animSpeed: 1.4, bounce: 1.2, backdrop: 0.3, borders: true, borderAccent: false, shadows: true , palette: "wallpaper" },
             bar: { style: "islands", position: "bottom", height: 30, layout: "centered", accentLabels: false, opacity: 0.45, radius: 15,
@@ -85,15 +76,6 @@ Singleton {
             panel: { morph: "drop" }, osd: { style: "pill" }, notifications: { style: "comfortable" }, launcher: { layout: "list", iconSize: 28 }
         },
         {
-            id: "retro", name: "Retro", note: "Gruvbox warmth, roman tags, solid bar, chunky and square-ish",
-            look: { radius: 4, animSpeed: 0.7, bounce: 0.3, backdrop: 0.25, borders: true, borderAccent: true, shadows: false, palette: "gruvbox" },
-            bar: { style: "solid", position: "top", height: 26, layout: "classic", accentLabels: true, opacity: 1.0, radius: 0,
-                   fontSize: 12, outline: false, clockBold: true, hoverGrow: false,
-                   modules: { title: true, media: true, cpu: true, ram: true, gpu: false, temp: true, volume: true, network: true, tray: true, power: true } },
-            workspaces: { style: "roman", shown: 5, glow: false, activeColor: "accent" },
-            panel: { morph: "fade" }, osd: { style: "minimal" }, notifications: { style: "compact" }, launcher: { layout: "list", iconSize: 24 }
-        },
-        {
             id: "hud", name: "Gamer HUD", note: "Every stat on show (GPU, temps), dwl tags, instant, no frills",
             look: { radius: 8, animSpeed: 0.7, bounce: 0, backdrop: 0.2, borders: true, borderAccent: true, shadows: false, palette: "wallpaper" },
             bar: { style: "islands", position: "top", height: 26, layout: "classic", accentLabels: true, opacity: 0.7, radius: 6,
@@ -101,15 +83,6 @@ Singleton {
                    modules: { title: false, media: false, cpu: true, ram: true, gpu: true, temp: true, volume: true, network: true, tray: true, power: true } },
             workspaces: { style: "dwl", shown: 5, glow: false, activeColor: "accent" },
             panel: { morph: "fade" }, osd: { style: "minimal" }, notifications: { style: "compact" }, launcher: { layout: "list", iconSize: 24 }
-        },
-        {
-            id: "rose", name: "Rosé", note: "Rosé Pine, soft islands, dots, slow and dreamy",
-            look: { radius: 20, animSpeed: 1.4, bounce: 1.1, backdrop: 0.3, borders: true, borderAccent: false, shadows: true, palette: "rose-pine" },
-            bar: { style: "islands", position: "top", height: 30, layout: "classic", accentLabels: false, opacity: 0.6, radius: 15,
-                   fontSize: 11, outline: false, clockBold: true, hoverGrow: true,
-                   modules: { title: false, media: true, cpu: false, ram: false, gpu: false, temp: false, volume: true, network: false, tray: true, power: true } },
-            workspaces: { style: "dots", shown: 5, glow: true, activeColor: "accent" },
-            panel: { morph: "island" }, osd: { style: "pill" }, notifications: { style: "comfortable" }, launcher: { layout: "grid", iconSize: 48 }
         },
         {
             id: "nordic", name: "Nordic", note: "Nord palette, clear text bar, clock left + numbers centred",
@@ -129,15 +102,6 @@ Singleton {
             workspaces: { style: "kanji", shown: 5, glow: false, activeColor: "accent" },
             panel: { morph: "island" }, osd: { style: "minimal" }, notifications: { style: "comfortable" }, launcher: { layout: "list", iconSize: 28 }
         },
-        {
-            id: "mono", name: "Monochrome", note: "Black & white only, solid thin bar, pills, crisp",
-            look: { radius: 10, animSpeed: 0.85, bounce: 0.4, backdrop: 0.3, borders: true, borderAccent: false, shadows: true, palette: "mono" },
-            bar: { style: "solid", position: "top", height: 24, layout: "classic", accentLabels: false, opacity: 0.85, radius: 0,
-                   fontSize: 11, outline: false, clockBold: true, hoverGrow: false,
-                   modules: { title: true, media: true, cpu: true, ram: true, gpu: false, temp: false, volume: true, network: true, tray: true, power: true } },
-            workspaces: { style: "pills", shown: 5, glow: false, activeColor: "text" },
-            panel: { morph: "fade" }, osd: { style: "minimal" }, notifications: { style: "compact" }, launcher: { layout: "list", iconSize: 28 }
-        }
 
     ]
 

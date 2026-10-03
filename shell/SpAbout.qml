@@ -61,8 +61,16 @@ Column {
             font.bold: true
             color: Theme.alpha(Theme.text, 0.12)
         }
+        Image {
+            id: logo
+            x: 22; anchors.verticalCenter: parent.verticalCenter
+            width: 104; height: 104
+            source: Qt.resolvedUrl("../assets/logo.svg")
+            sourceSize: Qt.size(208, 208)
+            smooth: true
+        }
         Column {
-            x: 28; anchors.verticalCenter: parent.verticalCenter
+            anchors { left: logo.right; leftMargin: 20; verticalCenter: parent.verticalCenter }
             spacing: 4
             CpText { text: "KUSANAGI"; font.pixelSize: 30; font.bold: true; font.letterSpacing: 8 }
             CpText { text: `${Quickshell.env("USER")}'s Quickshell  ·  ${page.qsVersion}`; font.pixelSize: 12; color: Theme.alpha(Theme.text, 0.75) }
