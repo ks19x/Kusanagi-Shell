@@ -24,7 +24,6 @@ Singleton {
     readonly property alias screenshot: adapter.screenshot
     readonly property alias weather: adapter.weather
     readonly property alias dock: adapter.dock
-    readonly property alias widgets: adapter.widgets
     // the bar layout engine (BarSpec.qml, docs/bar.md): [] = the classic bar from the options above
     property alias bars: adapter.bars
 
@@ -74,8 +73,7 @@ Singleton {
         gamemode: { auto: true, effects: true, feral: true, quiet: true, dnd: true, grace: 800, announce: "manual" },
         screenshot: { position: "bottom-right", timeout: 6000, editor: "swappy -f" },
         weather: { location: "", units: "metric" },
-        dock: { pinned: [], indicator: "dot", magnify: 1.35, grouped: true },
-        widgets: { enabled: false, onlyDesktop: true, fade: true, items: [] }
+        dock: { pinned: [], indicator: "dot", magnify: 1.35, grouped: true }
     })
 
     FileView {
@@ -248,15 +246,6 @@ Singleton {
                 property int gapsIn: 8                // px between windows
                 property int gapsOut: 8               // px from the screen edges
                 property int border: 2                // window border width
-            }
-
-            property JsonObject widgets: JsonObject {
-                property bool enabled: false          // desktop widgets (Settings → Desktop widgets)
-                property bool onlyDesktop: true       // only on a workspace with no windows — unloaded otherwise
-                property bool fade: true
-                // [{ type: clock|media|stats|weather|calendar|text|greeting, x, y (0..1, centre), scale, card, style, … }]
-                property var items: [{ type: "clock", style: "big", x: 0.5, y: 0.34, scale: 1, card: false },
-                                     { type: "media", x: 0.5, y: 0.66, scale: 1, card: true }]
             }
 
             property JsonObject dock: JsonObject {

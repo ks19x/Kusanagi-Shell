@@ -1,6 +1,8 @@
 // BarPreview.qml — a live, scaled drawing of one bar spec (raw, as in Config.bars) on a slice of
 // "desktop": the real BarContent with a stand-in window and a host that only borrows live data
 // (media, volume) and ignores clicks. Settings → Bar editor and preset cards use it.
+import Quickshell
+import Quickshell.Io
 import QtQuick
 
 Item {
@@ -95,54 +97,100 @@ Item {
         function openTrayMenu() {}
     }
 
-    Item {
-        id: screen
-        width: pv.viewW
-        height: pv.viewH
-        scale: pv.k
-        transformOrigin: Item.TopLeft
-        x: pv.fixedScale > 0 ? 0 : Math.round((pv.width - width * pv.k) / 2)
-        y: pv.fixedScale > 0 ? 0 : Math.round((pv.height - height * pv.k) / 2)
-
-        Rectangle {
-            visible: pv.desktop
+    // snapshot (galleries, preset cards): a picture instead of a live bar. Pictures are cached on disk
+    // by layout + colours + font, so after the first time no live bar is built at all.
+    property bool snapshot: false
+    readonly property string cacheKey: {
+        if (width <= 0 || height <= 0) return ""      // laid out first: the size is part of the key
+        const src = JSON.stringify(bar || {}) + "|" + Theme.accent + Theme.accent2 + Theme.bgPanel + Theme.text + Theme.fontFamily
+                    + "|" + Math.round(width) + "x" + Math.round(height)
+        let h = 5381
+        for (let i = 0; i < src.length; i++) h = ((h << 5) + h + src.charCodeAt(i)) | 0
+        return (h >>> 0).toString(16)
+    }
+    readonly property string cacheFile: Quickshell.env("HOME") + "/.cache/kusanagi/previews/" + cacheKey + ".png"
+    // live until a picture is showing (a cached one, or the one just grabbed)
+    property bool live: !snapshot
+    // look it up once the size has settled (cards resize a few times while they are laid out)
+    onCacheKeyChanged: if (snapshot && cacheKey) { live = false; settle.restart() }
+    Timer { id: settle; interval: 120; onTriggered: shot.source = "file://" + pv.cacheFile }
+    Component.onCompleted: if (snapshot) mk.running = true
+    Loader {
+        id: liveLoader
+        anchors.fill: parent
+        active: pv.live
+        sourceComponent: Item {
             anchors.fill: parent
-            gradient: Gradient {
-                GradientStop { position: 0; color: Qt.darker(Theme.accent, 2.6) }
-                GradientStop { position: 1; color: Qt.darker(Theme.accent2, 3.4) }
+        Item {
+            id: screen
+            width: pv.viewW
+            height: pv.viewH
+            scale: pv.k
+            transformOrigin: Item.TopLeft
+            x: pv.fixedScale > 0 ? 0 : Math.round((pv.width - width * pv.k) / 2)
+            y: pv.fixedScale > 0 ? 0 : Math.round((pv.height - height * pv.k) / 2)
+
+            Rectangle {
+                visible: pv.desktop
+                anchors.fill: parent
+                gradient: Gradient {
+                    GradientStop { position: 0; color: Qt.darker(Theme.accent, 2.6) }
+                    GradientStop { position: 1; color: Qt.darker(Theme.accent2, 3.4) }
+                }
+            }
+
+            // the window's place on the virtual screen, as the compositor would put it
+            QtObject {
+                id: fakeWin
+                readonly property bool preview: true
+                readonly property var spec: pv.spec
+                readonly property string edge: pv.spec.position
+                readonly property bool vertical: pv.vertical
+                readonly property int size: pv.spec.size
+                readonly property var margin: pv.spec.margin
+                readonly property var host: fakeHost
+                readonly property real screenX: 0
+                readonly property real screenY: 0
+                readonly property string key: "preview"
+            }
+            readonly property real full: pv.vertical ? pv.screenH : pv.screenW
+            readonly property real len: pv.spec.length === "auto" ? Math.max(barc.natural, pv.spec.size)
+                : pv.spec.length <= 0 ? full - 2 * pv.spec.margin[2]
+                : pv.spec.length <= 1 ? Math.round(full * pv.spec.length) : pv.spec.length
+            readonly property real at: pv.spec.length !== "auto" && pv.spec.length <= 0 || pv.spec.align === "start" ? pv.spec.margin[2]
+                : pv.spec.align === "end" ? full - pv.spec.margin[2] - len : Math.round((full - len) / 2)
+
+            BarContent {
+                id: barc
+                win: fakeWin
+                width: pv.vertical ? pv.spec.size : screen.len
+                height: pv.vertical ? screen.len : pv.spec.size
+                x: pv.vertical ? (fakeWin.edge === "left" ? pv.spec.margin[0] : screen.width - pv.spec.margin[0] - width) : screen.at
+                y: pv.vertical ? screen.at : (fakeWin.edge === "top" ? pv.spec.margin[0] : screen.height - pv.spec.margin[0] - height)
             }
         }
-
-        // the window's place on the virtual screen, as the compositor would put it
-        QtObject {
-            id: fakeWin
-            readonly property bool preview: true
-            readonly property var spec: pv.spec
-            readonly property string edge: pv.spec.position
-            readonly property bool vertical: pv.vertical
-            readonly property int size: pv.spec.size
-            readonly property var margin: pv.spec.margin
-            readonly property var host: fakeHost
-            readonly property real screenX: 0
-            readonly property real screenY: 0
-            readonly property string key: "preview"
-        }
-        readonly property real full: pv.vertical ? pv.screenH : pv.screenW
-        readonly property real len: pv.spec.length === "auto" ? Math.max(barc.natural, pv.spec.size)
-            : pv.spec.length <= 0 ? full - 2 * pv.spec.margin[2]
-            : pv.spec.length <= 1 ? Math.round(full * pv.spec.length) : pv.spec.length
-        readonly property real at: pv.spec.length !== "auto" && pv.spec.length <= 0 || pv.spec.align === "start" ? pv.spec.margin[2]
-            : pv.spec.align === "end" ? full - pv.spec.margin[2] - len : Math.round((full - len) / 2)
-
-        BarContent {
-            id: barc
-            win: fakeWin
-            width: pv.vertical ? pv.spec.size : screen.len
-            height: pv.vertical ? screen.len : pv.spec.size
-            x: pv.vertical ? (fakeWin.edge === "left" ? pv.spec.margin[0] : screen.width - pv.spec.margin[0] - width) : screen.at
-            y: pv.vertical ? screen.at : (fakeWin.edge === "top" ? pv.spec.margin[0] : screen.height - pv.spec.margin[0] - height)
         }
     }
+    Image {
+        id: shot
+        anchors.fill: parent
+        visible: !pv.live && status === Image.Ready
+        cache: false
+        asynchronous: true
+        // not cached yet: build it live once, then grab and keep the picture
+        onStatusChanged: if (pv.snapshot && status === Image.Error && source == "file://" + pv.cacheFile) pv.live = true
+    }
+    Timer {
+        id: grab
+        interval: 450
+        running: pv.snapshot && pv.live && pv.width > 0
+        onTriggered: liveLoader.grabToImage(r => {
+            r.saveToFile(pv.cacheFile)
+            shot.source = r.url
+            pv.live = false
+        })
+    }
+    Process { id: mk; command: ["mkdir", "-p", Quickshell.env("HOME") + "/.cache/kusanagi/previews"] }
 
     // ---- drag feedback: where it will land, and what is being carried ----
     Rectangle {

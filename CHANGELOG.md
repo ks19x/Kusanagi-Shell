@@ -9,10 +9,6 @@
   is kept awake (idle inhibitor), click it to turn off
 - **Weather** card on Home (wttr.in, cached, refreshed every 30 min only while the panel is open; 3-day
   forecast); location + units in Settings → Panel
-- **Desktop widgets** (Settings → Desktop widgets): clock (big / stacked / minimal / analog), now
-  playing, system rings, weather, calendar, greeting, text — on cards or on the wallpaper; by default
-  only on an empty workspace, fading in and out and fully unloaded while windows are open; arrange
-  mode to drag them (`kusanagi msg widgets arrange`)
 - **Control panel, your way**: panel looks (Default / Compact / Icon grid / Dashboard); tiles as
   cards, pills or icons with any column count; thick or slim sliders; big / compact / hidden header;
   tab row on or off; Home sections in any order, each on or off; presets carry all of it
@@ -20,7 +16,9 @@
 - **Motion presets** (Instant … Cinematic, live demos) and a **font picker** over every installed font
 - **8 new bar templates + presets**: Aurora, Material You, Candy, Line, Notch, Windows 11, Cyber, Zen
 - **Settings** restyled: plain section titles over soft cards, icon tiles in the sidebar, page icons
-- Fixed: notifications looping (popups rebuilt on every change), tray icons pushed off-screen
+- Fixed: notifications looping (popups rebuilt on every change), tray icons pushed off-screen,
+  Settings building the Presets page on every opening; preset / template previews are now cached
+  pictures (~/.cache/kusanagi/previews) instead of live bars (Settings ~half the memory while open)
 - **Dock**: pinned apps (Settings → Bar → Dock & taskbar: app search, "pin my most used", running
   dots / line, grow on hover; right-click a dock icon to pin). Icons that really load (letter tile
   when an app has none), the Kusanagi logo in Settings, About, the dock and as a launcher button

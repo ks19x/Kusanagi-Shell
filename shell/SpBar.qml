@@ -97,6 +97,7 @@ Column {
                                         width: parent.width
                                         height: card.vert ? 84 : (card.height - 36) / card.modelData.bars.length - 2
                                         bar: modelData
+                                        snapshot: true          // a picture once drawn (20 live bars would be heavy)
                                     }
                                 }
                             }

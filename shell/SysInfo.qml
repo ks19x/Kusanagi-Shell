@@ -15,10 +15,8 @@ Singleton {
 
     // what the bars show (BarSpec.uses: module types on any bar)
     readonly property var uses: BarSpec.uses
-    // desktop widgets showing stats (WdgStats counts itself in and out)
-    property int widgetUsers: 0
-    readonly property bool wantCpuRam: detailed || !GameMode.quiet && (!!uses.cpu || !!uses.ram || widgetUsers > 0)
-    readonly property bool wantGpu: detailed || !GameMode.quiet && (!!uses.gpu || !!uses.temp || widgetUsers > 0)
+    readonly property bool wantCpuRam: detailed || !GameMode.quiet && (!!uses.cpu || !!uses.ram)
+    readonly property bool wantGpu: detailed || !GameMode.quiet && (!!uses.gpu || !!uses.temp)
     readonly property bool wantNet: detailed || !GameMode.quiet && !!uses.network
     readonly property bool wantDisk: detailed || !GameMode.quiet && !!uses.disk
     readonly property bool wantUptime: !detailed && !GameMode.quiet && !!uses.uptime

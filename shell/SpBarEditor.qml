@@ -497,17 +497,21 @@ Column {
                         }
                     }
                 }
-                Flow {
-                    visible: ed.addingTo === secCol.modelData.sec
+                // the "+" picker exists only while it is open (27 chips per section otherwise)
+                Loader {
+                    active: ed.addingTo === secCol.modelData.sec
+                    visible: active
                     x: 70
                     width: secCol.width - 70
-                    spacing: 5
-                    Repeater {
-                        model: ed.types
-                        CpChip {
-                            required property var modelData
-                            label: modelData.label; icon: modelData.icon
-                            onClicked: ed.addEntry(secCol.modelData.sec, modelData.t)
+                    sourceComponent: Flow {
+                        spacing: 5
+                        Repeater {
+                            model: ed.types
+                            CpChip {
+                                required property var modelData
+                                label: modelData.label; icon: modelData.icon
+                                onClicked: ed.addEntry(secCol.modelData.sec, modelData.t)
+                            }
                         }
                     }
                 }

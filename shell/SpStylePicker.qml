@@ -45,7 +45,7 @@ Flow {
                 }
                 Loader {
                     anchors.fill: parent
-                    sourceComponent: ({ launcher: launcherC, panel: panelC, notifications: notifC, osd: osdC, corner: cornerC, edge: edgeC, widget: widgetC, tiles: tilesC, panelLook: lookC })[root.kind] ?? null
+                    sourceComponent: ({ launcher: launcherC, panel: panelC, notifications: notifC, osd: osdC, corner: cornerC, edge: edgeC, tiles: tilesC, panelLook: lookC })[root.kind] ?? null
                     property var v: card.modelData.value
                 }
             }
@@ -235,31 +235,6 @@ Flow {
                     }
                     Rectangle { width: parent.width; height: v === "compact" || v === "icons" ? 2 : 6; radius: 3; color: root.acc }
                 }
-            }
-        }
-    }
-    Component {
-        id: widgetC
-        Item {
-            readonly property string v: parent.v
-            // a hint of the widget on a little desktop
-            Rectangle {
-                visible: v !== "clock" && v !== "greeting" && v !== "text"
-                anchors.centerIn: parent; width: parent.width * 0.62; height: parent.height * 0.62; radius: 6
-                color: root.surf
-            }
-            CpText {
-                visible: v === "clock" || v === "greeting" || v === "text"
-                anchors.centerIn: parent
-                text: v === "clock" ? "19:00" : v === "greeting" ? "Hi, you." : "“words”"
-                font.pixelSize: v === "clock" ? 22 : 14; font.bold: v !== "clock"; font.weight: v === "clock" ? Font.Light : Font.Bold
-                color: Theme.text
-            }
-            CpIcon {
-                visible: v !== "clock" && v !== "greeting" && v !== "text"
-                anchors.centerIn: parent
-                cp: ({ media: 0xf075a, stats: 0xf029a, weather: 0xf0599, calendar: 0xf00ed })[v] ?? 0xf072e
-                font.pixelSize: 24; color: root.acc
             }
         }
     }

@@ -26,7 +26,6 @@ ShellRoot {
     Osd { id: osd }
     Lock { id: lock }
     ScreenshotOsd {}
-    Widgets { id: widgets }
     NotificationPopups {}
     // Hyprland's global shortcuts (kusanagi:mediaToggle …); Mango has no such protocol
     LazyLoader { active: Wm.kind === "hyprland"; Shortcuts { shell: shell } }
@@ -148,11 +147,6 @@ ShellRoot {
         target: "preset"
         function apply(name: string): void { Presets.applyNamed(name) }
         function next(): void { Presets.next() }
-    }
-    IpcHandler {
-        target: "widgets"
-        function arrange(): void { Config.widgets.enabled = true; widgets.arranging = !widgets.arranging }
-        function toggle(): void { Config.widgets.enabled = !Config.widgets.enabled }
     }
     IpcHandler {
         target: "osd"

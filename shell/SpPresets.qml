@@ -35,6 +35,7 @@ Column {
             width: parent.width - 20
             height: 62
             sourceComponent: BarPreview {
+                snapshot: true
                 // same scale as the drawn previews (a narrower virtual screen); side bars show their top
                 screenW: Math.round(width / 0.6)
                 fixedScale: vertical ? 0.6 : 0

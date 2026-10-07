@@ -2,13 +2,15 @@
 // left, one page per topic on the right. Every control writes Config, so changes apply as you make them.
 // Loaded only while open (shell.qml).
 import Quickshell
+import Quickshell.Io
 import QtQuick
 
 FloatingWindow {
     id: root
 
     property bool showing: false
-    property string page: "presets"
+    // empty until show() names one: otherwise every opening first built the Presets page for nothing
+    property string page: ""
     function show(p) { if (p) page = p; showing = true }
     function hide() { showing = false }
     function toggle() { showing = !showing }
@@ -28,7 +30,6 @@ FloatingWindow {
         { id: "workspaces", desc: "How workspaces look on the bar.", name: "Workspaces", icon: 0xf0570, page: "SpWorkspaces", keys: "tags icons pills dots roman kanji glow" },
         { id: "panel", desc: "The control panel that drops out of the clock.", name: "Control panel", icon: 0xf056e, page: "SpPanel", keys: "tiles width tab media stats" },
         { id: "wallpaper", desc: "Your wallpapers, transitions, parallax and slideshow.", name: "Wallpaper", icon: 0xf0e09, page: "SpWallpaper", keys: "transition parallax slideshow fill dim awww picker" },
-        { id: "widgets", desc: "Clocks, music, stats and more on your wallpaper — only when you can see it.", name: "Desktop widgets", icon: 0xf056e, page: "SpWidgets", keys: "desktop clock calendar weather media stats greeting analog arrange" },
         { id: "launcher", desc: "The app launcher and clipboard history.", name: "Launcher & clipboard", icon: 0xf003b, page: "SpLauncher", keys: "apps search clipboard terminal calculator" },
         { id: "lock", desc: "The lock screen, and which locker guards your session.", name: "Lock screen", icon: 0xf033e, page: "SpLock", keys: "hyprlock blur password test" },
         { id: "notifications", desc: "Popups, do-not-disturb and the volume / mic overlay.", name: "Notifications & OSD", icon: 0xf009a, page: "SpNotifications", keys: "popups dnd osd volume timeout position" },
@@ -202,7 +203,9 @@ FloatingWindow {
                     id: loader
                     x: 36
                     width: Math.min(760, scroller.width - 72)
-                    source: root.current.page + ".qml"
+                    // straight from the page (going through `current` could briefly see the old value
+                    // and build the Presets page on every opening)
+                    source: root.page ? (root.pages.find(p => p.id === root.page) ?? root.pages[0]).page + ".qml" : ""
                     onLoaded: { scroller.contentY = 0; pageIn.restart() }
                     ParallelAnimation {
                         id: pageIn
@@ -223,4 +226,5 @@ FloatingWindow {
             }
         }
     }
+    IpcHandler { target: "settest"; function scroll(y: int): void { scroller.contentY = y } }
 }
