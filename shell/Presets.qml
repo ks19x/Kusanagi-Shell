@@ -104,6 +104,55 @@ Singleton {
         },
         // ---- whole bar layouts (the bar engine: BarTemplates / Settings → Bar → Custom layout) ----
         {
+            id: "aurora", name: "Aurora", note: "glass islands, gradient clock, Rosé Pine, smooth springs",
+            look: { radius: 18, animSpeed: 1.0, bounce: 1.0, backdrop: 0.3, borders: true, borderAccent: false, shadows: true, palette: "rose-pine" },
+            barsTemplate: "aurora",
+            panel: { morph: "island" }, osd: { style: "pill", position: "top" }, notifications: { style: "comfortable", position: "top-right" },
+            launcher: { style: "spotlight", layout: "list", iconSize: 32 }
+        },
+        {
+            id: "material", name: "Material You", note: "tonal accent chips, wallpaper colours, bouncy",
+            look: { radius: 24, animSpeed: 1.0, bounce: 1.8, backdrop: 0.25, borders: false, borderAccent: false, shadows: true, palette: "wallpaper" },
+            barsTemplate: "material",
+            panel: { morph: "drop" }, osd: { style: "pill", position: "bottom" }, notifications: { style: "minimal", position: "top-center" },
+            launcher: { style: "fullscreen", layout: "grid", iconSize: 56 }
+        },
+        {
+            id: "candy", name: "Candy", note: "colourful segments, Catppuccin Mocha, playful",
+            look: { radius: 16, animSpeed: 1.25, bounce: 2.0, backdrop: 0.25, borders: true, borderAccent: true, shadows: true, palette: "catppuccin-mocha" },
+            barsTemplate: "candy",
+            panel: { morph: "island" }, osd: { style: "box" }, notifications: { style: "accent", position: "top-right" },
+            launcher: { style: "card", layout: "grid", iconSize: 40 }
+        },
+        {
+            id: "notch", name: "Notch", note: "a black island at the top, mono, side-sheet panel",
+            look: { radius: 18, animSpeed: 1.0, bounce: 0.6, backdrop: 0.3, borders: false, borderAccent: false, shadows: true, palette: "mono" },
+            barsTemplate: "notch",
+            panel: { morph: "sheet" }, osd: { style: "box" }, notifications: { style: "minimal", position: "top-center" },
+            launcher: { style: "spotlight", layout: "list", iconSize: 28 }
+        },
+        {
+            id: "cyber", name: "Cyber", note: "neon slants, Tokyo Night, kanji, snappy",
+            look: { radius: 2, animSpeed: 0.6, bounce: 0.3, backdrop: 0.35, borders: true, borderAccent: true, shadows: false, palette: "tokyo-night" },
+            barsTemplate: "cyber",
+            panel: { morph: "fade" }, osd: { style: "minimal", position: "top" }, notifications: { style: "accent", position: "bottom-right" },
+            launcher: { style: "side", layout: "list", iconSize: 28 }
+        },
+        {
+            id: "win11", name: "Windows 11", note: "centred taskbar, start-menu launcher, side sheet",
+            look: { radius: 8, animSpeed: 0.8, bounce: 0.4, backdrop: 0.2, borders: true, borderAccent: false, shadows: true, palette: "wallpaper" },
+            barsTemplate: "win11",
+            panel: { morph: "sheet" }, osd: { style: "pill", position: "bottom" }, notifications: { style: "comfortable", position: "bottom-right" },
+            launcher: { style: "card", layout: "grid", iconSize: 40, position: "center" }
+        },
+        {
+            id: "zen2", name: "Zen pill", note: "one floating pill at the bottom, Gentle motion, Everforest",
+            look: { radius: 20, animSpeed: 1.4, bounce: 0.4, backdrop: 0.3, borders: true, borderAccent: false, shadows: true, palette: "everforest" },
+            barsTemplate: "zen",
+            panel: { morph: "fade" }, osd: { style: "minimal", position: "bottom" }, notifications: { style: "minimal", position: "bottom-center" },
+            launcher: { style: "spotlight", layout: "list", iconSize: 28 }
+        },
+        {
             id: "powerline", name: "Powerline", note: "agnoster arrows: touching coloured segments, square and quick",
             look: { radius: 4, animSpeed: 0.7, bounce: 0.3, backdrop: 0.2, borders: true, borderAccent: false, shadows: false, palette: "wallpaper" },
             barsTemplate: "powerline",
@@ -133,8 +182,10 @@ Singleton {
         panel: ["morph", "opacity"],
         osd: ["style", "position"],
         notifications: ["style", "position"],
-        launcher: ["layout", "iconSize"]
+        launcher: ["style", "position", "layout", "iconSize"]
     })
+    // looks made before these existed: applying one puts these back to their defaults
+    readonly property var styleDefaults: ({ launcher: { style: "card", position: "upper" }, osd: { position: "top" }, notifications: { position: "top-right" } })
 
     // ---- your own ----
     FileView {
@@ -152,7 +203,7 @@ Singleton {
     function apply(p) {
         for (const section in lookKeys) {
             if (!p[section]) continue
-            const target = Config[section], src = p[section]
+            const target = Config[section], src = Object.assign({}, styleDefaults[section] || {}, p[section])
             for (const k of lookKeys[section]) {
                 if (!(k in src)) continue
                 if (k === "modules") { for (const m in src.modules) target.modules[m] = src.modules[m] }

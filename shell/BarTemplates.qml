@@ -13,6 +13,104 @@ Singleton {
 
     readonly property var list: [
         {
+            id: "aurora", name: "Aurora", note: "floating glass islands, a gradient clock, soft outlines",
+            bars: [{
+                position: "top", size: 38, padding: 10, spacing: 8,
+                group: { bg: "bg/0.55", radius: 14, inset: [7, 3], padding: [6, 6], border: "text/0.1", borderWidth: 1 },
+                module: { padding: [8, 8], gap: [0, 0] },
+                start: [{ type: "group", modules: [{ type: "launcher", logo: true, padding: [6, 4] }, { type: "workspaces", style: "pills", padding: [6, 6] }] },
+                        { type: "group", modules: [{ type: "title", maxLength: 42, fg: "dim" }] }],
+                center: [{ type: "group", bg: ["accent", "accent2"], borderWidth: 0,
+                           modules: [{ type: "clock", fg: "bg", bold: true, format: "{time}", formatAlt: "{date}", click: "alt", padding: [14, 14] }] }],
+                end: [{ type: "group", modules: [{ type: "media", width: 22, fg: "dim" }] },
+                      { type: "group", modules: [{ type: "cpu", format: "\u{f0ee0}  {usage}%" }, { type: "ram", format: "\u{f035b}  {percent}%" }, { type: "volume", format: "{icon}  {volume}%" }] },
+                      { type: "group", modules: [{ type: "network" }, { type: "tray" }, { type: "power", fg: "danger" }] }]
+            }]
+        },
+        {
+            id: "material", name: "Material You", note: "tonal, fully rounded chips in your accent",
+            bars: [{
+                position: "top", size: 40, padding: 8, spacing: 6, fontSize: 12,
+                module: { bg: "accent/0.14", fg: "accent", radius: 20, inset: [6, 2], padding: [14, 14], gap: [2, 2], bold: true, hoverBg: "accent/0.26" },
+                start: [{ type: "launcher", logo: true, padding: [10, 10] },
+                        { type: "workspaces", style: "pills", padding: [10, 10], colors: { active: "accent", occupied: "accent/0.7", empty: "accent/0.3" } },
+                        { type: "title", bg: "transparent", fg: "text", bold: false, hoverBg: "" }],
+                center: [{ type: "clock", bg: "accent", fg: "bg", timeFormat: "HH:mm", format: "{time}", formatAlt: "{date}", click: "alt", hoverBg: "accent" }],
+                end: [{ type: "media", width: 20 }, { type: "volume", format: "{icon}  {volume}%" }, { type: "network" },
+                      { type: "tray", bg: "accent/0.08" }, { type: "power", bg: "danger/0.18", fg: "danger", hoverBg: "danger/0.3" }]
+            }]
+        },
+        {
+            id: "candy", name: "Candy", note: "colourful rounded segments, one colour per module",
+            bars: [{
+                position: "top", size: 32, padding: 8, spacing: 6,
+                module: { fg: "bg", bold: true, radius: 15, inset: [5, 2], padding: [12, 12], gap: [0, 0] },
+                start: [{ type: "workspaces", style: "numbers", bg: "card", padding: [10, 10], colors: { active: "accent", occupied: "text", empty: "faint" } },
+                        { type: "title", bg: "card", fg: "text", bold: false, maxLength: 40 }],
+                center: [{ type: "clock", bg: "accent", format: "\u{f0150}  {time}", formatAlt: "\u{f00ed}  {date}", click: "alt" }],
+                end: [{ type: "cpu", bg: "ok", format: "\u{f0ee0} {usage}%" }, { type: "ram", bg: "warn", format: "\u{f035b} {percent}%" },
+                      { type: "volume", bg: "accent2", format: "{icon} {volume}%" }, { type: "tray", bg: "card" }, { type: "power", bg: "danger" }]
+            }]
+        },
+        {
+            id: "line", name: "Line", note: "quiet strip, dots in the middle, an accent hairline",
+            bars: [{
+                position: "top", size: 26, bg: "bg/0.7", line: { pos: "bottom", width: 1, color: "accent/0.35" }, fg: "dim",
+                module: { padding: [10, 10], gap: [0, 0], hoverFg: "text" },
+                start: [{ type: "clock", timeFormat: "ddd d MMM", fg: "text" }, { type: "title", maxLength: 50 }],
+                center: [{ type: "workspaces", style: "dots" }],
+                end: [{ type: "media", format: "{title}", width: 28 }, { type: "volume", format: "vol {volume}%" },
+                      { type: "clock", timeFormat: "HH:mm", fg: "text", bold: true }, { type: "tray" }]
+            }]
+        },
+        {
+            id: "notch", name: "Notch", note: "a black island hanging from the top, like a phone's",
+            bars: [{
+                position: "top", size: 32, length: "auto", padding: 16, bg: "#000000", radius: [0, 0, 18, 18],
+                module: { padding: [8, 8], gap: [0, 0], fg: "#ffffff" },
+                center: [{ type: "workspaces", style: "dots", colors: { active: "#ffffff", occupied: "#ffffff/0.7", empty: "#ffffff/0.3" } },
+                         { type: "clock", bold: true, format: "{time}", formatAlt: "{date}", click: "alt", padding: [14, 14] },
+                         { type: "media", width: 24, fg: "#ffffff/0.75" }, { type: "volume", format: "{icon}" }]
+            }]
+        },
+        {
+            id: "win11", name: "Windows 11", note: "centred taskbar — pin apps under Dock & taskbar",
+            bars: [{
+                position: "bottom", size: 48, bg: "bg/0.88", line: { pos: "top", width: 1, color: "text/0.08" },
+                module: { padding: [8, 8], gap: [0, 0], radius: 6, inset: [5, 5], hoverBg: "text/0.08" },
+                center: [{ type: "launcher", logo: true, fontSize: "+4", padding: [10, 10] },
+                         { type: "taskbar", iconSize: 24, spacing: 4, indicator: "line", hoverBg: "" }],
+                end: [{ type: "tray", hoverBg: "" },
+                      { type: "group", radius: 6, inset: [5, 5], click: "panel",
+                        modules: [{ type: "network", padding: [6, 4] }, { type: "volume", format: "{icon}", padding: [4, 8] }] },
+                      { type: "clock", format: "{time}\n{date}", dateFormat: "d/M/yyyy", fontSize: "-1", padding: [10, 12] },
+                      { type: "notifications", padding: [8, 12] }]
+            }]
+        },
+        {
+            id: "cyber", name: "Cyber", note: "neon slants, kanji tags, seconds ticking",
+            bars: [{
+                position: "top", size: 30, bg: "bg/0.92", line: { pos: "bottom", width: 2, color: "accent" }, fg: "accent", padding: 4, spacing: 4,
+                group: { bg: "accent/0.14", capStart: "slant", capEnd: "slant-back", inset: [5, 3], padding: [4, 4] },
+                module: { padding: [8, 8], gap: [0, 0], bold: true },
+                start: [{ type: "group", modules: [{ type: "workspaces", style: "kanji", colors: { active: "accent", occupied: "accent2", empty: "accent/0.35" } }] },
+                        { type: "group", bg: "accent2/0.14", modules: [{ type: "title", fg: "accent2", maxLength: 40 }] }],
+                center: [{ type: "group", bg: "accent", modules: [{ type: "clock", fg: "bg", timeFormat: "HH:mm:ss" }] }],
+                end: [{ type: "group", modules: [{ type: "cpu", format: "CPU {usage:3}%" }, { type: "ram", format: "MEM {percent:3}%" }, { type: "temp", format: "{temp}°" }] },
+                      { type: "group", bg: "accent2/0.14", modules: [{ type: "volume", fg: "accent2", format: "VOL {volume}" }, { type: "tray" }] }]
+            }]
+        },
+        {
+            id: "zen", name: "Zen", note: "one small floating pill at the bottom, nothing else",
+            bars: [{
+                position: "bottom", size: 36, length: "auto", margin: [10, 0, 0], padding: 14, bg: "bg/0.7", radius: 18,
+                border: "text/0.08", borderWidth: 1, exclusive: false,
+                module: { padding: [8, 8], gap: [0, 0] },
+                center: [{ type: "workspaces", style: "dots" }, { type: "sep" }, { type: "clock", bold: true }, { type: "sep" },
+                         { type: "volume", format: "{icon}  {volume}%" }, { type: "tray" }]
+            }]
+        },
+        {
             id: "powerline", name: "Powerline", note: "agnoster-style touching arrow segments",
             bars: [{
                 position: "top", size: 24, bg: "bg",
