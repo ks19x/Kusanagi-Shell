@@ -21,9 +21,9 @@ Item {
 
     Grid {
         id: grid
-        // exactly one line: n × 1 or 1 × n (spare rows would still take spacing)
-        rows: p.vertical ? Math.max(1, trayRep.count) : 1
-        columns: p.vertical ? 1 : Math.max(1, trayRep.count)
+        // one line: spare cells along the flow cost nothing (spare rows ACROSS it would take spacing)
+        rows: p.vertical ? 1000 : 1
+        columns: p.vertical ? 1 : 1000
         flow: p.vertical ? Grid.TopToBottom : Grid.LeftToRight
         spacing: p.m && p.m.eff.spacing !== undefined ? p.m.eff.spacing : 8
         Repeater {

@@ -36,7 +36,9 @@ PanelWindow {
         move: Transition { NumberAnimation { properties: "y"; duration: Config.ms(380); easing.type: Easing.OutQuint } }
 
         Repeater {
-            model: Notifs.popups
+            // a ScriptModel keeps the cards that stay (a plain array rebuilt every card whenever one
+            // left: arrival animations replayed and countdowns restarted — popups "looped")
+            model: ScriptModel { values: Notifs.popups }
             delegate: NotificationCard {
                 id: toast
                 required property var modelData

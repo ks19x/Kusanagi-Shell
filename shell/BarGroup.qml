@@ -82,9 +82,9 @@ Item {
             id: grid
             x: g.vertical ? 0 : g.capS + g.spec.padding[0]
             y: g.vertical ? g.capS + g.spec.padding[0] : 0
-            // exactly one line: n × 1 or 1 × n (spare rows would still take spacing)
-            rows: g.vertical ? Math.max(1, g.spec.modules.length) : 1
-            columns: g.vertical ? 1 : Math.max(1, g.spec.modules.length)
+            // one line: spare cells along the flow cost nothing (spare rows ACROSS it would take spacing)
+            rows: g.vertical ? 1000 : 1
+            columns: g.vertical ? 1 : 1000
             flow: g.vertical ? Grid.TopToBottom : Grid.LeftToRight
             spacing: g.spec.spacing
             Repeater {
