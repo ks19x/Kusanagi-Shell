@@ -14,6 +14,10 @@ Item {
     required property var win              // BarWindow
     property var group: null               // BarGroup
     property real cross: 22                 // thickness given by the group
+    property int mi: -1                     // index in its group
+    // "section:entry:module" (module -1 = a bare module, the entry itself): the editor preview selects by it
+    readonly property string pathKey: group ? group.section + ":" + group.gi + ":" + (group.spec.bare ? -1 : mi) : ""
+    readonly property bool picking: !!win.preview && !!host.pick
 
     readonly property bool vertical: win.vertical
     readonly property string type: spec.type || "text"
@@ -155,6 +159,17 @@ Item {
         }
     }
 
+    // the editor's selection, outlined in its preview
+    Rectangle {
+        visible: m.picking && m.host.selKey === m.pathKey
+        anchors.fill: inner
+        anchors.margins: -1
+        color: "transparent"
+        radius: 4
+        border.width: 2
+        border.color: Theme.accent
+    }
+
     // ---- input ----
     readonly property alias hovered: mouse.containsMouse
     readonly property string tooltip: {
@@ -186,11 +201,15 @@ Item {
         anchors.fill: inner
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-        cursorShape: m.actionFor("click") !== undefined ? Qt.PointingHandCursor : Qt.ArrowCursor
+        cursorShape: m.picking || m.actionFor("click") !== undefined ? Qt.PointingHandCursor : Qt.ArrowCursor
         function keyOf(b) { return b === Qt.RightButton ? "rightClick" : b === Qt.MiddleButton ? "middleClick" : "click" }
         // no action of its own for this button: let the press through to the group
-        onPressed: e => e.accepted = m.actionFor(keyOf(e.button)) !== undefined
-        onClicked: e => m.fire(keyOf(e.button))
+        onPressed: e => e.accepted = m.picking || m.actionFor(keyOf(e.button)) !== undefined
+        onClicked: e => {
+            // in the editor's preview a click selects the module instead
+            if (m.picking) { const k = m.pathKey.split(":"); m.host.pick(k[0], +k[1], +k[2]); return }
+            m.fire(keyOf(e.button))
+        }
         onWheel: e => {
             if (e.angleDelta.y === 0) return
             const up = e.angleDelta.y > 0

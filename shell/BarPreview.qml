@@ -11,6 +11,9 @@ Item {
     property real screenH: 720
     property bool desktop: true                  // draw the wallpaper-ish backdrop
     property real fixedScale: 0                  // > 0: draw at this scale and show the top-left of it
+    property bool pickable: false                // clicks select modules (picked) instead of doing things
+    property string selKey: ""                   // "section:entry:module" outlined
+    signal picked(string section, int gi, int mi)
     clip: true
 
     // plain JS first (QML hands over list/map types Array.isArray etc. do not know)
@@ -36,6 +39,8 @@ Item {
         property var mediaAnchor: null
         property bool mediaHover: false
         readonly property bool popupOpen: false
+        readonly property string selKey: pv.selKey
+        readonly property var pick: pv.pickable ? (s, g, m) => pv.picked(s, g, m) : null
         function runAction() {}
         function showTip() {}
         function hideTip() {}

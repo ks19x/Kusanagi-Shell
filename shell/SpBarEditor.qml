@@ -25,6 +25,7 @@ Column {
     function select(sec, gi, mi) { selSec = sec; selGi = gi; selMi = mi; addingTo = "" }
     function clearSel() { selSec = ""; selGi = -1; selMi = -1 }
 
+    function secName(s) { return s === "center" ? "Centre" : s === "start" ? (vertical ? "Top" : "Left") : (vertical ? "Bottom" : "Right") }
     function norm(e) { return typeof e === "string" ? { type: e } : e }
     function edit(fn) { const d = JSON.parse(JSON.stringify(Config.bars)); fn(d); Config.bars = d }
     function editBar(fn) { edit(d => fn(d[bIndex])) }
@@ -50,6 +51,8 @@ Column {
     }
     readonly property var selected: { const d = JSON.parse(JSON.stringify(bars)); return target(d) }
     readonly property bool selIsGroup: !!selected && selected.type === "group"
+    // only changes with the kind of thing selected (the inspector's folds are rebuilt on that alone)
+    readonly property string selKind: !selected ? "" : selIsGroup ? "group" : "module"
 
     function setKey(key, v) { edit(d => { const t = target(d); if (!t) return; if (v === undefined || v === null || v === "") delete t[key]; else t[key] = v }) }
     function setBarKey(key, v) { editBar(b => { if (v === undefined || v === null || v === "") delete b[key]; else b[key] = v }) }
@@ -200,6 +203,24 @@ Column {
         { key: "scrollUp", label: "Scroll up", kind: "text", mono: true },
         { key: "scrollDown", label: "Scroll down", kind: "text", mono: true }
     ])
+
+    // fields grouped into plain-language folds (first ones open)
+    function folds(fields, plan) {
+        return plan.map(f => ({ title: f.title, hint: f.hint, open: !!f.open, fields: fields.filter(x => f.keys.includes(x.key)) }))
+                   .filter(f => f.fields.length)
+    }
+    readonly property var modulePlan: [
+        { title: "Text", hint: "what it says and how", open: true, keys: ["format", "formatAlt", "fg", "fontSize", "bold", "hoverFg", "hoverGrow", "rotate", "tooltip"] },
+        { title: "Background & shape", hint: "colour, corners, border, powerline caps, underline", open: true,
+          keys: ["bg", "hoverBg", "radius", "border", "borderWidth", "capStart", "capEnd", "capStartBg", "capEndBg", "line"] },
+        { title: "Spacing", hint: "room inside, outside and across", keys: ["padding", "gap", "inset", "spacing"] },
+        { title: "Clicks & scrolling", hint: "built-in actions or any shell command", keys: ["click", "rightClick", "middleClick", "scrollUp", "scrollDown"] }
+    ]
+    readonly property var barPlan: [
+        { title: "Placement", hint: "edge, size, length, margins", open: true, keys: ["position", "size", "length", "align", "margin", "exclusive", "autohide", "layer", "screen"] },
+        { title: "Look", hint: "background, corners, border, text", open: true, keys: ["bg", "radius", "border", "borderWidth", "line", "fg", "fontSize", "font"] },
+        { title: "Spacing", hint: "room at the ends and between entries", keys: ["padding", "spacing"] }
+    ]
 
     // ---------------------------------------------------------------- field rows
     component Field: Item {
@@ -384,15 +405,22 @@ Column {
         }
         BarPreview {
             width: parent.width
-            height: ed.vertical ? 220 : 64
+            height: ed.vertical ? 260 : Math.round(((ed.bar.size || 28) + 16) * 0.85) + 6
+            // close to real size (sections squeeze a little on narrow windows)
+            screenW: Math.round(width / 0.85)
             bar: ed.bar
+            // click anything in it to select it below
+            pickable: true
+            selKey: ed.selSec ? ed.selSec + ":" + ed.selGi + ":" + ed.selMi : ""
+            onPicked: (sec, gi, mi) => ed.select(sec, gi, mi)
         }
+        CpText { text: "Click a module (or an island's edge) in the preview to edit it."; font.pixelSize: 10; color: Theme.textDim }
     }
 
     // ---------------------------------------------------------------- layout
     SpGroup {
-        title: "Layout"
-        hint: "Click to select · + adds · groups are islands holding several modules."
+        title: "Modules"
+        hint: "Click to select · + adds one · a group is an island holding several modules."
         Repeater {
             model: [{ sec: "start", label: ed.vertical ? "Top" : "Left" }, { sec: "center", label: "Centre" }, { sec: "end", label: ed.vertical ? "Bottom" : "Right" }]
             Column {
@@ -470,7 +498,7 @@ Column {
             CpChip { label: ed.vertical ? "Down" : "Right"; icon: ed.vertical ? 0xf0045 : 0xf0054; onClicked: ed.move(1) }
             Repeater {
                 model: ed.selMi < 0 ? ["start", "center", "end"].filter(s => s !== ed.selSec) : []
-                CpChip { required property string modelData; label: "→ " + modelData; onClicked: ed.toSection(modelData) }
+                CpChip { required property string modelData; label: "→ " + ed.secName(modelData); onClicked: ed.toSection(modelData) }
             }
             CpChip { visible: ed.selMi < 0 && !ed.selIsGroup; label: "Put in a group"; icon: 0xf0569; onClicked: ed.wrap() }
             CpChip { visible: ed.selIsGroup; label: "Ungroup"; icon: 0xf0e02; onClicked: ed.unwrap() }
@@ -503,13 +531,23 @@ Column {
         Field { visible: !!ed.selected && ed.selected.type === "spacer"; desc: ({ key: "size", label: "Size", kind: "int", from: 0, to: 400, step: 4, def: 8 }); src: ed.selected; setter: (k, v) => ed.setKey(k, v) }
 
         Repeater {
-            model: ed.selected ? (ed.selIsGroup ? ed.groupFields : ed.moduleFields) : []
-            Field {
+            // re-folded only when the kind of selection changes, so open folds stay open while editing
+            model: ed.selKind === "" ? [] : ed.folds(ed.selKind === "group" ? ed.groupFields : ed.moduleFields, ed.modulePlan)
+            SpFold {
                 required property var modelData
-                desc: modelData
-                src: ed.selected
-                setter: (k, v) => ed.setKey(k, v)
-                visible: modelData.key !== "rotate" || ed.vertical
+                title: modelData.title
+                hint: modelData.hint
+                open: modelData.open
+                Repeater {
+                    model: modelData.fields
+                    Field {
+                        required property var modelData
+                        desc: modelData
+                        src: ed.selected
+                        setter: (k, v) => ed.setKey(k, v)
+                        visible: modelData.key !== "rotate" || ed.vertical
+                    }
+                }
             }
         }
 
@@ -553,13 +591,22 @@ Column {
     SpGroup {
         title: "This bar"
         Repeater {
-            model: ed.barFields
-            Field {
+            model: ed.folds(ed.barFields, ed.barPlan)
+            SpFold {
                 required property var modelData
-                desc: modelData
-                src: ed.bar
-                setter: (k, v) => ed.setBarKey(k, v)
-                visible: modelData.key !== "align" || (ed.bar.length !== undefined && ed.bar.length !== 0)
+                title: modelData.title
+                hint: modelData.hint
+                open: modelData.open
+                Repeater {
+                    model: modelData.fields
+                    Field {
+                        required property var modelData
+                        desc: modelData
+                        src: ed.bar
+                        setter: (k, v) => ed.setBarKey(k, v)
+                        visible: modelData.key !== "align" || (ed.bar.length !== undefined && ed.bar.length !== 0)
+                    }
+                }
             }
         }
     }

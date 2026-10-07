@@ -9,6 +9,8 @@ Item {
     required property var host
     required property var win
     property real cross: 28                 // bar thickness to sit in
+    property string section: ""             // where it sits in the spec (the editor's preview picks by it)
+    property int gi: -1
 
     readonly property bool vertical: win.vertical
     readonly property alias box: box       // the control panel grows out of the clock's group
@@ -35,9 +37,11 @@ Item {
     MouseArea {
         anchors.fill: box
         z: -1
-        acceptedButtons: g.spec.click || g.spec.rightClick || g.spec.middleClick ? Qt.LeftButton | Qt.RightButton | Qt.MiddleButton : Qt.NoButton
-        cursorShape: g.spec.click ? Qt.PointingHandCursor : Qt.ArrowCursor
+        readonly property bool picking: !!g.win.preview && !!g.host.pick && !g.spec.bare
+        acceptedButtons: picking || g.spec.click || g.spec.rightClick || g.spec.middleClick ? Qt.LeftButton | Qt.RightButton | Qt.MiddleButton : Qt.NoButton
+        cursorShape: picking || g.spec.click ? Qt.PointingHandCursor : Qt.ArrowCursor
         onClicked: e => {
+            if (picking) { g.host.pick(g.section, g.gi, -1); return }
             const a = g.spec[e.button === Qt.RightButton ? "rightClick" : e.button === Qt.MiddleButton ? "middleClick" : "click"]
             if (a && a !== "none") g.host.runAction(a, null, 0)
         }
@@ -92,8 +96,19 @@ Item {
                     win: g.win
                     group: g
                     cross: g.innerCross
+                    mi: index
                 }
             }
         }
+    }
+
+    // the editor's selection, outlined in its preview
+    Rectangle {
+        visible: !!g.win.preview && !g.spec.bare && g.host.selKey === g.section + ":" + g.gi + ":-1"
+        x: box.x - 2; y: box.y - 2; width: box.width + 4; height: box.height + 4
+        color: "transparent"
+        radius: 6
+        border.width: 2
+        border.color: Theme.accent
     }
 }

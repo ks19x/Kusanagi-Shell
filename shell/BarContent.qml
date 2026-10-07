@@ -52,6 +52,8 @@ Item {
                     host: content.win.host
                     win: content.win
                     cross: content.win.size
+                    section: sec.modelData
+                    gi: index
                 }
             }
         }
