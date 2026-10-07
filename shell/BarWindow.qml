@@ -69,7 +69,9 @@ PanelWindow {
     property bool shown: true
     onRevealedChanged: if (revealed) { hideLater.stop(); shown = true } else hideLater.restart()
     readonly property real slide: shown ? 0 : size - 2
-    mask: Region { item: spec.autohide && !win.shown ? hotStrip : null }
+    // no mask unless hidden: a Region without an item is an EMPTY mask (every click falls through)
+    mask: spec.autohide && !win.shown ? hotRegion : null
+    Region { id: hotRegion; item: hotStrip }
     Item {
         id: hotStrip
         x: win.edge === "right" ? win.width - 2 : 0
