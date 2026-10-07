@@ -6,6 +6,7 @@ pragma Singleton
 //   activeIndex        focused workspace number (for wallpaper parallax)
 //   fullscreen         the focused window is fullscreen (game mode)
 //   focusWorkspace(e) · scroll(steps) · setEffects(on) · quit() · monitorsCommand · configFile
+//   layout             the compositor's own gaps / border (Config.windows overrides them live)
 // niri is followed with ONE `niri msg -j event-stream` (no polling); the others use Quickshell's
 // own Hyprland module / the ext-workspace protocol, so they cost no extra process at all.
 import Quickshell
@@ -93,7 +94,7 @@ Singleton {
         target: ToplevelManager
         function onActiveToplevelChanged() { if (ToplevelManager.activeToplevel) root.lastToplevel = ToplevelManager.activeToplevel }
     }
-    Component.onCompleted: lastToplevel = ToplevelManager.activeToplevel
+    Component.onCompleted: { lastToplevel = ToplevelManager.activeToplevel; if (canSetLayout) relayout.start() }
     readonly property bool fullscreen: kind === "hyprland"
         ? (Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.hasFullscreen : false)
         : (lastToplevel ? lastToplevel.fullscreen : false)
@@ -103,12 +104,13 @@ Singleton {
     property var mangoDefaults: ({ blur: 1, shadows: 1, animations: 1, layer_animations: 1 })
     Process {
         running: root.kind === "mango"
-        command: ["sh", "-c", "cat \"$1/mango/config.conf\" \"$1/mango/rice.conf\" 2>/dev/null | grep -E '^(blur|shadows|animations|layer_animations)='", "sh", root.configHome]
+        command: ["sh", "-c", "cat \"$1/mango/config.conf\" \"$1/mango/rice.conf\" 2>/dev/null | grep -E '^(blur|shadows|animations|layer_animations|gappih|gappoh|borderpx)='", "sh", root.configHome]
         stdout: StdioCollector {
             onStreamFinished: {
                 const d = Object.assign({}, root.mangoDefaults)
-                for (const l of text.split("\n")) { const m = l.match(/^(\w+)=(\d)/); if (m) d[m[1]] = +m[2] }
+                for (const l of text.split("\n")) { const m = l.match(/^(\w+)=(\d+)/); if (m) d[m[1]] = +m[2] }
                 root.mangoDefaults = d
+                root.layout = { gapsIn: d.gappih ?? root.layout.gapsIn, gapsOut: d.gappoh ?? root.layout.gapsOut, border: d.borderpx ?? root.layout.border }
             }
         }
     }
@@ -123,6 +125,69 @@ Singleton {
             else run(["hyprctl", "--batch", `keyword decoration:blur:enabled ${on ? 1 : 0}; keyword decoration:shadow:enabled ${on ? 1 : 0}; keyword animations:enabled ${on ? 1 : 0}`])
         }
         // niri: blur/animation switches live in its config file — left alone
+    }
+
+    // ---------------- gaps / borders ----------------
+    // gapsIn = px BETWEEN two windows (Mango's gappih; Hyprland's gaps_in is per side, so half of it)
+    readonly property bool canSetLayout: kind === "mango" || kind === "hyprland"
+    property var layout: ({ gapsIn: 8, gapsOut: 8, border: 2 })   // the config's values: slider seed + restore
+    Process {
+        // Hyprland: ask it, before Kusanagi overrides anything (a gaps option prints "css": "4 4 4 4")
+        running: root.kind === "hyprland" && !Config.windows.override
+        command: ["sh", "-c", "for o in gaps_in gaps_out border_size; do hyprctl -j getoption general:$o | tr -d '\\n'; echo; done"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const n = text.split("\n").map(l => { const m = l.match(/"(?:css|custom|int)"\s*:\s*"?(\d+)/); return m ? +m[1] : NaN })
+                if (n.length >= 3 && !n.slice(0, 3).some(isNaN)) root.layout = { gapsIn: n[0] * 2, gapsOut: n[1], border: n[2] }
+            }
+        }
+    }
+    function setLayout(l) {
+        const i = Math.max(0, Math.round(l.gapsIn)), o = Math.max(0, Math.round(l.gapsOut)), b = Math.max(0, Math.round(l.border))
+        if (kind === "mango") {
+            run(["sh", "-c", `mmsg dispatch setoption,gappih,${i}; mmsg dispatch setoption,gappiv,${i}; mmsg dispatch setoption,gappoh,${o};` +
+                             ` mmsg dispatch setoption,gappov,${o}; mmsg dispatch setoption,borderpx,${b}`])
+        } else if (kind === "hyprland") {
+            const half = Math.round(i / 2)
+            if (hyprLua) run(["hyprctl", "eval", `hl.config({ general = { gaps_in = ${half}, gaps_out = ${o}, border_size = ${b} } })`])
+            else run(["hyprctl", "--batch", `keyword general:gaps_in ${half}; keyword general:gaps_out ${o}; keyword general:border_size ${b}`])
+        }
+    }
+    // Mango keeps the override across reload_config / restarts through this file, which its config
+    // sources last (source-optional=~/.config/kusanagi/mango.conf); empty while the override is off
+    FileView {
+        id: mangoLayout
+        path: root.kind === "mango" ? root.home + "/.config/kusanagi/mango.conf" : ""
+        blockLoading: true
+        printErrors: false
+    }
+    property bool layoutApplied: false
+    function applyLayout() {
+        const w = Config.windows
+        if (kind === "mango") {
+            const t = w.override ? `# written by Kusanagi (Settings → Display → Windows) — turn the override off there to drop it\n` +
+                `gappih=${w.gapsIn}\ngappiv=${w.gapsIn}\ngappoh=${w.gapsOut}\ngappov=${w.gapsOut}\nborderpx=${w.border}\n` : ""
+            if (mangoLayout.text() !== t) mangoLayout.setText(t)
+        }
+        if (w.override) { setLayout(w); layoutApplied = true }
+        else if (layoutApplied) {
+            layoutApplied = false
+            if (kind === "hyprland") run(["hyprctl", "reload"])   // back to whatever the config says
+            else setLayout(layout)
+        }
+    }
+    Timer { id: relayout; interval: 30; onTriggered: root.applyLayout() }
+    Connections {
+        target: Config.windows
+        function onOverrideChanged() { relayout.restart() }
+        function onGapsInChanged() { relayout.restart() }
+        function onGapsOutChanged() { relayout.restart() }
+        function onBorderChanged() { relayout.restart() }
+    }
+    // a Hyprland config reload drops runtime values: put the override back
+    Connections {
+        target: root.kind === "hyprland" ? Hyprland : null
+        function onRawEvent(ev) { if (ev.name === "configreloaded" && Config.windows.override) relayout.restart() }
     }
 
     // ---------------- session ----------------

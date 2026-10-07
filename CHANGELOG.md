@@ -9,6 +9,9 @@
   is kept awake (idle inhibitor), click it to turn off
 - **Weather** card on Home (wttr.in, cached, refreshed every 30 min only while the panel is open; 3-day
   forecast); location + units in Settings → Panel
+- **Window gaps / borders** in Settings → Display → Windows (MangoWM, Hyprland): applied live while you
+  drag, off = your compositor config decides. Mango keeps it through reloads via `~/.config/kusanagi/mango.conf`
+  (the installer now sources it); Hyprland gets it re-applied after every config reload
 
 ## 0.2.0 — 2026-10-03
 - Runs on niri and Hyprland (Lua and classic config) as well as MangoWM: workspaces, scroll, fullscreen /

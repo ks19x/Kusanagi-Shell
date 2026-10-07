@@ -33,7 +33,7 @@ FloatingWindow {
         { id: "notifications", name: "Notifications & OSD", icon: 0xf009a, page: "SpNotifications", keys: "popups dnd osd volume timeout position" },
         { id: "gamemode", name: "Game mode", icon: 0xf0297, page: "SpGameMode", keys: "games fullscreen performance governor feral blur" },
         { group: "SYSTEM", id: "sound", name: "Sound", icon: 0xf057e, page: "SpSound", keys: "audio volume output input microphone apps" },
-        { id: "display", name: "Display", icon: 0xf0379, page: "SpDisplay", keys: "monitor night light gammastep resolution" },
+        { id: "display", name: "Display", icon: 0xf0379, page: "SpDisplay", keys: "monitor gaps borders windows night light gammastep resolution" },
         { id: "network", name: "Network", icon: 0xf06f3, page: "SpNetwork", keys: "ethernet wifi ip speed" },
         { id: "storage", name: "Storage", icon: 0xf02ca, page: "SpStorage", keys: "disk xbps cache cleanup orphans" },
         { id: "about", name: "About", icon: 0xf02fd, page: "SpAbout", keys: "system kusanagi version memory" }

@@ -19,6 +19,7 @@ Singleton {
     readonly property alias wallpaper: adapter.wallpaper
     readonly property alias lock: adapter.lock
     readonly property alias display: adapter.display
+    readonly property alias windows: adapter.windows
     readonly property alias gamemode: adapter.gamemode
     readonly property alias screenshot: adapter.screenshot
     readonly property alias weather: adapter.weather
@@ -64,6 +65,7 @@ Singleton {
                      fill: "fill", parallax: 0.04, dim: 0, slideshow: 0 },
         lock: { engine: "hyprlock", blur: 0.8, dim: 0.35, clock: "HH:mm", avatar: true, media: true, greeting: "" },
         display: { nightTemp: 4000 },
+        windows: { override: false, gapsIn: 8, gapsOut: 8, border: 2 },
         gamemode: { auto: true, effects: true, feral: true, quiet: true, dnd: true, grace: 800, announce: "manual" },
         screenshot: { position: "bottom-right", timeout: 6000, editor: "swappy -f" },
         weather: { location: "", units: "metric" }
@@ -223,6 +225,13 @@ Singleton {
 
             property JsonObject display: JsonObject {
                 property int nightTemp: 4000          // night light colour temperature (K)
+            }
+
+            property JsonObject windows: JsonObject {
+                property bool override: false         // false = the compositor config decides gaps / borders
+                property int gapsIn: 8                // px between windows
+                property int gapsOut: 8               // px from the screen edges
+                property int border: 2                // window border width
             }
 
             property JsonObject weather: JsonObject {

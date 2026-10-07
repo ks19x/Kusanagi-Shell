@@ -382,7 +382,9 @@ gen_conf() {   # gen_conf <compositor> -> stdout
     c=$1; eval "mode=\${MODE_$c:-fresh}"
     lua=0; [ "$c" = hyprland ] && [ -f "$CFG/hypr/hyprland.lua" ] && lua=1
     case "$c" in
-        mango) echo "# Kusanagi for MangoWM — written by install.sh (re-run it to change keys)"; echo "exec-once=kusanagi" ;;
+        mango) echo "# Kusanagi for MangoWM — written by install.sh (re-run it to change keys)"; echo "exec-once=kusanagi"
+               echo "# gaps / borders from Settings → Display → Windows (empty unless you turn that on)"
+               echo "source-optional=~/.config/kusanagi/mango.conf" ;;
         niri) echo "// Kusanagi for niri — written by install.sh (re-run it to change keys)"; echo 'spawn-at-startup "kusanagi"' ;;
         hyprland) if [ $lua = 1 ]; then
                       echo "-- Kusanagi for Hyprland — written by install.sh (re-run it to change keys)"

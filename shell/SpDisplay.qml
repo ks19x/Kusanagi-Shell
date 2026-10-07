@@ -1,4 +1,4 @@
-// SpDisplay.qml — monitors (from the compositor) and night light
+// SpDisplay.qml — monitors (from the compositor), window gaps / borders and night light
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -48,6 +48,50 @@ Column {
             label: "Edit " + Wm.name + " config"
             icon: 0xf107b
             onClicked: Quickshell.execDetached(["xdg-open", Wm.configFile])
+        }
+    }
+
+    SpGroup {
+        visible: Wm.canSetLayout
+        title: "Windows"
+        hint: "Gaps and borders, applied to " + Wm.name + " as you drag."
+        CpRow {
+            width: parent.width; label: "Set from Kusanagi"
+            hint: Config.windows.override ? "Overrides your " + Wm.name + " config." : "Off: your " + Wm.name + " config decides."
+            CpSwitch {
+                on: Config.windows.override
+                onToggled: v => {
+                    // start the sliders from what the compositor uses now
+                    if (v) { Config.windows.gapsIn = Wm.layout.gapsIn; Config.windows.gapsOut = Wm.layout.gapsOut; Config.windows.border = Wm.layout.border }
+                    Config.windows.override = v
+                }
+            }
+        }
+        Column {
+            width: parent.width; spacing: 8
+            enabled: Config.windows.override
+            opacity: enabled ? 1 : 0.4
+            CpSlider {
+                width: parent.width; height: 30
+                icon: 0xf084e; label: "Between windows"
+                value: Config.windows.gapsIn / 40; step: 1 / 40
+                valueText: Config.windows.gapsIn + "px"
+                onMoved: v => Config.windows.gapsIn = Math.round(v * 40)
+            }
+            CpSlider {
+                width: parent.width; height: 30
+                icon: 0xf0293; label: "Screen edges"
+                value: Config.windows.gapsOut / 60; step: 1 / 60
+                valueText: Config.windows.gapsOut + "px"
+                onMoved: v => Config.windows.gapsOut = Math.round(v * 60)
+            }
+            CpSlider {
+                width: parent.width; height: 30
+                icon: 0xf01fd; label: "Border"
+                value: Config.windows.border / 10; step: 1 / 10
+                valueText: Config.windows.border + "px"
+                onMoved: v => Config.windows.border = Math.round(v * 10)
+            }
         }
     }
 
