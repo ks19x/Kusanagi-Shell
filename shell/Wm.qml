@@ -95,6 +95,11 @@ Singleton {
         function onActiveToplevelChanged() { if (ToplevelManager.activeToplevel) root.lastToplevel = ToplevelManager.activeToplevel }
     }
     Component.onCompleted: { lastToplevel = ToplevelManager.activeToplevel; if (canSetLayout) relayout.start() }
+    // the focused workspace has no windows (desktop widgets show then). Hyprland counts them, niri
+    // tracks them; Mango's tags don't say, but switching to an empty tag leaves nothing focused
+    readonly property bool desktopEmpty: kind === "hyprland" ? (Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.toplevels.values.length === 0 : true)
+        : kind === "niri" ? (() => { const a = niri.workspaces.find(w => w.is_focused); return a ? !niri.occupied[a.id] : true })()
+        : ToplevelManager.activeToplevel === null
     readonly property bool fullscreen: kind === "hyprland"
         ? (Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.hasFullscreen : false)
         : (lastToplevel ? lastToplevel.fullscreen : false)

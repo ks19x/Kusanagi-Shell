@@ -45,7 +45,7 @@ Flow {
                 }
                 Loader {
                     anchors.fill: parent
-                    sourceComponent: ({ launcher: launcherC, panel: panelC, notifications: notifC, osd: osdC, corner: cornerC, edge: edgeC })[root.kind] ?? null
+                    sourceComponent: ({ launcher: launcherC, panel: panelC, notifications: notifC, osd: osdC, corner: cornerC, edge: edgeC, widget: widgetC })[root.kind] ?? null
                     property var v: card.modelData.value
                 }
             }
@@ -189,6 +189,31 @@ Flow {
                 x: parent.width / 2 - 18; y: parent.height * 0.42; width: 36; height: 30; radius: 6; color: root.surf
                 Rectangle { x: 12; y: 5; width: 12; height: 10; radius: 2; color: Theme.text }
                 Row { x: 5; y: 22; spacing: 1; Repeater { model: 8; Rectangle { width: 2.6; height: 3; color: index < 5 ? root.acc : Theme.alpha(Theme.text, 0.2); required property int index } } }
+            }
+        }
+    }
+    Component {
+        id: widgetC
+        Item {
+            readonly property string v: parent.v
+            // a hint of the widget on a little desktop
+            Rectangle {
+                visible: v !== "clock" && v !== "greeting" && v !== "text"
+                anchors.centerIn: parent; width: parent.width * 0.62; height: parent.height * 0.62; radius: 6
+                color: root.surf
+            }
+            CpText {
+                visible: v === "clock" || v === "greeting" || v === "text"
+                anchors.centerIn: parent
+                text: v === "clock" ? "19:00" : v === "greeting" ? "Hi, you." : "“words”"
+                font.pixelSize: v === "clock" ? 22 : 14; font.bold: v !== "clock"; font.weight: v === "clock" ? Font.Light : Font.Bold
+                color: Theme.text
+            }
+            CpIcon {
+                visible: v !== "clock" && v !== "greeting" && v !== "text"
+                anchors.centerIn: parent
+                cp: ({ media: 0xf075a, stats: 0xf029a, weather: 0xf0599, calendar: 0xf00ed })[v] ?? 0xf072e
+                font.pixelSize: 24; color: root.acc
             }
         }
     }

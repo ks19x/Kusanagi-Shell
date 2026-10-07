@@ -17,8 +17,9 @@ Item {
     implicitWidth: size
     implicitHeight: size + 34
 
+    property bool animated: true        // ease to new values (desktop widgets turn it off: no redraws between updates)
     property real shown: value
-    Behavior on shown { NumberAnimation { duration: Config.ms(700); easing.type: Easing.OutCubic } }
+    Behavior on shown { enabled: root.animated; NumberAnimation { duration: Config.ms(700); easing.type: Easing.OutCubic } }
 
     readonly property color tint: value >= hotAt ? Theme.danger : value >= warnAt ? "#e8be62" : Theme.accent
 
