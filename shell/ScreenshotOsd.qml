@@ -17,7 +17,7 @@ PanelWindow {
     readonly property bool onBottom: pos.startsWith("bottom")
 
     anchors { top: !onBottom; bottom: onBottom; left: !onRight; right: onRight }
-    margins { top: Config.bar.position === "top" ? 6 : 14; bottom: Config.bar.position === "bottom" ? 6 : 14; left: 14; right: 14 }
+    margins { top: BarSpec.edge === "top" ? 6 : 14; bottom: BarSpec.edge === "bottom" ? 6 : 14; left: 14; right: 14 }
     implicitWidth: 360
     implicitHeight: 300
     color: "transparent"

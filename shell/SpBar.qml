@@ -1,151 +1,97 @@
-// SpBar.qml — bar style, size, clock, modules, scroll + media behaviour
+// SpBar.qml — Settings → Bar: classic options, or a custom layout (Config.bars) built from templates
+// and edited piece by piece in SpBarEditor. Everything applies live.
 import QtQuick
 
 Column {
+    id: page
     spacing: 22
 
-    SpGroup {
-        title: "Style"
-        CpSegmented {
-            width: parent.width
-            current: Config.bar.style
-            options: [
-                { label: "Islands", value: "islands" }, { label: "Solid", value: "solid" },
-                { label: "Floating", value: "floating" }, { label: "Clear", value: "clear" }
-            ]
-            onPicked: v => Config.bar.style = v
-        }
-        CpRow {
-            width: parent.width; label: "Position"
-            CpSegmented {
-                width: 220; current: Config.bar.position
-                options: [{ label: "Top", value: "top" }, { label: "Bottom", value: "bottom" }]
-                onPicked: v => Config.bar.position = v
-            }
-        }
-        CpRow {
-            width: parent.width; label: "Layout"; hint: "where the workspaces and the clock sit"
-            CpSegmented {
-                width: 340; current: Config.bar.layout
-                options: [{ label: "Workspaces · Clock", value: "classic" }, { label: "Clock · Workspaces", value: "centered" }]
-                fontSize: 10
-                onPicked: v => Config.bar.layout = v
-            }
-        }
-        CpRow {
-            width: parent.width; label: "Height"
-            CpStepper { value: Config.bar.height; from: 24; to: 40; step: 2; suffix: "px"; onChanged: v => Config.bar.height = v }
-        }
-        CpSlider {
-            width: parent.width; height: 30
-            icon: 0xf050e; label: "Background"
-            value: Config.bar.opacity
-            onMoved: v => Config.bar.opacity = Math.round(v * 100) / 100
-        }
-        CpSlider {
-            width: parent.width; height: 30
-            icon: 0xf0830; label: "Roundness"
-            value: Config.bar.radius / 12; step: 1 / 12
-            valueText: Config.bar.radius + "px"
-            onMoved: v => Config.bar.radius = Math.round(v * 12)
-        }
-        CpRow { width: parent.width; label: "Outline the islands"; CpSwitch { on: Config.bar.outline; onToggled: v => Config.bar.outline = v } }
-        CpRow { width: parent.width; label: "Accent labels"; hint: "CPU / RAM / GPU and the icons in your accent colour"; CpSwitch { on: Config.bar.accentLabels; onToggled: v => Config.bar.accentLabels = v } }
-        CpRow {
-            width: parent.width; label: "Text size"; hint: "icons scale along"
-            CpStepper { value: Config.bar.fontSize; from: 9; to: 14; suffix: "px"; onChanged: v => Config.bar.fontSize = v }
-        }
-        CpRow {
-            width: parent.width; label: "Tray icon size"
-            CpStepper { value: Config.bar.trayIconSize; from: 10; to: 22; suffix: "px"; onChanged: v => Config.bar.trayIconSize = v }
-        }
-        CpRow { width: parent.width; label: "Grow on hover"; CpSwitch { on: Config.bar.hoverGrow; onToggled: v => Config.bar.hoverGrow = v } }
+    readonly property bool custom: !!Config.bars && Config.bars.length > 0
+    // the custom layout you left for the classic one (this session), so switching back loses nothing
+    property var stash: null
+    property bool showTemplates: !custom
+
+    function goCustom() {
+        if (custom) return
+        // start from what is on screen now: the classic bar, written out as a layout
+        Config.bars = stash ?? [JSON.parse(JSON.stringify(BarSpec.legacy()))]
+    }
+    function goClassic() {
+        if (!custom) return
+        stash = JSON.parse(JSON.stringify(Config.bars))
+        Config.bars = []
     }
 
     SpGroup {
-        title: "Clock"
+        title: "Layout"
+        hint: page.custom ? "Your own layout: every bar, group and module is editable below (or in settings.json → \"bars\")."
+                          : "The classic Kusanagi bar, set up with the options below. Pick a template or go custom to build any bar."
         CpSegmented {
             width: parent.width
-            current: Config.bar.clock
-            options: [
-                { label: "20:31", value: "HH:mm" }, { label: "20:31:07", value: "HH:mm:ss" },
-                { label: "8:31 PM", value: "h:mm AP" }, { label: "Fri 20:31", value: "ddd HH:mm" },
-                { label: "2 Oct 20:31", value: "d MMM HH:mm" }
-            ]
-            onPicked: v => Config.bar.clock = v
-        }
-        CpRow { width: parent.width; label: "Bold"; CpSwitch { on: Config.bar.clockBold; onToggled: v => Config.bar.clockBold = v } }
-        CpRow {
-            width: parent.width
-            label: "Custom format"
-            hint: "Qt date format — HH mm ss · h AP · ddd dddd · d MMM yyyy"
-            CpField { width: 200; text: Config.bar.clock; onAccepted: t => { if (t.trim()) Config.bar.clock = t.trim() } }
+            current: page.custom ? "custom" : "classic"
+            options: [{ label: "Classic options", value: "classic" }, { label: "Custom layout", value: "custom" }]
+            onPicked: v => v === "custom" ? page.goCustom() : page.goClassic()
         }
     }
 
     SpGroup {
-        title: "Modules"
-        hint: "What sits on the right side of the bar."
-        Flow {
+        title: "Templates"
+        hint: "Start from one of these; then change anything. Also: kusanagi msg bar template <name>."
+        CpChip {
+            label: page.showTemplates ? "Hide templates" : "Show " + BarTemplates.list.length + " templates"
+            icon: page.showTemplates ? 0xf0143 : 0xf0140
+            onClicked: page.showTemplates = !page.showTemplates
+        }
+        Grid {
+            id: tpl
+            visible: page.showTemplates
             width: parent.width
-            spacing: 6
+            columns: 1
+            spacing: 8
+            readonly property real cell: width
             Repeater {
-                model: [
-                    { key: "title", label: "Window title", icon: 0xf05b1 },
-                    { key: "media", label: "Media", icon: 0xf075a }, { key: "cpu", label: "CPU", icon: 0xf0ee0 },
-                    { key: "ram", label: "RAM", icon: 0xf035b }, { key: "gpu", label: "GPU", icon: 0xf08ae },
-                    { key: "temp", label: "Temperature", icon: 0xf050f }, { key: "volume", label: "Volume", icon: 0xf057e },
-                    { key: "network", label: "Network", icon: 0xf0200 }, { key: "tray", label: "Tray", icon: 0xf003b },
-                    { key: "power", label: "Power", icon: 0xf0425 }
-                ]
-                CpChip {
+                model: BarTemplates.list
+                Rectangle {
+                    id: card
                     required property var modelData
-                    label: modelData.label
-                    icon: modelData.icon
-                    on: Config.bar.modules[modelData.key]
-                    onClicked: Config.bar.modules[modelData.key] = !on
+                    width: tpl.cell
+                    height: card.vert ? 120 : 82
+                    readonly property var b0: modelData.bars[0]
+                    readonly property bool vert: b0.position === "left" || b0.position === "right"
+                    radius: 12
+                    color: hov.hovered ? Theme.alpha(Theme.text, 0.08) : Theme.alpha(Theme.text, 0.04)
+                    border.width: 1
+                    border.color: Theme.alpha(Theme.text, 0.06)
+                    // every bar of the template, stacked (dock = top strip + dock)
+                    Column {
+                        x: 8; y: 8
+                        width: parent.width - 16
+                        spacing: 2
+                        Repeater {
+                            model: card.modelData.bars
+                            BarPreview {
+                                required property var modelData
+                                width: parent.width
+                                height: card.vert ? 84 : (card.height - 36) / card.modelData.bars.length - 2
+                                bar: modelData
+                            }
+                        }
+                    }
+                    Row {
+                        x: 12; y: parent.height - 24
+                        spacing: 10
+                        CpText { text: card.modelData.name; font.pixelSize: 12; font.bold: true }
+                        CpText { text: card.modelData.note; font.pixelSize: 10; color: Theme.textDim; anchors.verticalCenter: parent.verticalCenter }
+                    }
+                    HoverHandler { id: hov; cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: { page.stash = null; Config.bars = BarTemplates.bars(card.modelData.id); page.showTemplates = false } }
                 }
             }
         }
     }
 
-    SpGroup {
-        title: "Scrolling"
-        CpRow {
-            width: parent.width; label: "On the clock"
-            CpSegmented {
-                width: 300; current: Config.bar.scrollClock
-                options: [{ label: "Volume", value: "volume" }, { label: "Workspaces", value: "workspaces" }, { label: "Nothing", value: "none" }]
-                onPicked: v => Config.bar.scrollClock = v
-            }
-        }
-        CpRow {
-            width: parent.width; label: "On the right side"; hint: "media, stats, network, power"
-            CpSegmented {
-                width: 300; current: Config.bar.scrollStats
-                options: [{ label: "Volume", value: "volume" }, { label: "Workspaces", value: "workspaces" }, { label: "Nothing", value: "none" }]
-                onPicked: v => Config.bar.scrollStats = v
-            }
-        }
-        CpRow {
-            width: parent.width; label: "Volume step"
-            CpStepper { value: Config.bar.volumeStep; from: 1; to: 20; suffix: "%"; onChanged: v => Config.bar.volumeStep = v }
-        }
+    Loader {
+        width: parent.width
+        source: page.custom ? "SpBarEditor.qml" : "SpBarClassic.qml"
     }
-
-    SpGroup {
-        title: "Media"
-        CpRow { width: parent.width; label: "Controls on hover"; hint: "cover, seek bar, prev / play / next"; CpSwitch { on: Config.bar.mediaPopup; onToggled: v => Config.bar.mediaPopup = v } }
-        CpRow { width: parent.width; label: "Scroll long titles"; CpSwitch { on: Config.bar.marquee; onToggled: v => Config.bar.marquee = v } }
-        CpRow {
-            width: parent.width; label: "Window title width"
-            CpStepper { value: Config.bar.titleWidth; from: 20; to: 120; step: 10; suffix: " ch"; onChanged: v => Config.bar.titleWidth = v }
-        }
-        CpRow {
-            width: parent.width; label: "Title width"
-            CpStepper { value: Config.bar.mediaWidth; from: 10; to: 50; step: 5; suffix: " ch"; onChanged: v => Config.bar.mediaWidth = v }
-        }
-    }
-
-    CpChip { label: "Reset the bar"; icon: 0xf0709; onClicked: Config.reset("bar") }
 }

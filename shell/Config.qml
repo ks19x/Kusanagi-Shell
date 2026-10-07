@@ -23,6 +23,8 @@ Singleton {
     readonly property alias gamemode: adapter.gamemode
     readonly property alias screenshot: adapter.screenshot
     readonly property alias weather: adapter.weather
+    // the bar layout engine (BarSpec.qml, docs/bar.md): [] = the classic bar from the options above
+    property alias bars: adapter.bars
 
     // animation durations scaled by the chosen speed (off 0 / snappy 0.7 / smooth 1 / relaxed 1.4)
     function ms(base) { return Math.max(1, Math.round(base * adapter.look.animSpeed)) }
@@ -86,6 +88,8 @@ Singleton {
 
         JsonAdapter {
             id: adapter
+
+            property var bars: []
 
             property JsonObject look: JsonObject {
                 property string font: "JetBrainsMono Nerd Font"

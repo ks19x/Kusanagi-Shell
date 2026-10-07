@@ -20,11 +20,27 @@ Column {
         Behavior on color { ColorAnimation { duration: Config.ms(140) } }
         Behavior on scale { NumberAnimation { duration: Config.ms(160); easing.type: Easing.OutBack; easing.overshoot: Config.bounce(2) } }
 
+        // a layout preset shows its real first bar; classic ones the drawing of their options
+        readonly property var layoutBars: Presets.barsOf(pc.preset)
         PresetPreview {
+            visible: pc.layoutBars.length === 0
             x: 10; y: 10
             width: parent.width - 20
             height: 62
             preset: pc.preset
+        }
+        Loader {
+            active: pc.layoutBars.length > 0
+            x: 10; y: 10
+            width: parent.width - 20
+            height: 62
+            sourceComponent: BarPreview {
+                // same scale as the drawn previews (a narrower virtual screen); side bars show their top
+                screenW: Math.round(width / 0.6)
+                fixedScale: vertical ? 0.6 : 0
+                // a dock template shows its dock
+                bar: pc.layoutBars[pc.layoutBars.length > 1 && pc.layoutBars[1].length === "auto" ? 1 : 0]
+            }
         }
         Column {
             x: 12; y: 80

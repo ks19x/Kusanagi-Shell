@@ -11,7 +11,8 @@
 //   notifs    toggle | open | close | dnd | clear            lock      lock | test
 //   preset    apply <name> | next
 //   power     toggle | open
-//   osd       preview <volume|mic|game>                      bar       media | traymenu <n>   gamemode toggle
+//   osd       preview <volume|mic|game>                      gamemode  toggle
+//   bar       media | traymenu <n> | template <name> | templates | classic
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -154,5 +155,9 @@ ShellRoot {
         target: "bar"
         function media(): void { bar.mediaPinned = !bar.mediaPinned }
         function traymenu(n: int): void { bar.openTrayIndex(n) }
+        // layouts (BarTemplates.qml): template <powerline|slants|dwm|…>, classic = back to Settings → Bar options
+        function template(name: string): void { const b = BarTemplates.bars(name); if (b.length) Config.bars = b }
+        function classic(): void { Config.bars = [] }
+        function templates(): string { return BarTemplates.list.map(t => t.id).join(" ") }
     }
 }

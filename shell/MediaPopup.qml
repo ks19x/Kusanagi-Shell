@@ -15,12 +15,15 @@ PopupWindow {
     signal hoverChanged(bool inside)
 
     anchor.item: anchorItem
-    anchor.rect.width: anchorItem.width
-    readonly property bool above: Config.bar.position === "bottom"
-    anchor.rect.y: above ? -6 : 0
-    anchor.rect.height: above ? 0 : anchorItem.height + 6
-    anchor.edges: above ? Edges.Top : Edges.Bottom
-    anchor.gravity: above ? Edges.Top : Edges.Bottom
+    property string edge: "top"               // the bar's edge: the card opens away from it
+    readonly property bool above: edge === "bottom"
+    // 6px between the bar and the card, on whichever side it opens
+    anchor.rect.x: edge === "right" ? -6 : 0
+    anchor.rect.y: edge === "bottom" ? -6 : 0
+    anchor.rect.width: anchorItem.width + (edge === "left" || edge === "right" ? 6 : 0)
+    anchor.rect.height: anchorItem.height + (edge === "top" || edge === "bottom" ? 6 : 0)
+    anchor.edges: edge === "bottom" ? Edges.Top : edge === "left" ? Edges.Right : edge === "right" ? Edges.Left : Edges.Bottom
+    anchor.gravity: anchor.edges
     anchor.adjustment: PopupAdjustment.Slide
     implicitWidth: 360 + 24
     implicitHeight: 132 + 24

@@ -9,7 +9,7 @@ PanelWindow {
     id: root
 
     readonly property string pos: Config.notifications.position
-    readonly property bool barBottom: Config.bar.position === "bottom"
+    readonly property bool barBottom: BarSpec.edge === "bottom"
     anchors { top: true; right: pos === "top-right"; left: pos === "top-left" }
     margins { top: barBottom ? 10 : 6; right: 10; left: 10 }
     implicitWidth: 400

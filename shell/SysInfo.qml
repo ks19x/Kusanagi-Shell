@@ -13,9 +13,13 @@ Singleton {
     property bool settingsOpen: false     // Network / About pages of the settings app
     readonly property bool detailed: panelOpen || settingsOpen
 
-    readonly property bool wantCpuRam: detailed || !GameMode.quiet && (Config.bar.modules.cpu || Config.bar.modules.ram)
-    readonly property bool wantGpu: detailed || !GameMode.quiet && (Config.bar.modules.gpu || Config.bar.modules.temp)
-    readonly property bool wantNet: detailed || !GameMode.quiet && Config.bar.modules.network
+    // what the bars show (BarSpec.uses: module types on any bar)
+    readonly property var uses: BarSpec.uses
+    readonly property bool wantCpuRam: detailed || !GameMode.quiet && (!!uses.cpu || !!uses.ram)
+    readonly property bool wantGpu: detailed || !GameMode.quiet && (!!uses.gpu || !!uses.temp)
+    readonly property bool wantNet: detailed || !GameMode.quiet && !!uses.network
+    readonly property bool wantDisk: detailed || !GameMode.quiet && !!uses.disk
+    readonly property bool wantUptime: !detailed && !GameMode.quiet && !!uses.uptime
 
     // ---- values ----
     property int cpu: 0                 // %
@@ -234,9 +238,16 @@ Singleton {
         onTriggered: root.readDetail()
     }
     Timer {
-        interval: 30000
+        interval: root.detailed ? 30000 : 60000
         repeat: true; triggeredOnStart: true
-        running: root.detailed
+        running: root.wantDisk
         onTriggered: df.running = true
+    }
+    // a bar uptime module without the panel open: once a minute is plenty
+    Timer {
+        interval: 60000
+        repeat: true; triggeredOnStart: true
+        running: root.wantUptime
+        onTriggered: root.readDetail()
     }
 }

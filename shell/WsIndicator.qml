@@ -3,26 +3,36 @@
 //   dots    same, but the active one stays a (glowing) dot
 //   numbers / roman / kanji / custom   glyphs; active = accent + underline, empty = dim
 //   dwl     flat numbered blocks: active = filled with the accent, a small square marks tags with windows
-// Used by the bar and by the Customize tab's live preview.
-// entries: [{ n, active, occupied, urgent }]
+// Used by the bar's workspaces module (BmWorkspaces: style / colours / size per bar) and the
+// Customize tab's live preview. entries: [{ n, active, occupied, urgent }]
 import QtQuick
 import QtQuick.Effects
 
-Row {
+Grid {
     id: root
 
     property var entries: []
     property string style: Config.workspaces.style
     property bool glow: Config.workspaces.glow
-    property int slotHeight: 22
-    readonly property color activeColor: Config.workspaces.activeColor === "accent2" ? Theme.accent2 : Config.workspaces.activeColor === "text" ? Theme.text : Theme.accent
+    property int slotHeight: 22            // thickness of the bar slot (width on a side bar)
+    property bool vertical: false
+    property int fontSize: dwl ? Config.bar.fontSize : 12
+    property string iconString: Config.workspaces.icons
+    property color activeColor: Config.workspaces.activeColor === "accent2" ? Theme.accent2 : Config.workspaces.activeColor === "text" ? Theme.text : Theme.accent
+    property color occupiedColor: Theme.alpha(Theme.text, 0.85)
+    property color emptyColor: Theme.alpha(Theme.text, 0.35)
+    property color urgentColor: Theme.danger
+    property color onActiveColor: Theme.bgPanel     // text / marks drawn on top of the active colour
+    rows: 1000
+    columns: 1000         // one line either way: flow picks the direction
+    flow: vertical ? Grid.TopToBottom : Grid.LeftToRight
     signal activated(var entry)
 
     readonly property bool dwl: style === "dwl"
     readonly property bool textStyle: ["numbers", "roman", "kanji", "custom", "dwl"].includes(style)
     readonly property var roman: ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
     readonly property var kanji: ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"]
-    readonly property var customIcons: Config.workspaces.icons.trim().split(/\s+/).filter(s => s)
+    readonly property var customIcons: iconString.trim().split(/\s+/).filter(s => s)
 
     function glyph(n) {
         if (style === "roman") return roman[n - 1] ?? String(n)
@@ -40,9 +50,13 @@ Row {
             readonly property bool active: modelData.active
             readonly property bool empty: !modelData.occupied
             readonly property bool urgent: !!modelData.urgent
-            width: root.dwl ? Math.max(slotHeight, label.implicitWidth + 14) : (root.textStyle ? label.implicitWidth + 4 : dot.width) + 8
-            height: root.slotHeight
+            // length along the bar
+            readonly property real len: root.dwl ? Math.max(root.slotHeight, (root.vertical ? label.implicitHeight : label.implicitWidth) + 14)
+                : (root.textStyle ? (root.vertical ? label.implicitHeight : label.implicitWidth) + 4 : (root.vertical ? dot.height : dot.width)) + 8
+            width: root.vertical ? root.slotHeight : len
+            height: root.vertical ? len : root.slotHeight
             Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+            Behavior on height { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
             // ---- dot styles (pills / dots): margin 6px 4px around an 8px dot / 26px pill ----
             RectangularShadow {
@@ -50,7 +64,7 @@ Row {
                 anchors.fill: dot
                 radius: dot.radius
                 blur: slot.urgent ? 8 : 10
-                color: slot.urgent ? Theme.alpha(Theme.danger, 0.5) : Theme.alpha(root.activeColor, 0.55)
+                color: slot.urgent ? Theme.alpha(root.urgentColor, 0.5) : Theme.alpha(root.activeColor, 0.55)
                 opacity: (slot.active && root.glow) || slot.urgent ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
             }
@@ -58,20 +72,20 @@ Row {
             Rectangle {
                 id: dot
                 visible: !root.textStyle
-                x: 4
-                anchors.verticalCenter: parent.verticalCenter
+                x: root.vertical ? (parent.width - width) / 2 : 4
+                y: root.vertical ? 4 : (parent.height - height) / 2
                 readonly property bool pill: slot.active && root.style === "pills"
-                width: pill ? 26 : 10
-                height: pill ? 14 : 10
+                width: pill && !root.vertical ? 26 : pill ? 14 : 10
+                height: pill && root.vertical ? 26 : pill ? 14 : 10
                 radius: 6
                 // waybar precedence: urgent > hover > active > empty > has windows
-                color: slot.urgent ? Theme.danger
+                color: slot.urgent ? root.urgentColor
                      : area.containsMouse ? Theme.alpha(Theme.text, 0.55)
                      : slot.active ? root.activeColor
                      : slot.empty ? "transparent"
-                     : Theme.alpha(Theme.text, 0.85)
+                     : root.occupiedColor
                 border.width: slot.active ? 0 : 1
-                border.color: slot.empty ? Theme.alpha(Theme.text, 0.35) : "transparent"
+                border.color: slot.empty ? root.emptyColor : "transparent"
                 Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
                 Behavior on height { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
                 Behavior on color { ColorAnimation { duration: 250; easing.type: Easing.OutCubic } }
@@ -80,7 +94,7 @@ Row {
                     anchors.centerIn: parent
                     visible: dot.pill
                     text: slot.modelData.n
-                    color: Theme.bgPanel
+                    color: root.onActiveColor
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
                     font.bold: true
@@ -93,7 +107,7 @@ Row {
             Rectangle {
                 visible: root.dwl
                 anchors.fill: parent
-                color: slot.urgent ? Theme.danger : slot.active ? root.activeColor
+                color: slot.urgent ? root.urgentColor : slot.active ? root.activeColor
                      : area.containsMouse ? Theme.alpha(Theme.text, 0.1) : "transparent"
                 Behavior on color { ColorAnimation { duration: 160 } }
                 // tag has windows: a small square in the corner (filled on the active tag)
@@ -101,7 +115,7 @@ Row {
                     visible: !slot.empty
                     x: 3; y: 3
                     width: 4; height: 4
-                    color: slot.active ? Theme.bgPanel : Theme.text
+                    color: slot.active ? root.onActiveColor : Theme.text
                     opacity: slot.active ? 1 : 0.8
                 }
             }
@@ -110,18 +124,17 @@ Row {
             Text {
                 id: label
                 visible: root.textStyle
-                x: root.dwl ? (slot.width - implicitWidth) / 2 : 6
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: root.dwl ? 0 : -1
+                x: root.dwl || root.vertical ? Math.round((slot.width - implicitWidth) / 2) : 6
+                y: root.vertical && !root.dwl ? 6 : Math.round((slot.height - implicitHeight) / 2) - (root.dwl ? 0 : 1)
                 text: root.glyph(slot.modelData.n)
-                color: root.dwl && (slot.active || slot.urgent) ? Theme.bgPanel
-                     : slot.urgent ? Theme.danger
+                color: root.dwl && (slot.active || slot.urgent) ? root.onActiveColor
+                     : slot.urgent ? root.urgentColor
                      : slot.active ? root.activeColor
                      : area.containsMouse ? Theme.text
-                     : slot.empty ? Theme.alpha(Theme.text, 0.35)
-                     : Theme.alpha(Theme.text, 0.85)
+                     : slot.empty ? root.emptyColor
+                     : root.occupiedColor
                 font.family: Theme.fontFamily
-                font.pixelSize: root.dwl ? Config.bar.fontSize : 12
+                font.pixelSize: root.fontSize
                 font.bold: slot.active && !root.dwl
                 font.hintingPreference: Font.PreferFullHinting
                 renderType: Text.NativeRendering

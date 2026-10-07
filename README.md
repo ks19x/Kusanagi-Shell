@@ -6,6 +6,17 @@ sig's desktop shell for Wayland (MangoWM, Hyprland and niri): wallpaper, bar, co
 notifications, OSD, lock screen, clipboard, wallpaper picker, settings — one program, configured from
 its own Settings app. Built on [Quickshell](https://quickshell.org) (QML), started by the `kusanagi` command.
 
+## The bar is yours
+
+The bar is a layout engine, not a fixed design: any number of bars on any edge (top, bottom, left,
+right), full-width, floating, docked or sized to fit; groups and modules in any order; colours,
+gradients, borders, per-corner radius, powerline caps, underlines; formats with `{values}`, icons by
+level, states (`warning`, `muted`, `charging`…) that restyle anything; clicks and scrolls bound to
+built-in actions or shell commands; your own modules from any command (text or waybar-style JSON).
+Settings → Bar → Custom layout edits it live; 12 templates (powerline, dwm, polybar, macOS, GNOME,
+sidebar, dock, taskbar…) are one click or `kusanagi msg bar template <name>` away.
+Format reference: [docs/bar.md](docs/bar.md).
+
 ## Use
 
 ```

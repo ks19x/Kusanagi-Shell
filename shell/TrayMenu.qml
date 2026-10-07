@@ -1,7 +1,7 @@
 // TrayMenu.qml — a tray app's menu (Vesktop, Mullvad…) drawn by Kusanagi instead of Qt's native popup,
 // which doesn't open reliably from a layer-shell bar. Reads the app's DBusMenu through QsMenuOpener:
 // entries, separators, checkboxes / radio buttons, icons, and submenus (they expand in place).
-// Opens under the icon (above it for a bottom bar); click outside or Esc closes.
+// Opens beside the icon, away from the bar's edge (under it for a top bar); click outside or Esc closes.
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Widgets
@@ -13,13 +13,17 @@ PanelWindow {
 
     required property var trayItem            // SystemTrayItem
     required property real anchorX            // icon centre, screen x
+    property real anchorY: 0                  // icon centre, screen y (side bars)
+    property string edge: "top"               // the bar's edge
+    property real inset: BarSpec.thickness    // how far the bar reaches into the screen
     signal dismissed()
 
     property bool showing: true
     function close() { showing = false; closeTimer.restart() }
     Timer { id: closeTimer; interval: Config.ms(180); onTriggered: root.dismissed() }
 
-    readonly property bool bottom: Config.bar.position === "bottom"
+    readonly property bool bottom: edge === "bottom"
+    readonly property bool side: edge === "left" || edge === "right"
 
     anchors { top: true; left: true; right: true; bottom: true }
     color: "transparent"
@@ -49,8 +53,10 @@ PanelWindow {
         id: card
         width: 240
         height: Math.min(list.implicitHeight + 12, root.height - 80)
-        x: Math.max(8, Math.min(root.width - width - 8, root.anchorX - width / 2))
-        y: root.bottom ? root.height - Config.bar.height - 6 - height : Config.bar.height + 6
+        x: root.edge === "left" ? root.inset + 6 : root.edge === "right" ? root.width - root.inset - 6 - width
+            : Math.max(8, Math.min(root.width - width - 8, root.anchorX - width / 2))
+        y: root.side ? Math.max(8, Math.min(root.height - height - 8, root.anchorY - height / 2))
+            : root.bottom ? root.height - root.inset - 6 - height : root.inset + 6
         radius: Math.max(8, Config.look.radius - 4)
         color: Theme.alpha(Theme.bgPanel, Math.max(0.9, Config.panel.opacity))
         border.width: Theme.surfaceBorderWidth
@@ -58,7 +64,7 @@ PanelWindow {
         clip: true
 
         // springs out of the bar
-        transformOrigin: root.bottom ? Item.Bottom : Item.Top
+        transformOrigin: root.edge === "left" ? Item.Left : root.edge === "right" ? Item.Right : root.bottom ? Item.Bottom : Item.Top
         opacity: root.showing && shown ? 1 : 0
         scale: root.showing && shown ? 1 : 0.92
         property bool shown: false

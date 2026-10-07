@@ -9,6 +9,15 @@
   is kept awake (idle inhibitor), click it to turn off
 - **Weather** card on Home (wttr.in, cached, refreshed every 30 min only while the panel is open; 3-day
   forecast); location + units in Settings → Panel
+- **Bar engine**: the bar is now data (`settings.json → "bars"`, docs/bar.md). Any number of bars on
+  any edge, any length (full / fraction / px / fit), floating margins, autohide; groups + 26 module
+  types (taskbar, battery, disk, mic, weather, notifications, uptime, custom commands with JSON
+  output…); style cascade with tokens, gradients, powerline caps, indicator lines; formats, icons by
+  level, threshold + built-in states with `when` overrides; actions or shell commands on every
+  button/scroll. Settings → Bar: classic options or a live custom-layout editor with real previews;
+  12 templates; presets can carry a layout (Powerline, Sidebar, Dock added); `kusanagi msg bar
+  template <name> | templates | classic`. Without a custom layout the classic bar is rebuilt from
+  the old options, pixel for pixel. Only data sources for modules on a bar run. Cost: ~+4 MB
 - **Window gaps / borders** in Settings → Display → Windows (MangoWM, Hyprland): applied live while you
   drag, off = your compositor config decides. Mango keeps it through reloads via `~/.config/kusanagi/mango.conf`
   (the installer now sources it); Hyprland gets it re-applied after every config reload

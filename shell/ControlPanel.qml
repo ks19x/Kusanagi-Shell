@@ -36,6 +36,7 @@ PanelWindow {
     onShowingChanged: {
         if (showing && !tabPicked) tab = Config.panel.defaultTab
         tabPicked = false
+        if (showing) origin = shellRef && shellRef.barItem ? shellRef.barItem.clockRect() : null
         SysInfo.panelOpen = showing
         closeAnim.stop(); openAnim.stop()
         if (showing) openAnim.start(); else closeAnim.start()
@@ -92,17 +93,24 @@ PanelWindow {
         color: Theme.alpha("#000000", 0.45 * root.open)
     }
 
-    // where the bar's clock island is (top or bottom bar, left or centred clock)
-    readonly property var island: shellRef && shellRef.barItem ? shellRef.barItem.clockIsland : null
-    readonly property bool fromBottom: Config.bar.position === "bottom"
+    // where the bar's clock island is on screen ({ x, y, w, h, edge }, taken when it opens; null = no clock)
+    property var origin: null
+    readonly property string barEdge: origin ? origin.edge : BarSpec.edge
+    readonly property bool fromBottom: barEdge === "bottom"
     // Config.panel.morph: island = grows out of the clock · drop = full width, slides down · fade = fades + settles
-    readonly property string morph: Config.panel.morph
-    readonly property real originX: morph !== "island" ? targetX : island ? island.x : (width - 60) / 2
-    readonly property real originW: morph !== "island" ? targetW : island ? island.width : 60
-    readonly property real originH: morph === "drop" ? 0 : morph === "fade" ? body.implicitHeight + 40 : island ? island.height : 22
-    readonly property real edge: fromBottom ? 2 : 4
-    // final spot: centred, or hugging the left when the clock sits on the left
-    readonly property real targetX: Config.bar.layout === "centered" ? 6 : Math.round((width - targetW) / 2)
+    // (a clock on a side bar, or no clock at all, can't be grown out of: fade there)
+    readonly property string morph: Config.panel.morph === "island" && (!origin || barEdge === "left" || barEdge === "right") ? "fade" : Config.panel.morph
+    readonly property real originX: morph !== "island" ? targetX : origin.x
+    readonly property real originW: morph !== "island" ? targetW : origin.w
+    readonly property real originH: morph === "drop" ? 0 : morph === "fade" ? body.implicitHeight + 40 : origin.h
+    readonly property real edge: !origin || barEdge === "left" || barEdge === "right" ? 4 : fromBottom ? height - origin.y - origin.h : origin.y
+    // final spot: under the clock — centred, or hugging its side when it sits in the outer thirds
+    readonly property real targetX: {
+        const lo = barEdge === "left" ? BarSpec.thickness + 6 : 6, hi = width - (barEdge === "right" ? BarSpec.thickness + 6 : 6)
+        if (!origin || barEdge === "left" || barEdge === "right") return Math.round((lo + hi - targetW) / 2)
+        const c = origin.x + origin.w / 2
+        return c < width / 3 ? Math.max(lo, origin.x) : c > width * 2 / 3 ? Math.min(hi - targetW, origin.x + origin.w - targetW) : Math.round((width - targetW) / 2)
+    }
 
     Rectangle {
         id: panel

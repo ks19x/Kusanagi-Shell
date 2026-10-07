@@ -102,8 +102,28 @@ Singleton {
             workspaces: { style: "kanji", shown: 5, glow: false, activeColor: "accent" },
             panel: { morph: "island" }, osd: { style: "minimal" }, notifications: { style: "comfortable" }, launcher: { layout: "list", iconSize: 28 }
         },
-
+        // ---- whole bar layouts (the bar engine: BarTemplates / Settings → Bar → Custom layout) ----
+        {
+            id: "powerline", name: "Powerline", note: "agnoster arrows: touching coloured segments, square and quick",
+            look: { radius: 4, animSpeed: 0.7, bounce: 0.3, backdrop: 0.2, borders: true, borderAccent: false, shadows: false, palette: "wallpaper" },
+            barsTemplate: "powerline",
+            panel: { morph: "fade" }, osd: { style: "minimal" }, notifications: { style: "compact" }, launcher: { layout: "list", iconSize: 24 }
+        },
+        {
+            id: "sidebar", name: "Sidebar", note: "a vertical bar on the left: pills, turned clock, stacked stats",
+            look: { radius: 14, animSpeed: 1.0, bounce: 1.0, backdrop: 0.25, borders: true, borderAccent: false, shadows: true, palette: "wallpaper" },
+            barsTemplate: "sidebar",
+            panel: { morph: "fade" }, osd: { style: "pill", position: "right" }, notifications: { style: "comfortable" }, launcher: { layout: "grid", iconSize: 40 }
+        },
+        {
+            id: "dock", name: "Dock", note: "slim top strip + a floating dock of open apps at the bottom",
+            look: { radius: 18, animSpeed: 1.0, bounce: 1.2, backdrop: 0.3, borders: true, borderAccent: false, shadows: true, palette: "wallpaper" },
+            barsTemplate: "dock",
+            panel: { morph: "drop" }, osd: { style: "pill" }, notifications: { style: "comfortable" }, launcher: { layout: "grid", iconSize: 48 }
+        }
     ]
+    // a preset's bar layout: its own "bars", a template's, or none (= the classic bar from its "bar" options)
+    function barsOf(p) { return p.bars ? JSON.parse(JSON.stringify(p.bars)) : p.barsTemplate ? BarTemplates.bars(p.barsTemplate) : [] }
 
     // the sections a preset may touch, and which keys of them make up a "look"
     readonly property var lookKeys: ({
@@ -139,6 +159,8 @@ Singleton {
                 else target[k] = src[k]
             }
         }
+        // every preset decides the bar layout too (a classic one brings the classic bar back)
+        Config.bars = barsOf(p)
         lastApplied = p.id || p.name
     }
 
@@ -162,6 +184,7 @@ Singleton {
                 else p[section][k] = Config[section][k]
             }
         }
+        if (Config.bars && Config.bars.length) p.bars = JSON.parse(JSON.stringify(Config.bars))
         return p
     }
 
