@@ -24,11 +24,15 @@ Item {
         return i.startsWith("/") || i.startsWith("file:") || i.startsWith("image:") ? i : Quickshell.iconPath(i, true)
     }
     readonly property real r: Math.max(8, Config.look.radius - 2)
+    // Config.notifications.style: comfortable · compact · minimal (popups as one-line pills) · accent (a coloured edge)
     readonly property bool compact: Config.notifications.style === "compact"
+    readonly property bool minimal: popup && Config.notifications.style === "minimal"
+    readonly property bool accent: Config.notifications.style === "accent"
     readonly property int pad: compact ? 10 : 14
+    readonly property int stripe: accent ? 8 : 0
 
     width: parent ? parent.width : 380
-    implicitHeight: body.implicitHeight + 2 * pad
+    implicitHeight: minimal ? 46 : body.implicitHeight + 2 * pad
 
     // ---- leaving: swipe or click flies the card off to the right ----
     property bool leaving: false
@@ -60,7 +64,7 @@ Item {
         id: surface
         width: parent.width
         height: card.implicitHeight
-        radius: card.r
+        radius: card.minimal ? height / 2 : card.r
         color: card.popup ? Theme.alpha(Theme.bgPanel, Math.max(0.88, Config.panel.opacity))
                           : Theme.alpha(Theme.text, hover.hovered ? 0.07 : 0.045)
         border.width: card.critical ? 1 : Theme.surfaceBorderWidth
@@ -83,19 +87,52 @@ Item {
             onActiveChanged: if (!active) { if (surface.x > card.width * 0.3) card.dismiss(); else surface.x = 0 }
         }
 
-        // urgent: a red edge
+        // urgent: a red edge · accent style: an accent one on every card
         Rectangle {
-            visible: card.critical
-            width: 3; radius: 1.5
-            height: parent.height - 20
-            x: 6; anchors.verticalCenter: parent.verticalCenter
-            color: Theme.danger
+            visible: (card.critical || card.accent) && !card.minimal
+            width: card.accent ? 4 : 3; radius: width / 2
+            height: parent.height - (card.accent ? 16 : 20)
+            x: card.accent ? 8 : 6; anchors.verticalCenter: parent.verticalCenter
+            color: card.critical ? Theme.danger : Theme.accent
+        }
+
+        // minimal: icon · summary · first line of the body, in one pill
+        Row {
+            visible: card.minimal
+            x: 16; anchors.verticalCenter: parent.verticalCenter
+            width: parent.width - 32
+            spacing: 10
+            IconImage {
+                anchors.verticalCenter: parent.verticalCenter
+                implicitSize: 20
+                source: card.appIcon !== "" ? card.appIcon : (Config.notifications.images ? card.image : "")
+                visible: source != ""
+            }
+            CpText {
+                id: minSum
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.min(implicitWidth, parent.width * 0.6)
+                elide: Text.ElideRight
+                text: card.notif ? card.notif.summary || card.notif.appName : ""
+                font.pixelSize: 12
+                font.bold: true
+                color: card.critical ? Theme.danger : Theme.text
+            }
+            CpText {
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width - minSum.width - 40
+                elide: Text.ElideRight
+                text: card.notif ? card.notif.body.replace(/<[^>]*>/g, "").split("\n")[0] : ""
+                font.pixelSize: 12
+                color: Theme.textDim
+            }
         }
 
         Row {
             id: body
-            x: card.pad; y: card.pad
-            width: parent.width - 2 * card.pad
+            visible: !card.minimal
+            x: card.pad + card.stripe; y: card.pad
+            width: parent.width - 2 * card.pad - card.stripe
             spacing: 12
 
             // big picture (album art, avatar…) when the app sent one
@@ -201,8 +238,8 @@ Item {
         // popups: time left, as a hairline along the bottom (pauses while hovered)
         Rectangle {
             visible: card.popup && !card.critical && Config.notifications.progress
-            anchors { left: parent.left; bottom: parent.bottom; leftMargin: card.r; bottomMargin: 0 }
-            width: (parent.width - 2 * card.r) * card.remaining
+            anchors { left: parent.left; bottom: parent.bottom; leftMargin: card.minimal ? parent.height / 2 : card.r; bottomMargin: 0 }
+            width: (parent.width - 2 * anchors.leftMargin) * card.remaining
             height: 2
             radius: 1
             color: Theme.alpha(Theme.accent, 0.8)

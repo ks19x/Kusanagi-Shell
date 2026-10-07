@@ -24,6 +24,16 @@ Singleton {
     }
     SystemClock { id: clock; precision: SystemClock.Minutes }
 
+    // Settings / `kusanagi msg notifs test`: a pretend popup (no D-Bus) to try styles and positions
+    property int testCount: 0
+    function test() {
+        testCount++
+        const n = { id: -testCount, summary: "Kusanagi", appName: "Kusanagi", appIcon: "", image: "",
+                    body: ["This is how your notifications look.", "Swipe right or right-click to dismiss.", "Hover to pause the countdown."][testCount % 3],
+                    urgency: 1, actions: [], dismiss: () => {}, invokeDefault: () => {} }
+        const st = Object.assign({}, stamps); st[n.id] = Date.now(); stamps = st
+        popups = [n].concat(popups.filter(x => x)).slice(0, Config.notifications.max)
+    }
     function removePopup(n) {
         popups = popups.filter(x => x && x !== n)
     }

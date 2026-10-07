@@ -99,13 +99,18 @@ PanelWindow {
     readonly property bool fromBottom: barEdge === "bottom"
     // Config.panel.morph: island = grows out of the clock · drop = full width, slides down · fade = fades + settles
     // (a clock on a side bar, or no clock at all, can't be grown out of: fade there)
+    // sheet = full height at the right edge, sliding in from off-screen (a notification centre)
     readonly property string morph: Config.panel.morph === "island" && (!origin || barEdge === "left" || barEdge === "right") ? "fade" : Config.panel.morph
-    readonly property real originX: morph !== "island" ? targetX : origin.x
+    readonly property bool sheet: morph === "sheet"
+    readonly property real sheetTop: barEdge === "top" ? BarSpec.thickness + 8 : 8
+    readonly property real sheetH: height - sheetTop - (barEdge === "bottom" ? BarSpec.thickness + 8 : 8)
+    readonly property real originX: sheet ? width + 12 : morph !== "island" ? targetX : origin.x
     readonly property real originW: morph !== "island" ? targetW : origin.w
-    readonly property real originH: morph === "drop" ? 0 : morph === "fade" ? body.implicitHeight + 40 : origin.h
+    readonly property real originH: sheet ? sheetH : morph === "drop" ? 0 : morph === "fade" ? body.implicitHeight + 40 : origin.h
     readonly property real edge: !origin || barEdge === "left" || barEdge === "right" ? 4 : fromBottom ? height - origin.y - origin.h : origin.y
     // final spot: under the clock — centred, or hugging its side when it sits in the outer thirds
     readonly property real targetX: {
+        if (sheet) return width - targetW - (barEdge === "right" ? BarSpec.thickness + 8 : 8)
         const lo = barEdge === "left" ? BarSpec.thickness + 6 : 6, hi = width - (barEdge === "right" ? BarSpec.thickness + 6 : 6)
         if (!origin || barEdge === "left" || barEdge === "right") return Math.round((lo + hi - targetW) / 2)
         const c = origin.x + origin.w / 2
@@ -115,10 +120,10 @@ PanelWindow {
     Rectangle {
         id: panel
         width: Math.round(root.lerp(root.originW, root.targetW, root.wP))
-        height: Math.round(root.lerp(root.originH, body.implicitHeight + 40, root.hP))
-        x: Math.round(root.lerp(root.originX, root.targetX, root.wP))
-        y: root.fromBottom ? root.height - root.edge - height : root.edge
-        opacity: root.morph === "fade" ? Math.min(1, root.open * 1.4) : 1
+        height: root.sheet ? root.sheetH : Math.round(root.lerp(root.originH, body.implicitHeight + 40, root.hP))
+        x: Math.round(root.lerp(root.originX, root.targetX, root.sheet ? root.open : root.wP))
+        y: root.sheet ? root.sheetTop : root.fromBottom ? root.height - root.edge - height : root.edge
+        opacity: root.morph === "fade" ? Math.min(1, root.open * 1.4) : root.sheet ? Math.min(1, root.open * 2) : 1
         scale: root.morph === "fade" ? 0.95 + 0.05 * root.open : 1
         transformOrigin: root.fromBottom ? Item.Bottom : Item.Top
         radius: root.lerp(Config.bar.radius, Config.look.radius, root.wP)

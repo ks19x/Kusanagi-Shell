@@ -8,7 +8,18 @@ Column {
     SpGroup {
         title: "App launcher"
         hint: "Super+Space · type to search · = calculator · > run a command"
+        CpText { text: "Design"; font.pixelSize: 11; font.bold: true; color: Theme.textDim; topPadding: 4 }
+        SpStylePicker {
+            kind: "launcher"
+            current: Config.launcher.style
+            options: [{ value: "card", label: "Card", note: "a list under the search" },
+                      { value: "spotlight", label: "Spotlight", note: "just a search, results as you type" },
+                      { value: "fullscreen", label: "Fullscreen", note: "every app in a big grid" },
+                      { value: "side", label: "Side panel", note: "slides in from the left" }]
+            onPicked: v => Config.launcher.style = v
+        }
         CpRow {
+            visible: Config.launcher.style === "card" || Config.launcher.style === "spotlight"
             width: parent.width; label: "Position"
             CpSegmented {
                 width: 240; current: Config.launcher.position
@@ -17,6 +28,7 @@ Column {
             }
         }
         CpRow {
+            visible: Config.launcher.style !== "fullscreen"
             width: parent.width; label: "Layout"
             CpSegmented {
                 width: 220; current: Config.launcher.layout

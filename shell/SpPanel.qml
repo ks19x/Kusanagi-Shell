@@ -27,14 +27,15 @@ Column {
                 onPicked: v => Config.panel.defaultTab = v
             }
         }
-        CpRow {
-            width: parent.width; label: "Opening animation"
-            CpSegmented {
-                width: 360; current: Config.panel.morph
-                options: [{ label: "Grow from clock", value: "island" }, { label: "Drop down", value: "drop" }, { label: "Fade", value: "fade" }]
-                fontSize: 10
-                onPicked: v => Config.panel.morph = v
-            }
+        CpText { text: "Design"; font.pixelSize: 11; font.bold: true; color: Theme.textDim; topPadding: 4 }
+        SpStylePicker {
+            kind: "panel"
+            current: Config.panel.morph
+            options: [{ value: "island", label: "Grow from clock", note: "pours out of the bar's clock" },
+                      { value: "drop", label: "Drop down", note: "full width, slides down" },
+                      { value: "fade", label: "Float", note: "fades in, centred" },
+                      { value: "sheet", label: "Side sheet", note: "full height at the right" }]
+            onPicked: v => Config.panel.morph = v
         }
         CpRow { width: parent.width; label: "Now playing card"; CpSwitch { on: Config.panel.showMedia; onToggled: v => Config.panel.showMedia = v } }
         CpRow { width: parent.width; label: "Quick stats row"; CpSwitch { on: Config.panel.showStats; onToggled: v => Config.panel.showStats = v } }

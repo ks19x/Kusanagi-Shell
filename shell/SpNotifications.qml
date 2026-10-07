@@ -11,13 +11,23 @@ Column {
     SpGroup {
         title: "Notifications"
         CpRow { width: parent.width; label: "Do not disturb"; hint: "popups stay quiet, history still fills"; CpSwitch { on: Notifs.dnd; onToggled: v => Notifs.dnd = v } }
-        CpRow {
-            width: parent.width; label: "Popups appear"
-            CpSegmented {
-                width: 300; current: Config.notifications.position
-                options: [{ label: "Top left", value: "top-left" }, { label: "Top centre", value: "top-center" }, { label: "Top right", value: "top-right" }]
-                onPicked: v => Config.notifications.position = v
-            }
+        CpText { text: "Design"; font.pixelSize: 11; font.bold: true; color: Theme.textDim; topPadding: 4 }
+        SpStylePicker {
+            kind: "notifications"
+            cardW: 128
+            current: Config.notifications.style
+            options: [{ value: "comfortable", label: "Comfortable" }, { value: "compact", label: "Compact" },
+                      { value: "minimal", label: "Minimal" }, { value: "accent", label: "Accent edge" }]
+            onPicked: v => { Config.notifications.style = v; Notifs.test() }
+        }
+        CpText { text: "Where they pop up"; font.pixelSize: 11; font.bold: true; color: Theme.textDim; topPadding: 4 }
+        SpStylePicker {
+            kind: "corner"
+            cardW: 112
+            current: Config.notifications.position
+            options: [{ value: "top-left", label: "Top left" }, { value: "top-center", label: "Top centre" }, { value: "top-right", label: "Top right" },
+                      { value: "bottom-left", label: "Bottom left" }, { value: "bottom-center", label: "Bottom centre" }, { value: "bottom-right", label: "Bottom right" }]
+            onPicked: v => { Config.notifications.position = v; Notifs.test() }
         }
         CpRow {
             width: parent.width; label: "Stay for"
@@ -27,32 +37,33 @@ Column {
             width: parent.width; label: "At most on screen"
             CpStepper { value: Config.notifications.max; from: 1; to: 8; onChanged: v => Config.notifications.max = v }
         }
-        CpRow {
-            width: parent.width; label: "Style"
-            CpSegmented {
-                width: 260; current: Config.notifications.style
-                options: [{ label: "Comfortable", value: "comfortable" }, { label: "Compact", value: "compact" }]
-                onPicked: v => Config.notifications.style = v
-            }
-        }
         CpRow { width: parent.width; label: "Countdown line"; CpSwitch { on: Config.notifications.progress; onToggled: v => Config.notifications.progress = v } }
         CpRow { width: parent.width; label: "Pictures"; hint: "album art, avatars"; CpSwitch { on: Config.notifications.images; onToggled: v => Config.notifications.images = v } }
         CpChip {
             label: "Send a test notification"; icon: 0xf009e
-            onClicked: Quickshell.execDetached(["notify-send", "-a", "Kusanagi", "Hello from Kusanagi", "This is what notifications look like."])
+            onClicked: Notifs.test()
         }
     }
 
     SpGroup {
         title: "On-screen display"
         hint: "The pill that shows up when volume, mic or game mode change."
-        CpRow {
-            width: parent.width; label: "Position"
-            CpSegmented {
-                width: 300; current: Config.osd.position
-                options: [{ label: "Top", value: "top" }, { label: "Bottom", value: "bottom" }, { label: "Right edge", value: "right" }]
-                onPicked: v => { Config.osd.position = v; page.osdPreview() }
-            }
+        CpText { text: "Design"; font.pixelSize: 11; font.bold: true; color: Theme.textDim; topPadding: 4 }
+        SpStylePicker {
+            kind: "osd"
+            cardW: 128
+            current: Config.osd.style
+            options: [{ value: "pill", label: "Pill" }, { value: "minimal", label: "Minimal" }, { value: "box", label: "Box" }]
+            onPicked: v => { Config.osd.style = v; page.osdPreview() }
+        }
+        CpText { visible: Config.osd.style !== "box"; text: "Where"; font.pixelSize: 11; font.bold: true; color: Theme.textDim; topPadding: 4 }
+        SpStylePicker {
+            visible: Config.osd.style !== "box"
+            kind: "edge"
+            cardW: 128
+            current: Config.osd.position
+            options: [{ value: "top", label: "Top" }, { value: "bottom", label: "Bottom" }, { value: "left", label: "Left edge" }, { value: "right", label: "Right edge" }]
+            onPicked: v => { Config.osd.position = v; page.osdPreview() }
         }
         CpRow {
             width: parent.width; label: "Stay for"
@@ -60,14 +71,6 @@ Column {
                 value: Config.osd.timeout / 100; from: 6; to: 40; step: 2
                 suffix: "00 ms"
                 onChanged: v => Config.osd.timeout = v * 100
-            }
-        }
-        CpRow {
-            width: parent.width; label: "Style"
-            CpSegmented {
-                width: 260; current: Config.osd.style
-                options: [{ label: "Pill", value: "pill" }, { label: "Minimal", value: "minimal" }]
-                onPicked: v => { Config.osd.style = v; page.osdPreview() }
             }
         }
         CpRow { width: parent.width; label: "Show the number"; CpSwitch { on: Config.osd.showValue; onToggled: v => { Config.osd.showValue = v; page.osdPreview() } } }

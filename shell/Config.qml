@@ -63,7 +63,7 @@ Singleton {
                  tiles: ["nightlight", "dnd", "mic", "gamemode", "screenshot", "record", "colorpicker", "wallpaper"] },
         osd: { position: "top", timeout: 1400, volume: true, mic: true, gamemode: true, style: "pill", showValue: true },
         notifications: { position: "top-right", timeout: 5000, max: 5, style: "comfortable", progress: true, images: true },
-        launcher: { position: "upper", width: 640, rows: 7, descriptions: true, sortByUsage: true, terminal: "foot", layout: "list", iconSize: 32 },
+        launcher: { style: "card", position: "upper", width: 640, rows: 7, descriptions: true, sortByUsage: true, terminal: "foot", layout: "list", iconSize: 32 },
         wallpaper: { folder: "~/Pictures/Wallpapers", columns: 4, renderer: "kusanagi", transition: "random", duration: 1100,
                      fill: "fill", parallax: 0.04, dim: 0, slideshow: 0 },
         lock: { engine: "hyprlock", blur: 0.8, dim: 0.35, clock: "HH:mm", avatar: true, media: true, greeting: "" },
@@ -157,30 +157,31 @@ Singleton {
                 property bool showMedia: true
                 property bool showStats: true
                 property bool showWeather: true
-                property string morph: "island"       // island (grows out of the clock) | drop (slides down) | fade
+                property string morph: "island"       // island (grows out of the clock) | drop (slides down) | fade | sheet (right edge, full height)
                 property var tiles: ["nightlight", "dnd", "mic", "gamemode", "screenshot", "record", "colorpicker", "wallpaper"]
             }
 
             property JsonObject osd: JsonObject {
-                property string position: "top"       // top | bottom | right
+                property string position: "top"       // top | bottom | left | right
                 property int timeout: 1400
                 property bool volume: true
                 property bool mic: true
                 property bool gamemode: true
-                property string style: "pill"         // pill | minimal (a thin bar)
+                property string style: "pill"         // pill | minimal (a thin bar) | box (a square, lower middle)
                 property bool showValue: true
             }
 
             property JsonObject notifications: JsonObject {
-                property string position: "top-right" // top-right | top-center | top-left
+                property string position: "top-right" // top-right | top-center | top-left | bottom-right | bottom-center | bottom-left
                 property int timeout: 5000
                 property int max: 5
-                property string style: "comfortable"  // comfortable | compact
+                property string style: "comfortable"  // comfortable | compact | minimal (one-line pills) | accent (coloured edge)
                 property bool progress: true          // countdown line on popups
                 property bool images: true            // app pictures (album art, avatars)
             }
 
             property JsonObject launcher: JsonObject {
+                property string style: "card"         // card | spotlight (search first) | fullscreen (app grid) | side (panel at the left)
                 property string position: "upper"     // upper | center
                 property int width: 640
                 property int rows: 7                  // visible results

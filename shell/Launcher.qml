@@ -42,13 +42,21 @@ PanelWindow {
     function actionsOfSelected() { openActions(results[sel]) }
 
     // ---------- layout ----------
+    // Config.launcher.style: card · spotlight (a search pill, results once you type) · fullscreen · side
+    readonly property string style: Config.launcher.style
+    readonly property bool full: style === "fullscreen"
+    readonly property bool side: style === "side"
+    readonly property bool spot: style === "spotlight"
+    readonly property real cardW: full ? width : side ? Math.min(Config.launcher.width, 460) : spot ? Math.min(Config.launcher.width, 600) : Config.launcher.width
+    readonly property bool listShown: !(spot && !search.text && !actionsOf)
+    readonly property int iconPx: full ? Math.max(56, Config.launcher.iconSize) : Config.launcher.iconSize
     property int sel: 0                                           // selected result (list or grid)
-    readonly property bool grid: Config.launcher.layout === "grid"
-    readonly property int rowH: Math.max(54, Config.launcher.iconSize + 20)
-    readonly property int cellW: Math.max(108, Config.launcher.iconSize + 64)
-    readonly property int cellH: Config.launcher.iconSize + 58
-    readonly property int cols: Math.max(1, Math.floor((Config.launcher.width - 16) / cellW))
-    readonly property int gridRows: Math.max(2, Math.ceil(Config.launcher.rows / 2))
+    readonly property bool grid: full || Config.launcher.layout === "grid"
+    readonly property int rowH: Math.max(54, root.iconPx + 20)
+    readonly property int cellW: Math.max(108, root.iconPx + 64)
+    readonly property int cellH: root.iconPx + 58
+    readonly property int cols: Math.max(1, Math.floor(((full ? Math.min(width - 120, 1400) : cardW) - 16) / cellW))
+    readonly property int gridRows: full ? Math.max(2, Math.floor((height - 200) / cellH)) : Math.max(2, Math.ceil(Config.launcher.rows / 2))
 
     // ---------- usage counts (most-launched first) ----------
     FileView {
@@ -185,24 +193,30 @@ PanelWindow {
 
     Rectangle {
         id: card
-        width: Config.launcher.width
-        height: 64 + (!root.results.length ? 0
+        width: root.cardW
+        height: root.full || root.side ? root.height
+            : 64 + (!root.results.length || !root.listShown ? 0
             : root.grid ? Math.min(Math.ceil(root.results.length / root.cols), root.gridRows) * root.cellH + 16
             : Math.min(root.results.length, Config.launcher.rows) * root.rowH + 16)
-        x: Math.round((root.width - width) / 2)
-        y: Math.round(root.height * (Config.launcher.position === "center" ? 0.5 : 0.28) - (Config.launcher.position === "center" ? height / 2 : 0))
-           + (root.showing ? 0 : -14)
-        radius: Config.look.radius
-        color: Theme.alpha(Theme.bgPanel, Config.panel.opacity)
+        // side: slides in from the left edge; the others drop in where they sit
+        x: root.side ? (root.showing ? 0 : -Math.round(width * 0.35)) : Math.round((root.width - width) / 2)
+        y: root.full || root.side ? 0
+           : Math.round(root.height * (Config.launcher.position === "center" ? 0.5 : 0.28) - (Config.launcher.position === "center" ? height / 2 : 0))
+             + (root.showing ? 0 : -14)
+        radius: root.full ? 0 : root.spot ? 30 : Config.look.radius
+        topLeftRadius: root.side || root.full ? 0 : radius
+        bottomLeftRadius: root.side || root.full ? 0 : radius
+        color: Theme.alpha(Theme.bgPanel, root.full ? Math.min(0.88, Config.panel.opacity) : Config.panel.opacity)
         border.width: Theme.surfaceBorderWidth
         border.color: Theme.surfaceBorder
         clip: true
 
         opacity: root.showing ? 1 : 0
-        scale: root.showing ? 1 : 0.95
+        scale: root.side ? 1 : root.showing ? 1 : root.full ? 1.04 : 0.95
         Behavior on opacity { NumberAnimation { duration: Config.ms(root.showing ? 220 : 140) } }
         Behavior on scale { NumberAnimation { duration: Config.ms(root.showing ? 380 : 160); easing.type: root.showing ? Easing.OutBack : Easing.InCubic; easing.overshoot: Config.bounce(1.3) } }
         Behavior on y { NumberAnimation { duration: Config.ms(root.showing ? 380 : 160); easing.type: Easing.OutQuint } }
+        Behavior on x { enabled: root.side; NumberAnimation { duration: Config.ms(root.showing ? 340 : 160); easing.type: Easing.OutQuint } }
         Behavior on height { NumberAnimation { duration: Config.ms(220); easing.type: Easing.OutQuint } }
 
         MouseArea { anchors.fill: parent }
@@ -210,8 +224,19 @@ PanelWindow {
         // search field
         Item {
             id: field
-            width: parent.width
+            // fullscreen: a search pill centred near the top; elsewhere the card's first row
+            width: root.full ? Math.min(560, parent.width - 80) : parent.width
             height: 64
+            x: Math.round((parent.width - width) / 2)
+            y: root.full ? 56 : root.side ? 18 : 0
+            Rectangle {
+                visible: root.full || root.side
+                anchors { fill: parent; margins: 6 }
+                radius: height / 2
+                color: Theme.alpha(Theme.text, 0.07)
+                border.width: 1
+                border.color: Theme.alpha(Theme.text, 0.08)
+            }
 
             CpIcon {
                 x: 22
@@ -225,7 +250,7 @@ PanelWindow {
                 anchors { left: parent.left; leftMargin: 56; right: parent.right; rightMargin: 22; verticalCenter: parent.verticalCenter }
                 color: Theme.text
                 font.family: Theme.fontFamily
-                font.pixelSize: 18
+                font.pixelSize: root.spot ? 20 : 18
                 selectionColor: Theme.alpha(Theme.accent, 0.4)
                 clip: true
                 onTextChanged: root.sel = 0
@@ -271,7 +296,7 @@ PanelWindow {
 
         ListView {
             id: list
-            visible: !root.grid
+            visible: !root.grid && root.listShown
             currentIndex: root.sel
             anchors { top: field.bottom; topMargin: 8; left: parent.left; right: parent.right; bottom: parent.bottom; margins: 8 }
             clip: true
@@ -299,7 +324,7 @@ PanelWindow {
                 Item {
                     id: iconBox
                     x: 12
-                    width: Config.launcher.iconSize; height: Config.launcher.iconSize
+                    width: root.iconPx; height: root.iconPx
                     anchors.verticalCenter: parent.verticalCenter
                     // "" when the icon theme doesn't have it → glyph instead
                     readonly property var iconEntry: row.modelData.kind === "app" ? row.modelData.entry : row.modelData.kind === "action" ? row.modelData.app : null
@@ -372,9 +397,11 @@ PanelWindow {
 
         GridView {
             id: gridView
-            visible: root.grid
+            visible: root.grid && root.listShown
             anchors { top: field.bottom; topMargin: 8; left: parent.left; right: parent.right; bottom: parent.bottom; margins: 8 }
-            leftMargin: Math.floor((width - root.cols * root.cellW) / 2)
+            // centred: the side margins take whatever the columns leave
+            anchors.leftMargin: Math.max(8, Math.floor((parent.width - root.cols * root.cellW) / 2))
+            anchors.rightMargin: anchors.leftMargin
             cellWidth: root.cellW
             cellHeight: root.cellH
             clip: true
@@ -403,7 +430,7 @@ PanelWindow {
                     spacing: 8
                     Item {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        width: Config.launcher.iconSize; height: Config.launcher.iconSize
+                        width: root.iconPx; height: root.iconPx
                         scale: tileArea.containsMouse || GridView.isCurrentItem ? 1.08 : 1
                         Behavior on scale { NumberAnimation { duration: Config.ms(180); easing.type: Easing.OutBack; easing.overshoot: Config.bounce(2) } }
                         IconImage { anchors.fill: parent; visible: tile.iconSrc !== ""; source: tile.iconSrc; asynchronous: true }
@@ -411,7 +438,7 @@ PanelWindow {
                             anchors.centerIn: parent
                             visible: tile.iconSrc === ""
                             cp: tile.modelData.kind === "app" ? 0xf003b : (tile.modelData.icon || 0)
-                            font.pixelSize: Config.launcher.iconSize * 0.7
+                            font.pixelSize: root.iconPx * 0.7
                             color: Theme.accent
                         }
                     }

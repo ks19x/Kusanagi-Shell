@@ -9,6 +9,16 @@
   is kept awake (idle inhibitor), click it to turn off
 - **Weather** card on Home (wttr.in, cached, refreshed every 30 min only while the panel is open; 3-day
   forecast); location + units in Settings → Panel
+- **Dock**: pinned apps (Settings → Bar → Dock & taskbar: app search, "pin my most used", running
+  dots / line, grow on hover; right-click a dock icon to pin). Icons that really load (letter tile
+  when an app has none), the Kusanagi logo in Settings, About, the dock and as a launcher button
+- **Settings**: Bar page in tabs (Layout · Templates · Dock & taskbar); click a module in the editor's
+  preview to edit it; options in plain-language folds; a sentence under every page title; visual
+  pickers (little drawings) for every design choice below
+- **Designs to choose from**: launcher Card / Spotlight / Fullscreen grid / Side panel; control panel
+  Grow from clock / Drop down / Float / Side sheet; notifications Comfortable / Compact / Minimal
+  pills / Accent edge, at any top or bottom corner or centre; OSD Pill / Minimal / Box (macOS-like),
+  top / bottom / left / right; `kusanagi msg notifs test` (also a button) shows a pretend popup
 - **Bar engine**: the bar is now data (`settings.json → "bars"`, docs/bar.md). Any number of bars on
   any edge, any length (full / fraction / px / fit), floating margins, autohide; groups + 26 module
   types (taskbar, battery, disk, mic, weather, notifications, uptime, custom commands with JSON

@@ -105,6 +105,7 @@ ShellRoot {
         function close(): void { if (panel.item) panel.item.close() }
         function dnd(): void { Notifs.dnd = !Notifs.dnd }
         function clear(): void { Notifs.clearAll() }
+        function test(): void { Notifs.test() }
     }
     IpcHandler {
         target: "settings"
