@@ -11,6 +11,10 @@ Item {
     property real cross: 28                 // bar thickness to sit in
     property string section: ""             // where it sits in the spec (the editor's preview picks by it)
     property int gi: -1
+    readonly property string pathKey: spec.bare ? "" : section + ":" + gi + ":-1"
+    readonly property bool picking: !!win.preview && !!host.pick && !spec.bare
+    Component.onCompleted: if (picking && host.reg) host.reg(g)
+    Component.onDestruction: if (host && host.unreg) host.unreg(g)
 
     readonly property bool vertical: win.vertical
     readonly property alias box: box       // the control panel grows out of the clock's group
@@ -49,6 +53,13 @@ Item {
             if (e.angleDelta.y === 0) return
             const up = e.angleDelta.y > 0, a = g.spec[up ? "scrollUp" : "scrollDown"]
             if (a && a !== "none") g.host.runAction(a, null, up ? 1 : -1)
+        }
+        // editor preview: drag the whole island by its edge
+        DragHandler {
+            enabled: parent.picking
+            target: null
+            onActiveChanged: active ? g.host.dragBegin(g.pathKey, "group") : g.host.dragEnd()
+            onCentroidChanged: if (active) g.host.dragMove(centroid.scenePosition.x, centroid.scenePosition.y)
         }
     }
 

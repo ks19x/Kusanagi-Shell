@@ -14,6 +14,45 @@ Item {
     property bool pickable: false                // clicks select modules (picked) instead of doing things
     property string selKey: ""                   // "section:entry:module" outlined
     signal picked(string section, int gi, int mi)
+    // drag and drop (pickable only): from = "sec:gi:mi"; to = a module's key, or "section:<name>" (append)
+    signal moved(string from, string to, bool after)
+
+    // ---- drag and drop bookkeeping ----
+    property var regs: []                        // modules and groups drawn in this preview
+    property string dragKey: ""
+    property string dragLabel: ""
+    property point dragAt: Qt.point(0, 0)
+    property var target: null                    // { key, after, x, y, w, h }
+    function reg(it) { if (regs.indexOf(it) < 0) regs = regs.concat([it]) }
+    function unreg(it) { regs = regs.filter(x => x !== it) }
+    function hit(p) {
+        const dk = dragKey, dragGroup = dk.endsWith(":-1") && dk.split(":").length === 3
+        let best = null, bestD = Infinity
+        for (const it of regs) {
+            if (!it.visible || !it.pathKey || it.pathKey === dk) continue
+            // not into itself, and a group never into another group
+            const k = it.pathKey.split(":"), dkp = dk.split(":")
+            if (k[0] === dkp[0] && k[1] === dkp[1] && dkp[2] === "-1") continue
+            if (dragGroup && k[2] !== "-1") continue
+            const r = it.mapToItem(pv, 0, 0, it.width, it.height)
+            const along = vertical ? p.y : p.x, lo = vertical ? r.y : r.x, len = vertical ? r.height : r.width
+            const d = along < lo ? lo - along : along > lo + len ? along - lo - len : 0
+            if (d < bestD) { bestD = d; best = { key: it.pathKey, after: along > lo + len / 2, x: r.x, y: r.y, w: r.width, h: r.height } }
+        }
+        // far from everything: drop at the end of the section under the pointer
+        if (!best || bestD > 60) {
+            const f = (vertical ? p.y / height : p.x / width)
+            const sec = f < 0.34 ? "start" : f > 0.66 ? "end" : "center"
+            return { key: "section:" + sec, after: true, x: vertical ? 0 : width * (sec === "start" ? 0.02 : sec === "center" ? 0.5 : 0.98), y: vertical ? height * (sec === "start" ? 0.02 : sec === "center" ? 0.5 : 0.98) : 0, w: 0, h: vertical ? 0 : height }
+        }
+        return best
+    }
+    function dragBegin(key, label) { dragKey = key; dragLabel = label }
+    function dragMove(sx, sy) { dragAt = pv.mapFromItem(null, sx, sy); target = hit(dragAt) }
+    function dragEnd() {
+        if (dragKey && target && target.key !== dragKey) moved(dragKey, target.key, target.after)
+        dragKey = ""; target = null
+    }
     clip: true
 
     // plain JS first (QML hands over list/map types Array.isArray etc. do not know)
@@ -40,6 +79,13 @@ Item {
         property bool mediaHover: false
         readonly property bool popupOpen: false
         readonly property string selKey: pv.selKey
+        readonly property string dragKey: pv.dragKey
+        readonly property bool canDrag: pv.pickable
+        function reg(it) { pv.reg(it) }
+        function unreg(it) { pv.unreg(it) }
+        function dragBegin(k, l) { pv.dragBegin(k, l) }
+        function dragMove(x, y) { pv.dragMove(x, y) }
+        function dragEnd() { pv.dragEnd() }
         readonly property var pick: pv.pickable ? (s, g, m) => pv.picked(s, g, m) : null
         function runAction() {}
         function showTip() {}
@@ -96,5 +142,25 @@ Item {
             x: pv.vertical ? (fakeWin.edge === "left" ? pv.spec.margin[0] : screen.width - pv.spec.margin[0] - width) : screen.at
             y: pv.vertical ? screen.at : (fakeWin.edge === "top" ? pv.spec.margin[0] : screen.height - pv.spec.margin[0] - height)
         }
+    }
+
+    // ---- drag feedback: where it will land, and what is being carried ----
+    Rectangle {
+        visible: pv.dragKey !== "" && !!pv.target
+        color: Theme.accent
+        radius: 1.5
+        width: pv.vertical ? (pv.target ? Math.max(pv.target.w, 20) : 0) : 3
+        height: pv.vertical ? 3 : (pv.target ? Math.max(pv.target.h, 14) : 0)
+        x: !pv.target ? 0 : pv.vertical ? pv.target.x : (pv.target.after ? pv.target.x + pv.target.w : pv.target.x) - 1.5
+        y: !pv.target ? 0 : pv.vertical ? (pv.target.after ? pv.target.y + pv.target.h : pv.target.y) - 1.5 : pv.target.y
+        Behavior on x { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+        Behavior on y { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+    }
+    Rectangle {
+        visible: pv.dragKey !== ""
+        x: pv.dragAt.x + 10; y: pv.dragAt.y - height - 4
+        width: ghost.implicitWidth + 16; height: 22; radius: 11
+        color: Theme.accent
+        CpText { id: ghost; anchors.centerIn: parent; text: pv.dragLabel || "move"; color: Theme.bgPanel; font.pixelSize: 11; font.bold: true; textFormat: Text.PlainText }
     }
 }

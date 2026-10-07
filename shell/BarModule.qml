@@ -18,6 +18,10 @@ Item {
     // "section:entry:module" (module -1 = a bare module, the entry itself): the editor preview selects by it
     readonly property string pathKey: group ? group.section + ":" + group.gi + ":" + (group.spec.bare ? -1 : mi) : ""
     readonly property bool picking: !!win.preview && !!host.pick
+    // the editor's preview: registered for drag and drop, faded while being carried
+    Component.onCompleted: if (picking && host.reg) host.reg(m)
+    Component.onDestruction: if (host && host.unreg) host.unreg(m)
+    opacity: picking && host.dragKey === pathKey ? 0.35 : 1
 
     readonly property bool vertical: win.vertical
     readonly property string type: spec.type || "text"
@@ -209,6 +213,13 @@ Item {
             // in the editor's preview a click selects the module instead
             if (m.picking) { const k = m.pathKey.split(":"); m.host.pick(k[0], +k[1], +k[2]); return }
             m.fire(keyOf(e.button))
+        }
+        // editor preview: drag a module somewhere else (a plain click still selects it)
+        DragHandler {
+            enabled: m.picking
+            target: null
+            onActiveChanged: active ? m.host.dragBegin(m.pathKey, m.text.replace(/<[^>]*>/g, "") || m.type) : m.host.dragEnd()
+            onCentroidChanged: if (active) m.host.dragMove(centroid.scenePosition.x, centroid.scenePosition.y)
         }
         onWheel: e => {
             if (e.angleDelta.y === 0) return

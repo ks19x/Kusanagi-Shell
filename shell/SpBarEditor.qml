@@ -90,6 +90,35 @@ Column {
         edit(d => { const b = d[bIndex]; const x = b[selSec].splice(selGi, 1)[0]; b[sec] = b[sec] || []; b[sec].push(x); n = b[sec].length - 1 })
         select(sec, n, -1)
     }
+    // drag and drop from the preview: keys are "sec:gi:mi" (mi -1 = a section entry); to may be "section:<name>"
+    function moveByKeys(fromK, toK, after) {
+        const pk = k => { const a = k.split(":"); return { sec: a[0], gi: +a[1], mi: +a[2] } }
+        const f = pk(fromK)
+        edit(d => {
+            const b = d[bIndex]
+            if (!b[f.sec]) return
+            let item, srcGroup = null
+            if (f.mi < 0) item = b[f.sec].splice(f.gi, 1)[0]
+            else { srcGroup = norm(b[f.sec][f.gi]); b[f.sec][f.gi] = srcGroup; item = srcGroup.modules.splice(f.mi, 1)[0] }
+            if (item === undefined) return
+            const isGroup = norm(item).type === "group"
+            if (toK.startsWith("section:")) {
+                const s = toK.split(":")[1]; b[s] = b[s] || []; b[s].push(item)
+            } else {
+                const t = pk(toK)
+                let tg = t.gi, tm = t.mi
+                // account for the removal when it came from before the target in the same list
+                if (f.mi < 0 && f.sec === t.sec && f.gi < tg) tg--
+                if (f.mi >= 0 && t.mi >= 0 && f.sec === t.sec && f.gi === t.gi && f.mi < tm) tm--
+                b[t.sec] = b[t.sec] || []
+                if (t.mi < 0 || isGroup) b[t.sec].splice(Math.max(0, tg) + (after ? 1 : 0), 0, item)
+                else { const g = norm(b[t.sec][tg]); b[t.sec][tg] = g; g.modules.splice(Math.max(0, tm) + (after ? 1 : 0), 0, item) }
+            }
+            // a group emptied by the move goes away
+            if (srcGroup && srcGroup.modules.length === 0) { const L = b[f.sec], i = L.indexOf(srcGroup); if (i >= 0) L.splice(i, 1) }
+        })
+        clearSel()
+    }
     function removeSel() { edit(d => { const o = ownerList(d); if (o) o.list.splice(o.i, 1) }); clearSel() }
     function duplicate() { edit(d => { const o = ownerList(d); if (o) o.list.splice(o.i + 1, 0, JSON.parse(JSON.stringify(o.list[o.i]))) }) }
     function wrap() {
@@ -413,8 +442,9 @@ Column {
             pickable: true
             selKey: ed.selSec ? ed.selSec + ":" + ed.selGi + ":" + ed.selMi : ""
             onPicked: (sec, gi, mi) => ed.select(sec, gi, mi)
+            onMoved: (from, to, after) => ed.moveByKeys(from, to, after)
         }
-        CpText { text: "Click a module (or an island's edge) in the preview to edit it."; font.pixelSize: 10; color: Theme.textDim }
+        CpText { text: "Click a module (or an island's edge) to edit it · drag it to move it, also into or out of islands."; font.pixelSize: 10; color: Theme.textDim }
     }
 
     // ---------------------------------------------------------------- layout
