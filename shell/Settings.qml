@@ -101,9 +101,10 @@ FloatingWindow {
                 highlight: Item {
                     Rectangle {
                         anchors { fill: parent; topMargin: nav.currentItem && nav.currentItem.hasGroup ? 26 : 0 }
-                        radius: 10
-                        color: Theme.alpha(Theme.accent, 0.16)
-                        Rectangle { x: 0; width: 3; radius: 1.5; height: parent.height - 16; anchors.verticalCenter: parent.verticalCenter; color: Theme.accent }
+                        radius: 12
+                        color: Theme.alpha(Theme.accent, 0.13)
+                        border.width: 1
+                        border.color: Theme.alpha(Theme.accent, 0.22)
                     }
                 }
 
@@ -120,20 +121,28 @@ FloatingWindow {
                         visible: item.hasGroup
                         x: 12; y: item.index === 0 ? 4 : 8
                         text: item.modelData.group ?? ""
-                        font.pixelSize: 9
+                        font.pixelSize: 10
                         font.bold: true
-                        font.letterSpacing: 2
-                        color: Theme.textDim
+                        font.letterSpacing: 1.5
+                        color: Theme.alpha(Theme.text, 0.4)
                     }
                     Row {
                         x: 14
-                        y: (item.hasGroup ? 26 : 0) + 10
+                        y: (item.hasGroup ? 26 : 0) + 7
                         spacing: 12
-                        CpIcon {
-                            cp: item.modelData.icon
-                            font.pixelSize: 16
-                            color: item.active ? Theme.accent : (area.containsMouse ? Theme.text : Theme.textDim)
-                            Behavior on color { ColorAnimation { duration: Config.ms(160) } }
+                        // icons sit in little tiles; the active one fills with the accent
+                        Rectangle {
+                            width: 24; height: 24; radius: 7
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: item.active ? Theme.accent : Theme.alpha(Theme.text, area.containsMouse ? 0.1 : 0.06)
+                            Behavior on color { ColorAnimation { duration: Config.ms(180) } }
+                            CpIcon {
+                                anchors.centerIn: parent
+                                cp: item.modelData.icon
+                                font.pixelSize: 14
+                                color: item.active ? Theme.bgPanel : (area.containsMouse ? Theme.text : Theme.textDim)
+                                Behavior on color { ColorAnimation { duration: Config.ms(160) } }
+                            }
                         }
                         CpText {
                             text: item.modelData.name
@@ -160,17 +169,30 @@ FloatingWindow {
             id: main
             anchors { left: sidebar.right; leftMargin: 1; right: parent.right; top: parent.top; bottom: parent.bottom }
 
-            Column {
+            Row {
                 id: heading
-                x: 36; y: 28
-                spacing: 4
-                CpText { text: root.current.name; font.pixelSize: 24; font.bold: true }
-                CpText { text: root.current.desc || ""; font.pixelSize: 12; color: Theme.textDim }
+                x: 36; y: 30
+                spacing: 16
+                Rectangle {
+                    width: 48; height: 48; radius: 15
+                    anchors.verticalCenter: parent.verticalCenter
+                    gradient: Gradient {
+                        GradientStop { position: 0; color: Theme.alpha(Theme.accent, 0.32) }
+                        GradientStop { position: 1; color: Theme.alpha(Theme.accent2, 0.16) }
+                    }
+                    CpIcon { anchors.centerIn: parent; cp: root.current.icon; font.pixelSize: 24; color: Theme.accent }
+                }
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 3
+                    CpText { text: root.current.name; font.pixelSize: 24; font.bold: true }
+                    CpText { text: root.current.desc || ""; font.pixelSize: 12; color: Theme.textDim }
+                }
             }
 
             Flickable {
                 id: scroller
-                anchors { top: heading.bottom; topMargin: 18; left: parent.left; right: parent.right; bottom: parent.bottom }
+                anchors { top: heading.bottom; topMargin: 24; left: parent.left; right: parent.right; bottom: parent.bottom }
                 contentHeight: loader.height + 40
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds

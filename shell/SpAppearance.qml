@@ -98,7 +98,9 @@ Column {
 
     SpGroup {
         title: "Font"
-        hint: "Used across the whole shell. All are Nerd Fonts, so icons keep working."
+        icon: 0xf0284
+        hint: "For all of Kusanagi's text. Icons always come from the Nerd Font, so any font works."
+        CpText { text: "Nerd Fonts"; font.pixelSize: 11; font.bold: true; color: Theme.textDim }
         Flow {
             width: parent.width
             spacing: 6
@@ -108,12 +110,19 @@ Column {
                 CpChip {
                     required property string modelData
                     readonly property string family: modelData + " Nerd Font"
+                    visible: Qt.fontFamilies().includes(family)
                     label: modelData
                     fontFamily: family
                     on: Config.look.font === family
                     onClicked: Config.look.font = family
                 }
             }
+        }
+        CpText { text: "Every font"; font.pixelSize: 11; font.bold: true; color: Theme.textDim; topPadding: 6 }
+        SpFontPicker {
+            width: parent.width
+            current: Config.look.font
+            onPicked: f => Config.look.font = f
         }
     }
 
@@ -163,14 +172,78 @@ Column {
 
     SpGroup {
         title: "Motion"
-        CpSegmented {
+        icon: 0xf0e09
+        hint: "How everything moves. Hover a card to see it; fine-tune with the sliders below."
+        id: motionGroup
+        // speed scales every duration (0 = no animation); bounce scales every overshoot
+        readonly property var presets: [
+            { id: "instant", name: "Instant", note: "no animation at all", speed: 0, bounce: 0 },
+            { id: "snappy", name: "Snappy", note: "quick, barely a spring", speed: 0.6, bounce: 0.3 },
+            { id: "smooth", name: "Smooth", note: "the default", speed: 1.0, bounce: 1.0 },
+            { id: "bouncy", name: "Bouncy", note: "springs that overshoot", speed: 1.0, bounce: 1.8 },
+            { id: "playful", name: "Playful", note: "slower and very springy", speed: 1.25, bounce: 2.0 },
+            { id: "gentle", name: "Gentle", note: "calm, soft landings", speed: 1.4, bounce: 0.4 },
+            { id: "cinematic", name: "Cinematic", note: "long glides, no bounce", speed: 1.8, bounce: 0 }
+        ]
+        readonly property string current: (presets.find(p => Math.abs(p.speed - Config.look.animSpeed) < 0.01 && Math.abs(p.bounce - Config.look.bounce) < 0.01) || { id: "custom" }).id
+        Flow {
             width: parent.width
-            current: Config.look.animSpeed
-            options: [
-                { label: "Off", value: 0 }, { label: "Snappy", value: 0.7 },
-                { label: "Smooth", value: 1.0 }, { label: "Relaxed", value: 1.4 }
-            ]
-            onPicked: v => Config.look.animSpeed = v
+            spacing: 8
+            Repeater {
+                model: motionGroup.presets
+                Rectangle {
+                    id: mc
+                    required property var modelData
+                    readonly property bool on: motionGroup.current === modelData.id
+                    width: 128; height: 104
+                    radius: 12
+                    color: mhov.hovered ? Theme.alpha(Theme.text, 0.08) : Theme.alpha(Theme.text, 0.04)
+                    border.width: on ? 2 : 1
+                    border.color: on ? Theme.accent : Theme.alpha(Theme.text, 0.07)
+                    Behavior on border.color { ColorAnimation { duration: 160 } }
+                    // the demo: a dot hopping across with this preset's own timing (only while hovered)
+                    Rectangle {
+                        id: track
+                        x: 12; y: 14; width: parent.width - 24; height: 26; radius: 13
+                        color: Theme.alpha(Theme.text, 0.05)
+                        Rectangle {
+                            id: dot
+                            width: 18; height: 18; radius: 9
+                            y: 4
+                            color: Theme.accent
+                            property bool atEnd: false
+                            x: atEnd ? track.width - width - 4 : 4
+                            Behavior on x {
+                                enabled: mc.modelData.speed > 0
+                                NumberAnimation { duration: 420 * mc.modelData.speed; easing.type: Easing.OutBack; easing.overshoot: 1.6 * mc.modelData.bounce }
+                            }
+                        }
+                        Timer {
+                            interval: Math.max(500, 420 * mc.modelData.speed + 380)
+                            repeat: true
+                            running: mhov.hovered
+                            triggeredOnStart: true
+                            onTriggered: dot.atEnd = !dot.atEnd
+                        }
+                    }
+                    Column {
+                        x: 12; y: 52
+                        width: parent.width - 24
+                        CpText { text: mc.modelData.name; font.pixelSize: 12; font.bold: true; color: mc.on ? Theme.accent : Theme.text }
+                        CpText { width: parent.width; text: mc.modelData.note; font.pixelSize: 9; color: Theme.textDim; wrapMode: Text.WordWrap }
+                    }
+                    HoverHandler { id: mhov; cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: { Config.look.animSpeed = mc.modelData.speed; Config.look.bounce = mc.modelData.bounce } }
+                }
+            }
+        }
+        CpSlider {
+            width: parent.width; height: 30
+            icon: 0xf04c5; label: "Speed"
+            value: Config.look.animSpeed / 2
+            valueText: Config.look.animSpeed === 0 ? "off" : Config.look.animSpeed <= 1 ? "×" + (1 / Config.look.animSpeed).toFixed(1) + " faster" : "×" + Config.look.animSpeed.toFixed(1) + " slower"
+            step: 0.05
+            onMoved: v => Config.look.animSpeed = Math.round(v * 2 * 20) / 20
         }
         CpSlider {
             width: parent.width; height: 30
