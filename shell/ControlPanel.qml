@@ -142,10 +142,12 @@ PanelWindow {
             spacing: 16
             opacity: root.contentP
 
-            // ---------- header: time + date, you, actions ----------
+            // ---------- header: time + date, you, actions (Config.panel.header: big · compact · hidden) ----------
             Item {
+                visible: Config.panel.header !== "hidden"
+                readonly property bool compact: Config.panel.header === "compact"
                 width: parent.width
-                height: 48
+                height: compact ? 34 : 48
 
                 SystemClock { id: clock; precision: SystemClock.Minutes }
 
@@ -153,7 +155,7 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     CpText {
                         text: Qt.formatTime(clock.date, Config.bar.clock.includes("AP") ? "h:mm AP" : "HH:mm")
-                        font.pixelSize: 28
+                        font.pixelSize: parent.parent.compact ? 18 : 28
                         font.bold: true
                     }
                     CpText {
@@ -197,6 +199,7 @@ PanelWindow {
             }
 
             CpSegmented {
+                visible: Config.panel.tabs
                 width: parent.width
                 height: 34
                 current: root.tab

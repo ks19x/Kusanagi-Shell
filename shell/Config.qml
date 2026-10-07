@@ -61,6 +61,7 @@ Singleton {
                           volume: true, network: true, tray: true, power: true } },
         workspaces: { style: "pills", shown: 5, glow: true, icons: "", activeColor: "accent" },
         panel: { opacity: 0.95, width: 560, defaultTab: 0, showMedia: true, showStats: true, showWeather: true, morph: "island",
+                 tileStyle: "cards", tileColumns: 4, sliderStyle: "thick", header: "big", tabs: true, order: ["tiles", "sliders", "media", "weather", "stats"],
                  tiles: ["nightlight", "dnd", "mic", "gamemode", "screenshot", "record", "colorpicker", "wallpaper"] },
         osd: { position: "top", timeout: 1400, volume: true, mic: true, gamemode: true, style: "pill", showValue: true },
         notifications: { position: "top-right", timeout: 5000, max: 5, style: "comfortable", progress: true, images: true },
@@ -159,6 +160,12 @@ Singleton {
                 property bool showMedia: true
                 property bool showStats: true
                 property bool showWeather: true
+                property string tileStyle: "cards"    // cards | pills | icons
+                property int tileColumns: 4
+                property string sliderStyle: "thick"  // thick | slim
+                property string header: "big"         // big | compact | hidden
+                property bool tabs: true              // the tab row (Home, Sound, Net, …)
+                property var order: ["tiles", "sliders", "media", "weather", "stats"]   // Home, top to bottom
                 property string morph: "island"       // island (grows out of the clock) | drop (slides down) | fade | sheet (right edge, full height)
                 property var tiles: ["nightlight", "dnd", "mic", "gamemode", "screenshot", "record", "colorpicker", "wallpaper"]
             }

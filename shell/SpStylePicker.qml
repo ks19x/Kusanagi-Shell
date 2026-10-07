@@ -45,7 +45,7 @@ Flow {
                 }
                 Loader {
                     anchors.fill: parent
-                    sourceComponent: ({ launcher: launcherC, panel: panelC, notifications: notifC, osd: osdC, corner: cornerC, edge: edgeC, widget: widgetC })[root.kind] ?? null
+                    sourceComponent: ({ launcher: launcherC, panel: panelC, notifications: notifC, osd: osdC, corner: cornerC, edge: edgeC, widget: widgetC, tiles: tilesC, panelLook: lookC })[root.kind] ?? null
                     property var v: card.modelData.value
                 }
             }
@@ -189,6 +189,52 @@ Flow {
                 x: parent.width / 2 - 18; y: parent.height * 0.42; width: 36; height: 30; radius: 6; color: root.surf
                 Rectangle { x: 12; y: 5; width: 12; height: 10; radius: 2; color: Theme.text }
                 Row { x: 5; y: 22; spacing: 1; Repeater { model: 8; Rectangle { width: 2.6; height: 3; color: index < 5 ? root.acc : Theme.alpha(Theme.text, 0.2); required property int index } } }
+            }
+        }
+    }
+    Component {
+        id: tilesC
+        Item {
+            readonly property string v: parent.v
+            Grid {
+                anchors.centerIn: parent
+                columns: v === "icons" ? 5 : v === "pills" ? 2 : 4
+                spacing: 4
+                Repeater {
+                    model: v === "icons" ? 10 : v === "pills" ? 6 : 8
+                    Rectangle {
+                        required property int index
+                        width: v === "icons" ? 16 : v === "pills" ? 50 : 24
+                        height: v === "icons" ? 16 : v === "pills" ? 12 : 18
+                        radius: v === "cards" ? 3 : height / 2
+                        color: index === 0 ? root.acc : Theme.alpha(Theme.text, 0.2)
+                        Rectangle { visible: v === "pills"; x: 4; y: 5; width: 3; height: 3; radius: 1.5; color: Theme.text }
+                        Rectangle { visible: v === "pills"; x: 10; y: 5; width: 20; height: 2; radius: 1; color: root.line }
+                        Rectangle { visible: v === "cards"; x: 3; y: 3; width: 4; height: 4; radius: 1; color: Theme.text }
+                        Rectangle { visible: v === "cards"; x: 3; y: 12; width: 14; height: 2; radius: 1; color: root.line }
+                    }
+                }
+            }
+        }
+    }
+    Component {
+        id: lookC
+        Item {
+            readonly property string v: parent.v
+            Rectangle {
+                anchors.centerIn: parent; width: parent.width * 0.62; height: parent.height * 0.86; radius: 5; color: root.surf
+                Column {
+                    x: 5; y: 5; width: parent.width - 10; spacing: 3
+                    Rectangle { visible: v !== "icons"; width: v === "compact" ? 16 : 22; height: v === "compact" ? 3 : 5; radius: 1; color: Theme.text }
+                    Rectangle { visible: v === "dashboard"; width: parent.width; height: 14; radius: 3; color: Theme.alpha(Theme.accent, 0.35) }
+                    Grid {
+                        columns: v === "icons" ? 4 : v === "compact" ? 2 : v === "dashboard" ? 3 : 4; spacing: 2
+                        Repeater { model: v === "icons" ? 8 : v === "compact" ? 4 : 6
+                            Rectangle { width: v === "icons" ? 10 : v === "compact" ? 30 : v === "dashboard" ? 20 : 14; height: v === "icons" ? 10 : v === "compact" ? 7 : 10
+                                        radius: v === "icons" || v === "compact" ? height / 2 : 2; color: Theme.alpha(Theme.text, 0.22) } }
+                    }
+                    Rectangle { width: parent.width; height: v === "compact" || v === "icons" ? 2 : 6; radius: 3; color: root.acc }
+                }
             }
         }
     }

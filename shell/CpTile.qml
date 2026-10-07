@@ -1,5 +1,6 @@
-// CpTile.qml — quick toggle / action tile: icon over label (+ small state line).
-// `on` fills it with the accent; actions just flash on press.
+// CpTile.qml — quick toggle / action tile. `on` fills it with the accent; actions just flash on press.
+// look (Config.panel.tileStyle): cards (icon over label + state) · pills (icon beside the label) ·
+// icons (just a round icon button)
 import QtQuick
 
 Rectangle {
@@ -9,10 +10,13 @@ Rectangle {
     property string label: ""
     property string sub: ""
     property bool on: false
+    property string look: Config.panel.tileStyle
     signal clicked()
 
-    implicitHeight: 72
-    radius: Math.max(6, Config.look.radius - 6)
+    readonly property bool pills: look === "pills"
+    readonly property bool icons: look === "icons"
+    implicitHeight: icons ? 58 : pills ? 48 : 72
+    radius: icons || pills ? height / 2 : Math.max(6, Config.look.radius - 6)
     color: on ? Theme.accent : Theme.alpha(Theme.text, area.containsMouse ? 0.085 : 0.045)
     border.width: 1
     border.color: on ? "transparent" : Theme.alpha(Theme.text, 0.06)
@@ -22,15 +26,21 @@ Rectangle {
     Behavior on scale { NumberAnimation { duration: Config.ms(160); easing.type: Easing.OutBack; easing.overshoot: Config.bounce(2.5) } }
 
     CpIcon {
-        x: 12; y: 11
+        x: tile.icons ? (tile.width - width) / 2 : tile.pills ? 16 : 12
+        y: tile.icons || tile.pills ? (tile.height - height) / 2 : 11
         cp: tile.icon
-        font.pixelSize: 19
+        font.pixelSize: tile.icons ? 22 : 19
         color: tile.on ? Theme.bgPanel : Theme.text
         Behavior on color { ColorAnimation { duration: Config.ms(180) } }
     }
 
     Column {
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 12; bottomMargin: 10 }
+        visible: !tile.icons
+        anchors {
+            left: parent.left; right: parent.right
+            leftMargin: tile.pills ? 46 : 12; rightMargin: tile.pills ? 14 : 12
+        }
+        y: tile.pills ? (tile.height - height) / 2 : tile.height - height - 10
         spacing: 1
         CpText {
             width: parent.width

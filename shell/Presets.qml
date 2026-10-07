@@ -107,14 +107,14 @@ Singleton {
             id: "aurora", name: "Aurora", note: "glass islands, gradient clock, Rosé Pine, smooth springs",
             look: { radius: 18, animSpeed: 1.0, bounce: 1.0, backdrop: 0.3, borders: true, borderAccent: false, shadows: true, palette: "rose-pine" },
             barsTemplate: "aurora",
-            panel: { morph: "island" }, osd: { style: "pill", position: "top" }, notifications: { style: "comfortable", position: "top-right" },
+            panel: { morph: "island", tileStyle: "cards", tileColumns: 4, order: ["media", "weather", "tiles", "sliders", "stats"] }, osd: { style: "pill", position: "top" }, notifications: { style: "comfortable", position: "top-right" },
             launcher: { style: "spotlight", layout: "list", iconSize: 32 }
         },
         {
             id: "material", name: "Material You", note: "tonal accent chips, wallpaper colours, bouncy",
             look: { radius: 24, animSpeed: 1.0, bounce: 1.8, backdrop: 0.25, borders: false, borderAccent: false, shadows: true, palette: "wallpaper" },
             barsTemplate: "material",
-            panel: { morph: "drop" }, osd: { style: "pill", position: "bottom" }, notifications: { style: "minimal", position: "top-center" },
+            panel: { morph: "drop", tileStyle: "pills", tileColumns: 2, sliderStyle: "slim", header: "compact", order: ["sliders", "tiles", "media", "stats"] }, osd: { style: "pill", position: "bottom" }, notifications: { style: "minimal", position: "top-center" },
             launcher: { style: "fullscreen", layout: "grid", iconSize: 56 }
         },
         {
@@ -128,7 +128,7 @@ Singleton {
             id: "notch", name: "Notch", note: "a black island at the top, mono, side-sheet panel",
             look: { radius: 18, animSpeed: 1.0, bounce: 0.6, backdrop: 0.3, borders: false, borderAccent: false, shadows: true, palette: "mono" },
             barsTemplate: "notch",
-            panel: { morph: "sheet" }, osd: { style: "box" }, notifications: { style: "minimal", position: "top-center" },
+            panel: { morph: "sheet", tileStyle: "icons", tileColumns: 6, sliderStyle: "slim", header: "hidden", tabs: true, order: ["tiles", "sliders", "media", "weather"] }, osd: { style: "box" }, notifications: { style: "minimal", position: "top-center" },
             launcher: { style: "spotlight", layout: "list", iconSize: 28 }
         },
         {
@@ -142,7 +142,7 @@ Singleton {
             id: "win11", name: "Windows 11", note: "centred taskbar, start-menu launcher, side sheet",
             look: { radius: 8, animSpeed: 0.8, bounce: 0.4, backdrop: 0.2, borders: true, borderAccent: false, shadows: true, palette: "wallpaper" },
             barsTemplate: "win11",
-            panel: { morph: "sheet" }, osd: { style: "pill", position: "bottom" }, notifications: { style: "comfortable", position: "bottom-right" },
+            panel: { morph: "sheet", tileStyle: "pills", tileColumns: 3, sliderStyle: "slim", header: "compact", order: ["tiles", "sliders", "media"] }, osd: { style: "pill", position: "bottom" }, notifications: { style: "comfortable", position: "bottom-right" },
             launcher: { style: "card", layout: "grid", iconSize: 40, position: "center" }
         },
         {
@@ -179,13 +179,14 @@ Singleton {
         look: ["radius", "animSpeed", "bounce", "backdrop", "borders", "borderAccent", "shadows", "palette", "font", "accent"],
         bar: ["style", "position", "height", "layout", "accentLabels", "opacity", "radius", "fontSize", "outline", "clockBold", "hoverGrow", "clock", "modules"],
         workspaces: ["style", "shown", "glow", "activeColor", "icons"],
-        panel: ["morph", "opacity"],
+        panel: ["morph", "opacity", "tileStyle", "tileColumns", "sliderStyle", "header", "tabs", "order"],
         osd: ["style", "position"],
         notifications: ["style", "position"],
         launcher: ["style", "position", "layout", "iconSize"]
     })
     // looks made before these existed: applying one puts these back to their defaults
-    readonly property var styleDefaults: ({ launcher: { style: "card", position: "upper" }, osd: { position: "top" }, notifications: { position: "top-right" } })
+    readonly property var styleDefaults: ({ launcher: { style: "card", position: "upper" }, osd: { position: "top" }, notifications: { position: "top-right" },
+        panel: { tileStyle: "cards", tileColumns: 4, sliderStyle: "thick", header: "big", tabs: true, order: ["tiles", "sliders", "media", "weather", "stats"] } })
 
     // ---- your own ----
     FileView {
