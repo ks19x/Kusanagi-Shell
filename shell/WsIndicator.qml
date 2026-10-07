@@ -23,8 +23,9 @@ Grid {
     property color emptyColor: Theme.alpha(Theme.text, 0.35)
     property color urgentColor: Theme.danger
     property color onActiveColor: Theme.bgPanel     // text / marks drawn on top of the active colour
-    rows: 1000
-    columns: 1000         // one line either way: flow picks the direction
+    // exactly one line: n × 1 or 1 × n (spare rows would still take spacing)
+    rows: root.vertical ? Math.max(1, root.entries.length) : 1
+    columns: root.vertical ? 1 : Math.max(1, root.entries.length)
     flow: vertical ? Grid.TopToBottom : Grid.LeftToRight
     signal activated(var entry)
 

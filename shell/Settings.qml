@@ -60,11 +60,22 @@ FloatingWindow {
                 x: 22; y: 26
                 spacing: 2
                 Row {
-                    spacing: 10
-                    Rectangle { width: 10; height: 10; radius: 5; color: Theme.accent; anchors.verticalCenter: parent.verticalCenter }
-                    CpText { text: "KUSANAGI"; font.pixelSize: 16; font.bold: true; font.letterSpacing: 4 }
+                    spacing: 12
+                    Image {
+                        width: 38; height: 38
+                        anchors.verticalCenter: parent.verticalCenter
+                        source: Qt.resolvedUrl("logo.svg")
+                        sourceSize: Qt.size(76, 76)
+                        smooth: true
+                        mipmap: true
+                    }
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 1
+                        CpText { text: "KUSANAGI"; font.pixelSize: 15; font.bold: true; font.letterSpacing: 4 }
+                        CpText { text: "settings"; font.pixelSize: 10; color: Theme.textDim; font.letterSpacing: 1 }
+                    }
                 }
-                CpText { text: "shell settings"; font.pixelSize: 11; color: Theme.textDim; leftPadding: 20 }
             }
 
             CpField {

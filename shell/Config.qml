@@ -23,6 +23,7 @@ Singleton {
     readonly property alias gamemode: adapter.gamemode
     readonly property alias screenshot: adapter.screenshot
     readonly property alias weather: adapter.weather
+    readonly property alias dock: adapter.dock
     // the bar layout engine (BarSpec.qml, docs/bar.md): [] = the classic bar from the options above
     property alias bars: adapter.bars
 
@@ -70,7 +71,8 @@ Singleton {
         windows: { override: false, gapsIn: 8, gapsOut: 8, border: 2 },
         gamemode: { auto: true, effects: true, feral: true, quiet: true, dnd: true, grace: 800, announce: "manual" },
         screenshot: { position: "bottom-right", timeout: 6000, editor: "swappy -f" },
-        weather: { location: "", units: "metric" }
+        weather: { location: "", units: "metric" },
+        dock: { pinned: [], indicator: "dot", magnify: 1.35, grouped: true }
     })
 
     FileView {
@@ -236,6 +238,13 @@ Singleton {
                 property int gapsIn: 8                // px between windows
                 property int gapsOut: 8               // px from the screen edges
                 property int border: 2                // window border width
+            }
+
+            property JsonObject dock: JsonObject {
+                property var pinned: []               // desktop entry ids, in order (the taskbar / dock module)
+                property string indicator: "dot"      // running apps: dot | line | none
+                property real magnify: 1.35           // icon scale on hover (1 = off)
+                property bool grouped: true           // one icon per app (dock) instead of one per window
             }
 
             property JsonObject weather: JsonObject {

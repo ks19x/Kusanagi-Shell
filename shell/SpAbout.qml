@@ -65,7 +65,7 @@ Column {
             id: logo
             x: 22; anchors.verticalCenter: parent.verticalCenter
             width: 104; height: 104
-            source: Qt.resolvedUrl("../assets/logo.svg")
+            source: Qt.resolvedUrl("logo.svg")
             sourceSize: Qt.size(208, 208)
             smooth: true
         }

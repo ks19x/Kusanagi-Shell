@@ -144,7 +144,7 @@ Singleton {
                   end: [{ type: "tray" }, { type: "network" }, { type: "volume", format: "{icon}  {volume}%" }, { type: "power" }] },
                 { position: "bottom", size: 56, length: "auto", margin: [8, 0, 0], bg: "bg/0.6", radius: 18, border: "text/0.1", borderWidth: 1,
                   padding: 8, exclusive: false, layer: "top",
-                  center: [{ type: "launcher", fontSize: "+12", fg: "accent", padding: [10, 10] },
+                  center: [{ type: "launcher", logo: true, fontSize: "+14", padding: [10, 10] },
                            { type: "sep", fontSize: "+12" },
                            { type: "taskbar", iconSize: 34, spacing: 6, padding: [4, 4] }] }
             ]

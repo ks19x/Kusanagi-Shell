@@ -21,11 +21,13 @@ Item {
 
     Grid {
         id: grid
-        rows: 1000
-        columns: 1000         // one line either way: flow picks the direction
+        // exactly one line: n × 1 or 1 × n (spare rows would still take spacing)
+        rows: p.vertical ? Math.max(1, trayRep.count) : 1
+        columns: p.vertical ? 1 : Math.max(1, trayRep.count)
         flow: p.vertical ? Grid.TopToBottom : Grid.LeftToRight
         spacing: p.m && p.m.eff.spacing !== undefined ? p.m.eff.spacing : 8
         Repeater {
+            id: trayRep
             model: SystemTray.items
             Item {
                 id: trayItem

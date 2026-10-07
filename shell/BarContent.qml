@@ -33,8 +33,9 @@ Item {
         Grid {
             id: sec
             required property string modelData
-            rows: 1000
-            columns: 1000         // one line either way: flow picks the direction
+            // exactly one line: n × 1 or 1 × n (spare rows would still take spacing)
+            rows: content.win.vertical ? Math.max(1, content.win.spec[sec.modelData].length) : 1
+            columns: content.win.vertical ? 1 : Math.max(1, content.win.spec[sec.modelData].length)
             flow: content.win.vertical ? Grid.TopToBottom : Grid.LeftToRight
             spacing: content.win.spec.spacing
             readonly property real room: content.win.vertical ? content.height : content.width
