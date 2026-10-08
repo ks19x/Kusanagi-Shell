@@ -1,0 +1,271 @@
+#!/bin/sh
+# kusanagi record <replay|save|record|stream|stop|status> — screen recording (the CLI and the shell use it)
+#   replay · record · stream   toggles: start if off, stop if that's what's on (another mode is stopped first)
+#   save                       save the last KR_REPLAY seconds of the running replay
+#   stop                       stop whatever is running
+#   status                     one line of JSON: {"mode","backend","since","pid","available"}
+# Backends, best first: gsr-ui (if it's running: its hotkeys/settings win, we just ask it) ·
+#   gpu-screen-recorder (or its Flatpak) run by us · wf-recorder (record only).
+# Settings (env, all optional): KR_FOLDER (~/Videos; replays go in <folder>/Replays) KR_FPS (60)
+#   KR_QUALITY (very_high) KR_REPLAY (30 s) KR_AUDIO (desktop|mic|both|none) KR_CAPTURE (screen|portal|<monitor>)
+#   KR_CODEC (auto|h264|hevc|av1|…) KR_STREAM_URL (rtmp://… or srt://…, needed for stream)
+# State: $XDG_RUNTIME_DIR/kusanagi/record.{pid,mode,json,log} — record.json is rewritten after every action.
+set -u
+
+RUN=${XDG_RUNTIME_DIR:-/tmp}/kusanagi
+PIDF=$RUN/record.pid; MODEF=$RUN/record.mode; JSONF=$RUN/record.json; LOGF=$RUN/record.log
+FOLDER=${KR_FOLDER:-$HOME/Videos}
+FPS=${KR_FPS:-60}; QUALITY=${KR_QUALITY:-very_high}; REPLAY=${KR_REPLAY:-30}
+AUDIO=${KR_AUDIO:-desktop}; CAPTURE=${KR_CAPTURE:-screen}; CODEC=${KR_CODEC:-auto}; STREAM_URL=${KR_STREAM_URL:-}
+FLATPAK_ID=com.dec05eba.gpu_screen_recorder
+mkdir -p "$RUN"
+
+have() { command -v "$1" >/dev/null 2>&1; }
+err() { echo "record: $*" >&2; }
+notify() { have notify-send && notify-send -a Recorder "$@" >/dev/null 2>&1; return 0; }
+alive() { [ -n "$1" ] && [ "$1" != 0 ] && kill -0 "$1" 2>/dev/null; }
+
+# ---------------------------------------------------------------- what's there
+gsrui_running() { pgrep -x gsr-ui >/dev/null 2>&1 && have gsr-ui-cli; }
+GSR=""
+if have gpu-screen-recorder; then GSR=gpu-screen-recorder
+elif have flatpak && flatpak info "$FLATPAK_ID" >/dev/null 2>&1; then GSR="flatpak run --command=gpu-screen-recorder $FLATPAK_ID"; fi
+default_backend() {
+    if gsrui_running; then echo gsr-ui; elif [ -n "$GSR" ]; then echo gsr; elif have wf-recorder; then echo wf-recorder; else echo none; fi
+}
+available() {
+    case "$1" in gsr-ui|gsr) echo '"replay","record","stream"' ;; wf-recorder) echo '"record"' ;; *) echo "" ;; esac
+}
+
+# the args of a process, one per line, without an interpreter in front (scripts) — empty if it's gone
+args_of() {
+    [ -r "/proc/$1/cmdline" ] || return 1
+    tr '\0' '\n' <"/proc/$1/cmdline" | awk 'NR == 1 && $0 ~ /(^|\/)(sh|dash|bash|ash|busybox)$/ { next } { print }'
+}
+is_prog() {   # is_prog <pid> <gpu-screen-recorder|wf-recorder>
+    a0=$(args_of "$1" | head -n 1); [ "${a0##*/}" = "$2" ]
+}
+recorder_pids() {   # pids of real gpu-screen-recorder / wf-recorder processes: "<pid> <prog>"
+    for p in $(pgrep -x gpu-screen-reco 2>/dev/null); do is_prog "$p" gpu-screen-recorder && echo "$p gpu-screen-recorder"; done
+    for p in $(pgrep -x wf-recorder 2>/dev/null); do is_prog "$p" wf-recorder && echo "$p wf-recorder"; done
+}
+arg_after() {   # arg_after <pid> <flag> -> the value after it
+    args_of "$1" | awk -v f="$2" 'take { print; exit } $0 == f { take = 1 }'
+}
+mode_of() {   # mode_of <pid> <prog>
+    if [ "$2" = wf-recorder ]; then
+        o=$(args_of "$1" | awk '/^--file=/ { sub(/^--file=/, ""); print; exit } take { print; exit } $0 == "-f" || $0 == "--file" { take = 1 }')
+    else
+        args_of "$1" | grep -qx -- '-r' && { echo replay; return; }
+        o=$(arg_after "$1" -o)
+    fi
+    case "$o" in rtmp://*|rtmps://*|srt://*|rtsp://*|udp://*) echo stream ;; *) echo record ;; esac
+}
+since_of() {
+    et=$(ps -o etimes= -p "$1" 2>/dev/null | tr -d ' ')
+    case "$et" in ''|*[!0-9]*)
+        st=$(sed 's/^.*) //' "/proc/$1/stat" 2>/dev/null | awk '{ print $20 }')
+        bt=$(awk '$1 == "btime" { print $2 }' /proc/stat 2>/dev/null)
+        hz=$(getconf CLK_TCK 2>/dev/null || echo 100)
+        [ -n "$st" ] && [ -n "$bt" ] && echo $((bt + st / hz)) || echo 0 ;;
+    *) echo $(($(date +%s) - et)) ;;
+    esac
+}
+
+# -> MODE BACKEND PID SINCE PROG OURS
+state() {
+    MODE=off; BACKEND=$(default_backend); PID=0; SINCE=0; PROG=""; OURS=0
+    p=$(cat "$PIDF" 2>/dev/null)
+    if alive "$p" && { is_prog "$p" gpu-screen-recorder || is_prog "$p" wf-recorder; }; then
+        read -r MODE BACKEND 2>/dev/null <"$MODEF" || { MODE=record; BACKEND=gsr; }
+        PID=$p; OURS=1; is_prog "$p" wf-recorder && PROG=wf-recorder || PROG=gpu-screen-recorder
+    else
+        rm -f "$PIDF" "$MODEF"
+        # started by something else (gsr-ui, a hotkey, a terminal): a recording beats a replay buffer
+        best=""; bestm=""
+        for line in $(recorder_pids | tr ' ' ':'); do
+            pp=${line%%:*}; pr=${line#*:}; m=$(mode_of "$pp" "$pr")
+            if [ -z "$best" ] || [ "$bestm" = replay ]; then best=$line; bestm=$m; fi
+        done
+        if [ -n "$best" ]; then
+            PID=${best%%:*}; PROG=${best#*:}; MODE=$bestm
+            if [ "$PROG" = wf-recorder ]; then BACKEND=wf-recorder; elif gsrui_running; then BACKEND=gsr-ui; else BACKEND=gsr; fi
+        fi
+    fi
+    [ "$PID" != 0 ] && SINCE=$(since_of "$PID")
+    return 0
+}
+json() {
+    state
+    printf '{"mode":"%s","backend":"%s","since":%s,"pid":%s,"available":[%s]}\n' "$MODE" "$BACKEND" "${SINCE:-0}" "$PID" "$(available "$BACKEND")"
+}
+publish() { json >"$JSONF.tmp" && mv -f "$JSONF.tmp" "$JSONF"; }
+
+newest() {   # newest file in a folder
+    [ -d "$1" ] || return 0
+    ls -t "$1" 2>/dev/null | while IFS= read -r f; do [ -f "$1/$f" ] && { printf '%s/%s\n' "$1" "$f"; break; }; done
+}
+
+# ---------------------------------------------------------------- doing it ourselves
+# detached, in its own session. Not with `&`: sh starts background jobs with SIGINT ignored, and the
+# recorder must get our INT to finish its file (setsid -f forks by itself, so it keeps INT)
+launch() {
+    if setsid -f true >/dev/null 2>&1; then setsid -f "$@" >"$LOGF" 2>&1 </dev/null
+    else setsid "$@" >"$LOGF" 2>&1 </dev/null & fi
+}
+gsr_args() {   # the capture / quality / audio / codec args, one per line
+    case "$CAPTURE" in
+        screen|"") set -- -w screen ;;
+        portal)    set -- -w portal -restore-portal-session yes ;;
+        *)         set -- -w "$CAPTURE" ;;
+    esac
+    set -- "$@" -f "$FPS" -q "$QUALITY"
+    case "$AUDIO" in
+        desktop) set -- "$@" -a default_output ;;
+        mic)     set -- "$@" -a default_input ;;
+        both)    set -- "$@" -a "default_output|default_input" ;;
+    esac
+    [ "$CODEC" != auto ] && [ -n "$CODEC" ] && set -- "$@" -k "$CODEC"
+    printf '%s\n' "$@"
+}
+
+start() {   # start <replay|record|stream>
+    mode=$1
+    if [ -n "$GSR" ]; then
+        backend=gsr
+        case "$mode" in
+            replay) OUT="$FOLDER/Replays"; mkdir -p "$OUT" || { err "can't create $OUT"; exit 1; }
+                    extra="-r
+$REPLAY
+-c
+mp4
+-o
+$OUT" ;;
+            record) mkdir -p "$FOLDER" || { err "can't create $FOLDER"; exit 1; }
+                    OUT="$FOLDER/Recording_$(date +%Y-%m-%d_%H-%M-%S).mp4"
+                    extra="-o
+$OUT" ;;
+            stream) [ -n "$STREAM_URL" ] || { err "streaming needs KR_STREAM_URL (rtmp://… or srt://…)"; notify "Can't stream" "No stream URL set"; exit 1; }
+                    OUT=$STREAM_URL
+                    case "$STREAM_URL" in srt://*|udp://*) c=mpegts ;; *) c=flv ;; esac
+                    extra="-c
+$c
+-o
+$OUT" ;;
+        esac
+        before=$(recorder_pids | cut -d' ' -f1 | tr '\n' ' ')
+        # newline-separated args -> positional parameters (values may contain spaces / |)
+        old_ifs=$IFS; IFS='
+'; set -f
+        set -- $(gsr_args) $extra
+        IFS=$old_ifs; set +f
+        # shellcheck disable=SC2086
+        launch $GSR "$@"
+    else
+        have wf-recorder || { err "no recorder installed (gpu-screen-recorder, or wf-recorder for plain recording)"; exit 1; }
+        [ "$mode" = record ] || { err "$mode needs gpu-screen-recorder (wf-recorder can only record)"; notify "Can't $mode" "That needs gpu-screen-recorder"; exit 1; }
+        backend=wf-recorder
+        mkdir -p "$FOLDER" || { err "can't create $FOLDER"; exit 1; }
+        OUT="$FOLDER/Recording_$(date +%Y-%m-%d_%H-%M-%S).mp4"
+        set -- -f "$OUT" -r "$FPS"
+        case "$CAPTURE" in screen|portal|"") ;; *) set -- "$@" -o "$CAPTURE" ;; esac
+        mon=""; have pactl && mon="$(pactl get-default-sink 2>/dev/null).monitor"
+        case "$AUDIO" in
+            desktop|both) if [ "$mon" != .monitor ] && [ -n "$mon" ]; then set -- "$@" "--audio=$mon"; else set -- "$@" -a; fi ;;
+            mic)          set -- "$@" -a ;;
+        esac
+        before=$(recorder_pids | cut -d' ' -f1 | tr '\n' ' ')
+        launch wf-recorder "$@"
+    fi
+    # the recorder's pid (for the Flatpak, the real one inside `flatpak run`): the new one that shows up
+    pid=""; i=0
+    while [ $i -lt 20 ]; do
+        for line in $(recorder_pids | tr ' ' ':'); do
+            pp=${line%%:*}; case " $before " in *" $pp "*) ;; *) pid=$pp ;; esac
+        done
+        [ -n "$pid" ] && break
+        sleep 0.1; i=$((i + 1))
+    done
+    [ -n "$pid" ] && sleep 0.5
+    if ! alive "$pid"; then
+        rm -f "$PIDF" "$MODEF"; publish
+        err "the recorder quit at once:"; tail -n 5 "$LOGF" >&2
+        notify "Recording failed" "$(tail -n 2 "$LOGF" 2>/dev/null)"
+        exit 1
+    fi
+    echo "$pid" >"$PIDF"; echo "$mode $backend" >"$MODEF"
+    publish
+    case "$mode" in
+        replay) echo "replay buffer on ($REPLAY s) → $OUT" ;;
+        record) echo "recording → $OUT" ;;
+        stream) echo "streaming → $OUT" ;;
+    esac
+}
+
+stop_pid() {   # stop_pid <pid> <mode>: INT, give it 5 s to finish writing the file
+    p=$1; m=$2
+    out=""; [ "$m" = record ] && { out=$(arg_after "$p" -o); [ -z "$out" ] && out=$(arg_after "$p" -f); }
+    kill -INT "$p" 2>/dev/null
+    i=0; while [ $i -lt 50 ] && alive "$p"; do sleep 0.1; i=$((i + 1)); done
+    alive "$p" && err "pid $p is still finishing after 5 s — left it to write its file"
+    [ "$p" = "$(cat "$PIDF" 2>/dev/null)" ] && rm -f "$PIDF" "$MODEF"
+    case "$m" in
+        record) [ -n "$out" ] && [ -f "$out" ] || out=$(newest "$FOLDER")
+                echo "saved: $out"; notify "Recording saved" "$out" ;;
+        replay) echo "replay buffer off"; notify "Replay off" "The replay buffer is stopped" ;;
+        stream) echo "stream ended"; notify "Stream ended" "" ;;
+    esac
+}
+
+gsrui_toggle() {   # gsrui_toggle <mode>
+    case "$1" in replay) c=toggle-replay ;; record) c=toggle-record ;; stream) c=toggle-stream ;; esac
+    gsr-ui-cli "$c" || { err "gsr-ui-cli $c failed"; exit 1; }
+    sleep 0.7; publish
+}
+
+toggle() {   # toggle <replay|record|stream>
+    want=$1; state
+    if [ $OURS = 0 ] && gsrui_running; then gsrui_toggle "$want"; return; fi
+    if [ "$MODE" != off ]; then
+        stop_pid "$PID" "$MODE"
+        [ "$MODE" = "$want" ] && { publish; return 0; }
+    fi
+    start "$want"
+}
+
+save() {
+    state
+    if [ $OURS = 0 ] && gsrui_running; then
+        gsr-ui-cli replay-save || { err "gsr-ui-cli replay-save failed"; exit 1; }
+        publish; return 0
+    fi
+    [ "$MODE" = replay ] || { err "no replay buffer running (start one: kusanagi record replay)"; notify "Nothing to save" "The replay buffer isn't on"; exit 1; }
+    dir=$(arg_after "$PID" -o); [ -n "$dir" ] || dir="$FOLDER/Replays"
+    old=$(newest "$dir")
+    kill -USR1 "$PID" || { err "couldn't signal pid $PID"; exit 1; }
+    # gsr writes the clip into the folder: wait for it to show up (up to 10 s)
+    new=""; i=0
+    while [ $i -lt 100 ]; do
+        new=$(newest "$dir"); [ -n "$new" ] && [ "$new" != "$old" ] && break
+        new=""; sleep 0.1; i=$((i + 1))
+    done
+    publish
+    if [ -n "$new" ]; then echo "saved: $new"; notify "Replay saved" "$new"
+    else echo "save requested — the clip goes to $dir"; notify "Replay saved" "$dir"; fi
+}
+
+stop() {
+    state
+    [ "$MODE" = off ] && { echo "nothing is recording"; publish; return 0; }
+    if [ $OURS = 0 ] && [ "$BACKEND" = gsr-ui ]; then gsrui_toggle "$MODE"; return; fi
+    stop_pid "$PID" "$MODE"
+    publish
+}
+
+case "${1:-}" in
+    replay|record|stream) toggle "$1" ;;
+    save)   save ;;
+    stop)   stop ;;
+    status) json ;;
+    *)      sed -n '2,/^set -u$/{/^#/s/^# \{0,1\}//p}' "$0" >&2; exit 1 ;;
+esac

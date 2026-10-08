@@ -191,6 +191,14 @@ Singleton {
     }
 
     // ---------------- session ----------------
+    // screens off / on (idle). Wakes by itself on niri; elsewhere Idle.qml calls screens(true) on input.
+    function screens(on) {
+        if (kind === "mango") for (const s of Quickshell.screens) run(["mmsg", "dispatch", (on ? "wakeup_monitor," : "sleep_monitor,") + s.name])
+        else if (kind === "hyprland") hypr(on ? "hl.dsp.dpms({ action = \"on\" })" : "hl.dsp.dpms({ action = \"off\" })", on ? "dpms on" : "dpms off")
+        else if (kind === "niri") { if (!on) run(["niri", "msg", "action", "power-off-monitors"]) }
+        else run(["sh", "-c", "command -v wlopm >/dev/null && wlopm " + (on ? "--on" : "--off") + " '*'"])
+    }
+
     function quit() {
         if (kind === "mango") run(["mmsg", "dispatch", "quit"])
         else if (kind === "hyprland") hypr("hl.dsp.exit()", "exit")

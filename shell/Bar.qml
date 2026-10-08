@@ -94,6 +94,12 @@ Scope {
         case "dnd": Notifs.dnd = !Notifs.dnd; return
         case "caffeine": Caffeine.active = !Caffeine.active; return
         case "gamemode": run(["kusanagi", "msg", "gamemode", "toggle"]); return
+        case "record":
+            if (arg === "save") Recorder.save(); else if (arg === "stop") Recorder.stop(); else if (arg === "replay") Recorder.replay()
+            else if (arg === "stream") Recorder.stream(); else if (arg === "record") Recorder.record(); else Recorder.smart()
+            return
+        case "updates": if (arg === "check") Updates.check(); else Updates.upgrade(); return
+        case "setup": shell.openSetup(); return
         case "preset": if (arg === "next") Presets.next(); else Presets.applyNamed(arg); return
         case "alt": if (mod) mod.altOn = !mod.altOn; return
         case "media":

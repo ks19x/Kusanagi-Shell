@@ -1,6 +1,30 @@
 # Changelog
 
 ## Unreleased
+- **Setup wizard**: opens by itself the first time Kusanagi starts (no settings.json yet) — look, wallpaper,
+  bar, lock & idle, extras, login screen, the keys to remember. Any time: `kusanagi setup`, the launcher
+  ("setup"), Settings → About
+- **Launcher**: `:` emoji & symbols (bundled list, works offline on any distro — Enter copies, Shift+Enter
+  types it with wtype), `/` files in your home (fd / fdfind / find), `?` web search (pick the engine in
+  Settings → Launcher), and Kusanagi's own commands in every search ("lock", "replay", "settings bar",
+  "preset zen", "doctor"…), with web search as the last result
+- **Idle**: lock, screens off and suspend after N minutes (Settings → Lock & power → When you're away) —
+  replaces hypridle / swayidle on mango, Hyprland, niri and any wlroots compositor (wlopm). Apps that
+  inhibit idle, Caffeine, game mode and playing media keep it awake; a heads-up pill 10 s before locking
+- **Recording**: record, replay buffer (save the last N seconds) and streaming via `kusanagi record` —
+  gsr-ui when it runs, gpu-screen-recorder (also its Flatpak) otherwise, wf-recorder as a fallback.
+  Bar module `recorder`, control panel tiles Record / Replay buffer / Save clip, Settings → Recording
+- **Password prompts**: a built-in polkit agent in Kusanagi's style (GParted, mounting disks, pkexec…);
+  steps aside when another agent runs. Settings → Lock & power
+- **`kusanagi doctor`** rewritten: required / recommended / optional with what each enables, session checks
+  (D-Bus, PipeWire, polkit, a second polkit agent / idle daemon / notification daemon, portal, login
+  screen, last session log) and the exact install command for your distro
+- **Updates**: `kusanagi updates [count|list|upgrade]` — xbps, pacman (+ AUR via paru/yay), apt, dnf,
+  zypper, apk, eix, plus Flatpak; no root. Bar module `updates`, control panel tile, Settings → Updates
+- `lib/distro.sh` (`kusanagi distro …`): one package table for the installer, doctor and Settings;
+  Settings → Storage cleans the package cache / unneeded packages / old kernels on every distro, not just Void
+- Installer: adds an emoji font and polkit (+ enables polkitd where the init needs it); the banner showed
+  the distro's VERSION instead of Kusanagi's on Ubuntu / Fedora — fixed
 - **Login screen** (greetd greeter): your lock screen design — or its own — with a user and session
   picker (Hyprland / MangoWM / niri …), reboot and power off. `kusanagi greeter install` (sudo once:
   cage, /var/lib/kusanagi-greeter, /usr/local/bin/kusanagi-greeter, greetd's config with the old one

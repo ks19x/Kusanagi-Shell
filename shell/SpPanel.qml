@@ -8,7 +8,8 @@ Column {
     readonly property var tileNames: ({
         nightlight: "Night light", dnd: "Do not disturb", mic: "Microphone", gamemode: "Game mode",
         screenshot: "Screenshot", record: "Record", colorpicker: "Colour picker", wallpaper: "Wallpaper",
-        clipboard: "Clipboard", lock: "Lock", settings: "Settings", launcher: "Apps", caffeine: "Caffeine"
+        clipboard: "Clipboard", lock: "Lock", settings: "Settings", launcher: "Apps", caffeine: "Caffeine",
+        replay: "Replay buffer", clip: "Save clip", updates: "Updates"
     })
 
     // whole looks for the panel in one click (Home tab only; the other tabs keep their layout)

@@ -23,7 +23,14 @@ Column {
     // ---- night light (gammastep) ----
     property bool nightlight: false
     // re-checked every time the panel opens (it stays loaded in between)
-    Connections { target: root.panel; function onShowingChanged() { if (root.panel.showing) nightCheck.running = true } }
+    Connections {
+        target: root.panel
+        function onShowingChanged() {
+            if (!root.panel.showing) return
+            nightCheck.running = true
+            if (Config.panel.tiles.some(t => t === "record" || t === "replay" || t === "clip")) Recorder.refresh()
+        }
+    }
     Process {
         id: nightCheck
         running: true
@@ -44,7 +51,12 @@ Column {
         case "gamemode": return { icon: 0xf0297, label: "Game mode", on: GameMode.active,
                                   sub: GameMode.active ? (GameMode.manual ? "On" : "On · auto") : (GameMode.auto ? "Auto" : "Off") }
         case "screenshot": return { icon: 0xf0e51, label: "Screenshot", sub: "Region" }
-        case "record": return { icon: 0xf044a, label: "Record", sub: "Start / stop" }
+        case "record": return { icon: 0xf044a, label: "Record", on: Recorder.mode === "record" || Recorder.mode === "stream",
+                                sub: Recorder.mode === "record" ? "Recording " + Recorder.elapsed : Recorder.mode === "stream" ? "Streaming" : "Start" }
+        case "replay": return { icon: 0xf0450, label: "Replay", on: Recorder.mode === "replay", sub: Recorder.mode === "replay" ? "Last " + Config.recorder.replay + " s" : "Off" }
+        case "clip": return { icon: 0xf0fd8, label: "Save clip", on: false, sub: Recorder.mode === "replay" ? "Last " + Config.recorder.replay + " s" : "Replay is off" }
+        case "updates": return { icon: 0xf06b0, label: "Updates", on: Updates.count > 0,
+                                 sub: Updates.checking ? "Checking…" : !Updates.known ? "Check" : Updates.count ? Updates.count + " waiting" : "Up to date" }
         case "colorpicker": return { icon: 0xf020a, label: "Colour picker", sub: "Copy hex" }
         case "wallpaper": return { icon: 0xf0e09, label: "Wallpaper", sub: "Pick & theme" }
         case "clipboard": return { icon: 0xf0147, label: "Clipboard", sub: "History" }
@@ -68,7 +80,10 @@ Column {
         case "mic": if (sourceReady) source.audio.muted = !source.audio.muted; break
         case "gamemode": GameMode.toggle(); break
         case "screenshot": panel.runClosed(["kusanagi", "screenshot", "region"]); break
-        case "record": panel.runClosed(["gsr-ui-cli", "toggle-record"]); break
+        case "record": Recorder.record(); break
+        case "replay": Recorder.replay(); break
+        case "clip": if (Recorder.mode === "replay") Recorder.save(); else Recorder.replay(); break
+        case "updates": if (Updates.known && Updates.count) { panel.close(); Updates.upgrade() } else Updates.check(); break
         case "colorpicker": panel.runClosed(["kusanagi", "colorpick"]); break
         case "wallpaper": panel.runClosed(ipc(["wallpaper", "toggle"])); break
         case "clipboard": panel.runClosed(ipc(["clipboard", "toggle"])); break

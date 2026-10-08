@@ -26,6 +26,12 @@ Singleton {
     readonly property alias dock: adapter.dock
     readonly property alias power: adapter.power
     readonly property alias greeter: adapter.greeter
+    readonly property alias idle: adapter.idle
+    readonly property alias polkit: adapter.polkit
+    readonly property alias recorder: adapter.recorder
+    readonly property alias updates: adapter.updates
+    // true when this start found no settings.json: the setup wizard (Setup.qml) greets you
+    property bool firstRun: false
     // the bar layout engine (BarSpec.qml, docs/bar.md): [] = the classic bar from the options above
     property alias bars: adapter.bars
 
@@ -36,7 +42,8 @@ Singleton {
 
     // every tile the control panel knows; panel.tiles picks which show and in what order
     readonly property var allTiles: ["nightlight", "dnd", "mic", "gamemode", "screenshot", "record", "colorpicker",
-                                     "wallpaper", "clipboard", "lock", "settings", "launcher", "caffeine"]
+                                     "wallpaper", "clipboard", "lock", "settings", "launcher", "caffeine",
+                                     "replay", "clip", "updates"]
 
     // restore one section (or everything) to the defaults
     function reset(section) {
@@ -66,7 +73,8 @@ Singleton {
                  tiles: ["nightlight", "dnd", "mic", "gamemode", "screenshot", "record", "colorpicker", "wallpaper"] },
         osd: { position: "top", timeout: 1400, volume: true, mic: true, gamemode: true, style: "pill", showValue: true },
         notifications: { position: "top-right", timeout: 5000, max: 5, style: "comfortable", progress: true, images: true },
-        launcher: { style: "card", position: "upper", width: 640, rows: 7, descriptions: true, sortByUsage: true, terminal: "foot", layout: "list", iconSize: 32 },
+        launcher: { style: "card", position: "upper", width: 640, rows: 7, descriptions: true, sortByUsage: true, terminal: "foot", layout: "list", iconSize: 32,
+                    commands: true, webSearch: true, searchEngine: "https://duckduckgo.com/?q=%s" },
         wallpaper: { folder: "~/Pictures/Wallpapers", columns: 4, renderer: "kusanagi", transition: "random", duration: 1100,
                      fill: "fill", parallax: 0.04, dim: 0, slideshow: 0 },
         lock: { engine: "hyprlock", style: "center", blur: 0.8, dim: 0.35, clock: "HH:mm", avatar: true, media: true, greeting: "" },
@@ -77,7 +85,11 @@ Singleton {
         gamemode: { auto: true, effects: true, feral: true, quiet: true, dnd: true, grace: 800, announce: "manual" },
         screenshot: { position: "bottom-right", timeout: 6000, editor: "swappy -f" },
         weather: { location: "", units: "metric" },
-        dock: { pinned: [], indicator: "dot", magnify: 1.35, grouped: true }
+        dock: { pinned: [], indicator: "dot", magnify: 1.35, grouped: true },
+        idle: { enabled: false, lock: 10, screenOff: 15, suspend: 0, media: true, notify: true },
+        polkit: { enabled: true },
+        recorder: { folder: "~/Videos", fps: 60, quality: "very_high", replay: 30, audio: "desktop", capture: "screen", codec: "auto", streamUrl: "" },
+        updates: { interval: 3, notify: false }
     })
 
     FileView {
@@ -90,7 +102,7 @@ Singleton {
         property bool selfWrite: false
         onFileChanged: { if (selfWrite) selfWrite = false; else reload() }
         // first run: write the defaults out so the file exists to hand-edit
-        onLoadFailed: err => { if (err === FileViewError.FileNotFound) save.restart() }
+        onLoadFailed: err => { if (err === FileViewError.FileNotFound) { root.firstRun = true; save.restart() } }
         onAdapterUpdated: save.restart()
 
         JsonAdapter {
@@ -201,6 +213,9 @@ Singleton {
                 property string terminal: "foot"
                 property string layout: "list"        // list | grid
                 property int iconSize: 32
+                property bool commands: true          // Kusanagi's own actions (lock, settings pages, presets…) in the results
+                property bool webSearch: true         // "Search the web" as the last result, and ? query
+                property string searchEngine: "https://duckduckgo.com/?q=%s"
             }
 
             property JsonObject wallpaper: JsonObject {
@@ -268,6 +283,35 @@ Singleton {
                 property string indicator: "dot"      // running apps: dot | line | none
                 property real magnify: 1.35           // icon scale on hover (1 = off)
                 property bool grouped: true           // one icon per app (dock) instead of one per window
+            }
+
+            property JsonObject idle: JsonObject {
+                property bool enabled: false          // Kusanagi handles idle (no hypridle / swayidle needed)
+                property int lock: 10                 // minutes idle → lock (0 = never)
+                property int screenOff: 15            // minutes idle → screens off (0 = never)
+                property int suspend: 0               // minutes idle → suspend (0 = never)
+                property bool media: true             // stay awake while something plays
+                property bool notify: true            // a heads-up popup a little before it locks
+            }
+
+            property JsonObject polkit: JsonObject {
+                property bool enabled: true           // Kusanagi asks for passwords (apps that need admin rights)
+            }
+
+            property JsonObject recorder: JsonObject {
+                property string folder: "~/Videos"    // recordings; replays go in <folder>/Replays
+                property int fps: 60
+                property string quality: "very_high"  // medium | high | very_high | ultra
+                property int replay: 30               // seconds kept by the replay buffer
+                property string audio: "desktop"      // desktop | mic | both | none
+                property string capture: "screen"     // screen | portal | a monitor name (DP-1)
+                property string codec: "auto"         // auto | h264 | hevc | av1 (older AMD cards: hevc)
+                property string streamUrl: ""         // rtmp://… for streaming
+            }
+
+            property JsonObject updates: JsonObject {
+                property int interval: 3              // hours between update checks (0 = never)
+                property bool notify: false           // a notification when updates are waiting
             }
 
             property JsonObject weather: JsonObject {

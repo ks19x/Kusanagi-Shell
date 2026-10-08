@@ -149,6 +149,7 @@ Column {
         { t: "tray", label: "Tray", icon: 0xf003b }, { t: "notifications", label: "Notifications", icon: 0xf009a },
         { t: "weather", label: "Weather", icon: 0xf0590 }, { t: "uptime", label: "Uptime", icon: 0xf0954 },
         { t: "caffeine", label: "Caffeine", icon: 0xf0176 }, { t: "gamemode", label: "Game mode", icon: 0xf0297 },
+        { t: "recorder", label: "Recorder", icon: 0xf044a }, { t: "updates", label: "Updates", icon: 0xf06b0 },
         { t: "launcher", label: "Launcher", icon: 0xf003b }, { t: "power", label: "Power", icon: 0xf0425 },
         { t: "text", label: "Text", icon: 0xf0284 }, { t: "sep", label: "Separator", icon: 0xf01d8 },
         { t: "spacer", label: "Spacer", icon: 0xf0c0b }, { t: "custom", label: "Command", icon: 0xf018d },
@@ -169,6 +170,8 @@ Column {
         tray: "options: iconSize, spacing", notifications: "{icon} {count} · states dnd unread none",
         weather: "{icon} {temp}{unit} {feels} {desc} {place}", uptime: "{uptime} {load}",
         caffeine: "always: true shows it while off too · states on off", gamemode: "always: true · states on off",
+        recorder: "{icon} {time} {mode} {backend} · always: true · states off replay record stream · click: replay → save, else stop/start",
+        updates: "{count} · always: true · states none some many unknown · click upgrade, right click check",
         launcher: "a button (click = launcher)", power: "a button (click = power menu)",
         text: "text: shown as is (markup ok)", sep: "format: the glyph", spacer: "size: px",
         custom: "exec (sh -c), interval s, stream true, refresh true, game true · prints text or JSON {text tooltip class percentage}"

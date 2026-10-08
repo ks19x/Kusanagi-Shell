@@ -105,8 +105,10 @@ Column {
         Flow {
             width: parent.width
             spacing: 8
-            CpChip { label: "Open config folder"; icon: 0xf024b; onClicked: Quickshell.execDetached(["thunar", Quickshell.shellDir]) }
-            CpChip { label: "Edit settings.json"; icon: 0xf107b; onClicked: Quickshell.execDetached(["mousepad", Quickshell.env("HOME") + "/.config/kusanagi/settings.json"]) }
+            CpChip { label: "Run setup again"; icon: 0xf0493; onClicked: Quickshell.execDetached(["kusanagi", "msg", "setup", "open"]) }
+            CpChip { label: "Check my system"; icon: 0xf04d9; onClicked: Quickshell.execDetached([Config.launcher.terminal, "-e", "sh", "-c", "kusanagi doctor; echo; echo 'press Enter'; read x"]) }
+            CpChip { label: "Open config folder"; icon: 0xf024b; onClicked: Quickshell.execDetached(["xdg-open", Quickshell.env("HOME") + "/.config/kusanagi"]) }
+            CpChip { label: "Edit settings.json"; icon: 0xf107b; onClicked: Quickshell.execDetached(["xdg-open", Quickshell.env("HOME") + "/.config/kusanagi/settings.json"]) }
             CpChip { label: "Reset everything"; icon: 0xf0709; onClicked: Config.reset() }
             CpChip { label: "Restart Kusanagi"; icon: 0xf0450; onClicked: Quickshell.execDetached(["kusanagi", "restart"]) }
         }

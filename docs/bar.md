@@ -104,7 +104,9 @@ The built-in actions are:
 
 - `panel`, `panel:home`, `panel:sound`, `panel:network`, `panel:system`, `panel:inbox`, `panel:quick`
 - `launcher`, `settings`, `settings:<page>`, `power`, `wallpaper`, `clipboard`, `lock`, `notifs`
-- `dnd`, `caffeine`, `gamemode`, `preset:next`, `preset:<name>`, `alt`
+- `dnd`, `caffeine`, `gamemode`, `preset:next`, `preset:<name>`, `alt`, `setup`
+- `record` (replay → save a clip, recording → stop, off → record), `record:replay`, `record:save`, `record:record`, `record:stream`, `record:stop`
+- `updates:upgrade`, `updates:check`
 - `media:toggle`, `media:next`, `media:prev`, `media:popup`
 - `volume:up`, `volume:down`, `volume:mute`, `mic:up`, `mic:down`, `mic:mute`
 - `workspace:prev`, `workspace:next`
@@ -134,6 +136,8 @@ Anything else runs as a shell command (`"click": "pavucontrol"`).
 | `weather` | `{icon}` `{temp}` `{unit}` `{feels}` `{desc}` `{place}` |
 | `uptime` | `{uptime}` `{load}` |
 | `caffeine`, `gamemode` | shown while on; `"always": true` to show them always (states on/off) |
+| `recorder` | `{icon}` `{time}` `{mode}` `{backend}` · shown while recording, replaying or streaming (`always`) · states off replay record stream |
+| `updates` | `{count}` · hidden when up to date (`always`) · states none some many unknown · click upgrades, right click checks |
 | `launcher`, `power` | buttons |
 | `text` | `text`: anything |
 | `sep` | `format`: the glyph (default │) |

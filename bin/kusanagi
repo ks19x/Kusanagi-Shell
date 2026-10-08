@@ -16,7 +16,12 @@
 #   kusanagi wallpaper [file|restore|get]   set the wallpaper (and re-colour everything from it)
 #   kusanagi screenshot [region|full] · kusanagi colorpick
 #   kusanagi edit               open settings.json in your editor
-#   kusanagi doctor             check that everything Kusanagi uses is installed
+#   kusanagi doctor             check everything Kusanagi uses (packages, session, conflicts) + how to fix it
+#   kusanagi updates [count|list|upgrade]   available updates (no root): the number · "name<TAB>source"
+#                               lines · upgrade everything in a terminal. Cached in ~/.cache/kusanagi/updates
+#   kusanagi record replay|save|record|stream|stop|status   screen recording (status: one line of JSON)
+#   kusanagi distro family|install-cmd …|updates|upgrade-cmd|storage   distro helpers (lib/distro.sh)
+#   kusanagi setup              open the first-run setup
 #   kusanagi version | help
 set -u
 
@@ -82,6 +87,160 @@ stop() {
     # still there (wedged): make sure it goes
     pids=$(instance_pids); [ -n "$pids" ] && { kill $pids 2>/dev/null; sleep 0.5; pids=$(instance_pids); [ -n "$pids" ] && kill -9 $pids 2>/dev/null; }
     echo "kusanagi stopped"
+}
+
+# ---------------------------------------------------------------- doctor / updates
+DISTRO="$ROOT/lib/distro.sh"
+# a value from settings.json by dotted path (look.font, idle.enabled) — "" if unset
+setting() {
+    f="$CONF/settings.json"; [ -r "$f" ] || return 0
+    if command -v python3 >/dev/null; then
+        python3 -c 'import json, sys
+d = json.load(open(sys.argv[1]))
+for k in sys.argv[2].split("."): d = d.get(k) if isinstance(d, dict) else None
+print("" if d is None else str(d).lower() if isinstance(d, bool) else d)' "$f" "$1" 2>/dev/null
+    else sed -n "s/.*\"${1##*.}\"[[:space:]]*:[[:space:]]*\"\{0,1\}\([^\",}]*\).*/\1/p" "$f" | head -n 1; fi
+}
+term_cmd() {   # the user's terminal: $TERMINAL, launcher.terminal, or the first one installed
+    for t in "${TERMINAL:-}" "$(setting launcher.terminal)" foot kitty alacritty wezterm ghostty konsole xterm; do
+        [ -n "$t" ] && command -v "${t%% *}" >/dev/null && { echo "$t"; return 0; }
+    done
+    return 1
+}
+doctor() {
+    if [ -t 1 ]; then G=$(printf '\033[32m'); Rd=$(printf '\033[31m'); Y=$(printf '\033[33m'); D=$(printf '\033[2m'); B=$(printf '\033[1m'); N=$(printf '\033[0m')
+    else G=""; Rd=""; Y=""; D=""; B=""; N=""; fi
+    fam=$(sh "$DISTRO" family 2>/dev/null); req=0; want=""
+    ok()   { printf '  %s✓%s %s\n' "$G" "$N" "$1"; }
+    note() { printf '  %s·%s %s\n' "$D" "$N" "$1"; }
+    warn() { printf '  %s!%s %s\n' "$Y" "$N" "$1"; }
+    bad()  { printf '  %s✗%s %s\n' "$Rd" "$N" "$1"; }
+    fix()  { [ "${2:-}" = opt ] || want="$want $1"; sh "$DISTRO" install-cmd "$1" 2>/dev/null | sed "s/^/      $D→ /;s/\$/$N/"; }
+    has()  { for c in "$@"; do command -v "$c" >/dev/null && return 0; done; return 1; }
+    # check <group> <logical> <label> <commands…>  (group: req | rec | opt — opt's label says what it gives you)
+    check() {
+        g=$1; l=$2; lab=$3; shift 3
+        if has "$@"; then ok "$lab"; return 0; fi
+        case "$g" in req) bad "$lab ${D}(missing — required)$N"; req=$((req + 1)) ;; rec) bad "$lab ${D}(missing)$N" ;; opt) note "$lab ${D}(not installed)$N" ;; esac
+        fix "$l" "$g"; return 1
+    }
+    run() { pgrep -x "$1" >/dev/null 2>&1; }
+
+    printf '%sKusanagi %s%s — %s (%s)\n' "$B" "$VERSION" "$N" "$(. "${KUSANAGI_OS_RELEASE:-/etc/os-release}" 2>/dev/null; echo "${PRETTY_NAME:-${ID:-unknown}}")" "$fam"
+    [ "$fam" = nixos ] && warn "NixOS: the fixes below are package names for your configuration.nix"
+
+    printf '\n%sRequired%s\n' "$B" "$N"
+    check req quickshell "quickshell (qs)" qs quickshell
+    check req python "python3 — colours from the wallpaper, settings tools" python3
+    check req wl-clipboard "wl-clipboard (wl-copy)" wl-copy
+    font=$(setting look.font); [ -n "$font" ] || font="JetBrainsMono Nerd Font"
+    if ! command -v fc-list >/dev/null; then bad "fontconfig (fc-list) — can't check fonts"; req=$((req + 1))
+    elif fc-list : family | grep -qiF "$font"; then ok "font: $font"
+    elif fc-list : family | grep -qi "JetBrainsMono Nerd"; then warn "font: $font isn't installed (look.font) — JetBrainsMono Nerd Font is, so that's used"
+    else bad "font: $font ${D}(missing — a Nerd Font is required for the icons)$N"; req=$((req + 1)); fix font; fi
+
+    printf '\n%sRecommended%s\n' "$B" "$N"
+    check rec cliphist "cliphist — clipboard history" cliphist
+    check rec grim "grim — screenshots" grim
+    check rec slurp "slurp — region screenshots, colour picker" slurp
+    check rec magick "ImageMagick — wallpaper colours, thumbnails" magick convert
+    check rec libnotify "notify-send — notifications from scripts" notify-send
+    check rec gammastep "gammastep — night light" gammastep
+    check rec pavucontrol "pavucontrol — the full audio mixer" pavucontrol
+    check rec nm "NetworkManager (nmcli) — Wi-Fi / network panel" nmcli
+    if ! command -v fc-list >/dev/null || fc-list : family | grep -qiE "emoji"; then ok "an emoji font"
+    else bad "an emoji font ${D}(missing — emoji show as boxes in the launcher and apps)$N"; fix emoji; fi
+    if t=$(term_cmd); then ok "terminal: $t"; else bad "a terminal ${D}(none found — set \$TERMINAL or launcher.terminal)$N"; fix foot; fi
+
+    printf '\n%sOptional%s\n' "$B" "$N"
+    if has gpu-screen-recorder gsr-ui || { has flatpak && flatpak info com.dec05eba.gpu_screen_recorder >/dev/null 2>&1; }; then
+        ok "gpu-screen-recorder — recording, replays, streaming$(has gsr-ui && echo ' (gsr-ui too)')"
+    else note "gpu-screen-recorder — recording, replays, streaming ${D}(not installed)$N"; fix gpu-screen-recorder opt; fi
+    check opt wf-recorder "wf-recorder — recording fallback (no replays)" wf-recorder
+    check opt wtype "wtype — type emoji from the launcher" wtype
+    check opt gamemode "gamemoded — game mode performance" gamemoded
+    check opt swappy "swappy — edit screenshots" swappy
+    check opt hyprlock "hyprlock — the default lock engine" hyprlock
+    check opt fd "fd — faster file search" fd fdfind
+    [ "$fam" = arch ] && check opt checkupdates "checkupdates (pacman-contrib) — the update count" checkupdates
+
+    printf '\n%sSession%s\n' "$B" "$N"
+    if [ -n "${MANGO_INSTANCE_SIGNATURE:-}" ] || { command -v mmsg >/dev/null && run mango; }; then ok "compositor: mango"
+    elif [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then ok "compositor: Hyprland"
+    elif [ -n "${NIRI_SOCKET:-}" ]; then ok "compositor: niri"
+    elif [ -n "${WAYLAND_DISPLAY:-}" ]; then warn "compositor: ${XDG_CURRENT_DESKTOP:-unknown} — Kusanagi knows mango, Hyprland and niri best"
+    else note "no Wayland session here (run this from inside your desktop for the session checks)"; fi
+    if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then ok "D-Bus session bus"
+    else bad "no D-Bus session bus ${D}— start the compositor with dbus-run-session (kusanagi session does)$N"; fi
+    if run pipewire; then ok "PipeWire running$(run wireplumber || echo " ${Y}(but no wireplumber)$N")"
+    else bad "PipeWire isn't running ${D}— volume, mic and recording audio need it$N"; has pipewire || fix pipewire; fi
+    if run polkitd; then ok "polkit daemon"
+    elif [ -x /usr/lib/polkit-1/polkitd ] || [ -x /usr/libexec/polkitd ] || [ -x /usr/lib/polkit/polkitd ]; then warn "polkit is installed but polkitd isn't running ${D}(enable its service, or dbus starts it on demand)$N"
+    else bad "polkit ${D}(missing — password prompts for apps)$N"; fix polkit; fi
+    agents=$(pgrep -af 'polkit-gnome-authentication-agent-1|lxpolkit|polkit-kde-authentication-agent-1|hyprpolkitagent|polkit-mate-authentication-agent-1|mate-polkit|xfce-polkit' 2>/dev/null | awk '{ n = $2; sub(/.*\//, "", n); print n }' | sort -u | paste -sd' ' -)
+    [ -n "$agents" ] && warn "another polkit agent is running ($agents) — it blocks Kusanagi's own; drop it from your autostart"
+    idlers=""; for i in hypridle swayidle; do run $i && idlers="$idlers $i"; done
+    if [ -n "$idlers" ]; then
+        if [ "$(setting idle.enabled)" = true ]; then warn "${idlers# } is running and Kusanagi's idle is on — the screen will be locked/blanked twice; pick one"
+        else note "idle handled by${idlers}"; fi
+    fi
+    notifd=""; for i in mako dunst swaync fnott; do run $i && notifd="$notifd $i"; done
+    [ -n "$notifd" ] && warn "${notifd# } is running — it takes the notifications Kusanagi would show"
+    if pgrep -f '(^|/)xdg-desktop-portal( |$)' >/dev/null 2>&1; then ok "xdg-desktop-portal"
+    else warn "xdg-desktop-portal isn't running ${D}— file pickers, screen sharing, portal recording$N"; fi
+    if running; then ok "Kusanagi is running"; else note "Kusanagi isn't running (kusanagi start)"; fi
+    if sh "$ROOT/lib/greeter.sh" installed 2>/dev/null; then ok "login screen: installed"; else note "login screen: not installed (kusanagi greeter install)"; fi
+    # the last session that ended: if it crashed, show how
+    ld=${XDG_STATE_HOME:-$HOME/.local/state}/kusanagi/sessions; last=""; lt=0
+    for f in "$ld"/*.log "$ld"/*.log.old; do
+        [ -f "$f" ] || continue
+        grep '^== ' "$f" | tail -n 1 | grep -q ' exited [0-9]* after ' || continue
+        t=$(stat -c %Y "$f" 2>/dev/null || echo 0); [ "$t" -gt "$lt" ] && { lt=$t; last=$f; }
+    done
+    if [ -n "$last" ]; then
+        rc=$(grep '^== ' "$last" | tail -n 1 | sed -n 's/.* exited \([0-9]*\) after.*/\1/p')
+        if [ "${rc:-0}" != 0 ]; then warn "the last session ($(basename "$last")) ended with exit $rc:"; tail -n 8 "$last" | sed "s/^/      $D/;s/\$/$N/"
+        else note "last session ($(basename "$last")) ended cleanly"; fi
+    fi
+
+    echo
+    if [ -n "$want" ]; then
+        printf '%sInstall what'"'"'s missing (required + recommended):%s\n' "$B" "$N"
+        # shellcheck disable=SC2086
+        sh "$DISTRO" install-cmd $want 2>/dev/null | sed 's/^/  /'
+    fi
+    if [ $req = 0 ]; then printf '%s✓%s everything Kusanagi needs is here\n' "$G" "$N"; return 0
+    else printf '%s✗%s %s required thing(s) missing\n' "$Rd" "$N" "$req"; return 1; fi
+}
+updates() {   # updates [count|list|upgrade]
+    uc=${XDG_CACHE_HOME:-$HOME/.cache}/kusanagi
+    case "${1:-count}" in
+        count|list|raw)
+            mkdir -p "$uc"
+            r=$(sh "$DISTRO" updates); rc=$?
+            printf '%s\n' "$r" >"$uc/updates.tmp" && mv -f "$uc/updates.tmp" "$uc/updates"
+            date +%s >"$uc/updates.time"
+            case "${1:-count}" in
+                count) printf '%s\n' "$r" | head -n 1 ;;
+                raw)   printf '%s\n' "$r" ;;              # count, then the list (the shell reads this)
+                *)     printf '%s\n' "$r" | tail -n +2 ;;
+            esac
+            return $rc ;;
+        upgrade)
+            c=$(sh "$DISTRO" upgrade-cmd) || die "don't know how to upgrade this distro"
+            t=$(term_cmd) || die "no terminal found — run it yourself: $c"
+            # afterwards: refresh the cached count so the bar catches up
+            inner="$c; echo; '$ROOT/bin/kusanagi' updates count >/dev/null 2>&1; echo 'Done — press Enter'; read x"
+            # shellcheck disable=SC2086
+            case "${t%% *}" in
+                foot|kitty)           setsid -f $t sh -c "$inner" >/dev/null 2>&1 </dev/null ;;
+                wezterm)              setsid -f $t start -- sh -c "$inner" >/dev/null 2>&1 </dev/null ;;
+                gnome-terminal|ptyxis) setsid -f $t -- sh -c "$inner" >/dev/null 2>&1 </dev/null ;;
+                *)                    setsid -f $t -e sh -c "$inner" >/dev/null 2>&1 </dev/null ;;
+            esac
+            echo "upgrading in $t: $c" ;;
+        *) die "usage: kusanagi updates [count|list|upgrade]" ;;
+    esac
 }
 
 cmd=${1:-start}; [ $# -gt 0 ] && shift
@@ -168,15 +327,11 @@ case "$cmd" in
     screenshot) exec "$ROOT/scripts/screenshot" "${1:-region}" ;;
     colorpick)  exec "$ROOT/scripts/colorpick" ;;
     edit)     ${VISUAL:-${EDITOR:-mousepad}} "$CONF/settings.json" ;;
-    doctor)   ok=0
-              for b in qs:quickshell wl-copy:wl-clipboard cliphist:cliphist grim:grim slurp:slurp magick:ImageMagick \
-                       gammastep:gammastep gamemoded:gamemode swappy:swappy hyprlock:hyprlock nmcli:NetworkManager \
-                       pavucontrol:pavucontrol foot:foot; do
-                  if command -v "${b%%:*}" >/dev/null; then printf '  ✓ %s\n' "${b#*:}"; else printf '  ✗ %s  (missing)\n' "${b#*:}"; ok=1; fi
-              done
-              for f in JetBrainsMono; do fc-list | grep -qi "$f Nerd" && printf '  ✓ %s Nerd Font\n' "$f" || { printf '  ✗ %s Nerd Font (missing)\n' "$f"; ok=1; }; done
-              running && echo "  ✓ running" || echo "  · not running (kusanagi start)"
-              exit $ok ;;
+    doctor)   doctor ;;
+    updates)  updates "$@" ;;
+    setup)    qsp ipc call setup open ;;
+    record)   exec "$ROOT/scripts/record" "$@" ;;
+    distro)   exec sh "$DISTRO" "$@" ;;
     version|-v|--version) echo "kusanagi $VERSION" ;;
     help|-h|--help) sed -n '2,/^set -u$/{/^#/s/^# \{0,1\}//p}' "$0" ;;
     *)        die "unknown command '$cmd' — try: kusanagi help" ;;

@@ -13,6 +13,8 @@
 //   power     toggle | open
 //   osd       preview <volume|mic|game>                      gamemode  toggle
 //   bar       media | traymenu <n> | template <name> | templates | classic
+//   setup     open                                           idle      status | toggle
+//   record    replay | save | record | stream | stop | status  updates   check | count | upgrade
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -25,6 +27,7 @@ ShellRoot {
     readonly property var barItem: bar     // panel morphs out of its clock island
     Osd { id: osd }
     Lock { id: lock }
+    Component.onCompleted: { Idle.lock = lock; Polkit.start() }
     ScreenshotOsd {}
     GreeterSync {}          // the login screen follows your looks (only when it's installed)
     NotificationPopups {}
@@ -59,6 +62,10 @@ ShellRoot {
     OnDemand { id: clipboard; Clipboard {} }
     OnDemand { id: power; PowerMenu {} }
     OnDemand { id: settings; keep: false; Settings {} }     // a normal window, opened rarely
+    OnDemand { id: setup; keep: false; Setup {} }           // the first-run wizard
+    function openSetup() { setup.get().show() }
+    // no settings.json at start = a new user: say hello once everything has settled
+    Timer { running: Config.firstRun; interval: 2500; onTriggered: shell.openSetup() }
 
     // settings remembers its page across being unloaded
     property string settingsPage: "presets"
@@ -158,6 +165,30 @@ ShellRoot {
             return "applied " + r.look.name
         }
         function next(): void { Presets.next() }
+    }
+    IpcHandler {
+        target: "setup"
+        function open(): void { shell.openSetup() }
+    }
+    IpcHandler {
+        target: "idle"
+        function status(): string { return Idle.status }
+        function toggle(): void { Config.idle.enabled = !Config.idle.enabled }
+    }
+    IpcHandler {
+        target: "record"
+        function replay(): void { Recorder.replay() }
+        function save(): void { Recorder.save() }
+        function record(): void { Recorder.record() }
+        function stream(): void { Recorder.stream() }
+        function stop(): void { Recorder.stop() }
+        function status(): string { return Recorder.mode }
+    }
+    IpcHandler {
+        target: "updates"
+        function check(): void { Updates.check() }
+        function count(): string { return Updates.known ? String(Updates.count) : "?" }
+        function upgrade(): void { Updates.upgrade() }
     }
     IpcHandler {
         target: "osd"

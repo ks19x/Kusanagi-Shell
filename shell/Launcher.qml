@@ -2,6 +2,10 @@
 //   type          fuzzy-search apps (name, generic name, keywords); most-used float to the top
 //   = 2*(3+4)     calculator — Enter copies the result
 //   > command     run a shell command — Shift+Enter runs it in a terminal
+//   : heart       emoji and symbols — Enter copies, Shift+Enter types it (wtype)
+//   / notes       files in your home — Enter opens, Shift+Enter opens the folder
+//   ? query       search the web (Config.launcher.searchEngine); also the last result of any search
+// App searches also find Kusanagi itself: "lock", "bar settings", "replay", "preset zen"…
 // ↑/↓ (or Ctrl+J/K, Tab) to move, Enter to launch, Esc to close. Loaded only while open.
 import Quickshell
 import Quickshell.Io
@@ -28,7 +32,10 @@ PanelWindow {
     visible: showing || card.opacity > 0.01
     mask: Region { item: root.showing ? backdrop : null }
 
-    onShowingChanged: if (showing) { actionsOf = null; search.text = ""; sel = 0; search.forceActiveFocus() }
+    onShowingChanged: {
+        if (showing) { actionsOf = null; search.text = ""; sel = 0; search.forceActiveFocus() }
+        else { symbols = []; files = [] }      // the symbol table only lives while it's used
+    }
 
     // ---------- app actions (→ on an app: "New private window", "Big Picture"…) ----------
     property var actionsOf: null                                  // the app whose actions are listed
@@ -76,7 +83,102 @@ PanelWindow {
 
     // ---------- search ----------
     readonly property string query: search.text
-    readonly property string mode: query.startsWith("=") ? "calc" : query.startsWith(">") ? "run" : "apps"
+    readonly property string mode: query.startsWith("=") ? "calc" : query.startsWith(">") ? "run"
+        : query.startsWith(":") ? "emoji" : query.startsWith("/") ? "files" : query.startsWith("?") ? "web" : "apps"
+
+    // ---------- emoji & symbols (data/symbols.tsv, read the first time ":" is typed) ----------
+    property var symbols: []
+    FileView {
+        id: symbolFile
+        path: root.mode === "emoji" && !root.symbols.length ? Qt.resolvedUrl("data/symbols.tsv").toString().replace(/^file:\/\//, "") : ""
+        printErrors: false
+        onLoaded: root.symbols = text().split("\n").filter(l => l && l[0] !== "#").map(l => {
+            const f = l.split("\t"); return { ch: f[0], name: f[1] || "", keys: f[2] || "" }
+        })
+    }
+    function symbolResults(q) {
+        const counts = usage.counts || {}
+        const out = []
+        for (const x of symbols) {
+            const used = counts["sym:" + x.ch] || 0
+            let sc = !q ? (used ? 1000 + used : 0) : Math.max(score(x.name, q), score(x.keys, q) * 0.6)
+            if (q && sc > 0) sc += Math.min(30, Math.log2(used + 1) * 8)
+            if (sc > 0) out.push({ kind: "emoji", name: x.name, comment: x.keys, glyph: x.ch, s: sc })
+        }
+        out.sort((a, b) => b.s - a.s)
+        // nothing typed: your most used, then the first smileys
+        return (!q && !out.length ? symbols.slice(0, 48).map(x => ({ kind: "emoji", name: x.name, comment: x.keys, glyph: x.ch })) : out.slice(0, 60))
+    }
+
+    // ---------- files (fd when installed, else find; a moment after you stop typing) ----------
+    property var files: []
+    Timer { id: fileDelay; interval: 220; onTriggered: { fileProc.running = false; fileProc.running = true } }
+    onQueryChanged: {
+        const f = query.startsWith("/")
+        if (f && query.slice(1).trim().length >= 2) fileDelay.restart(); else files = []
+    }
+    // fd / fdfind (Debian's name) / plain find — paths relative to ~, folders end in /
+    readonly property string findScript: [
+        'q=$1; cd "$HOME" || exit 1',
+        'if command -v fd >/dev/null 2>&1; then f=fd; elif command -v fdfind >/dev/null 2>&1; then f=fdfind; else f=""; fi',
+        'if [ -n "$f" ]; then $f -i -F -H --max-results 40 -E .git -E node_modules -E .cache -E Trash -- "$q"',
+        'else find . -maxdepth 6 \\( -name .cache -o -name .git -o -name node_modules -o -name Trash \\) -prune -o -iname "*$q*" -print 2>/dev/null | sed "s|^[.]/||" | head -40 | while IFS= read -r p; do if [ -d "$p" ]; then echo "$p/"; else echo "$p"; fi; done; fi'
+    ].join("\n")
+    Process {
+        id: fileProc
+        command: ["sh", "-c", root.findScript, "sh", root.query.slice(1).trim()]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const home = Quickshell.env("HOME")
+                root.files = text.split("\n").filter(l => l && l !== ".").map(l => {
+                    const path = l.replace(/\/$/, ""), dir = l.endsWith("/"), i = path.lastIndexOf("/")
+                    return { kind: "file", name: i >= 0 ? path.slice(i + 1) : path, comment: "~/" + (i >= 0 ? path.slice(0, i) : ""),
+                             path: home + "/" + path, icon: dir ? 0xf024b : 0xf0214 }
+                })
+            }
+        }
+    }
+
+    // ---------- the web ----------
+    function webItem(q) {
+        return { kind: "web", name: "Search the web for “" + q + "”", comment: Config.launcher.searchEngine.replace(/^https?:\/\/(www\.)?/, "").split("/")[0], q: q, icon: 0xf059f }
+    }
+
+    // ---------- Kusanagi's own commands ----------
+    function ipc(target, fn, arg) { Quickshell.execDetached(["kusanagi", "msg", target, fn].concat(arg !== undefined ? [arg] : [])) }
+    readonly property var commands: {
+        const c = [
+            { name: "Lock screen", keys: "lock away", icon: 0xf033e, run: () => ipc("lock", "lock") },
+            { name: "Power menu", keys: "shut down power off reboot restart log out suspend sleep", icon: 0xf0425, run: () => ipc("power", "open") },
+            { name: "Suspend", keys: "sleep", icon: 0xf04b2, run: () => Quickshell.execDetached(["sh", "-c", "loginctl suspend || systemctl suspend"]) },
+            { name: "Control panel", keys: "quick settings tiles", icon: 0xf056e, run: () => ipc("panel", "home") },
+            { name: "Notifications", keys: "inbox", icon: 0xf009a, run: () => ipc("notifs", "open") },
+            { name: "Do not disturb", keys: "dnd silence notifications", icon: 0xf009b, run: () => { Notifs.dnd = !Notifs.dnd } },
+            { name: "Caffeine", keys: "keep awake stay awake inhibit idle", icon: 0xf0176, run: () => Caffeine.toggle() },
+            { name: "Game mode", keys: "gaming performance", icon: 0xf0297, run: () => GameMode.toggle() },
+            { name: "Wallpaper", keys: "background picker", icon: 0xf0e09, run: () => ipc("wallpaper", "toggle") },
+            { name: "Clipboard history", keys: "paste copy", icon: 0xf0147, run: () => ipc("clipboard", "toggle") },
+            { name: "Screenshot", keys: "region capture print", icon: 0xf0e51, run: () => Quickshell.execDetached(["sh", "-c", "sleep 0.3; kusanagi screenshot region"]) },
+            { name: "Screenshot (whole screen)", keys: "full capture print", icon: 0xf0e51, run: () => Quickshell.execDetached(["sh", "-c", "sleep 0.3; kusanagi screenshot full"]) },
+            { name: "Colour picker", keys: "color pick eyedropper hex", icon: 0xf020a, run: () => Quickshell.execDetached(["sh", "-c", "sleep 0.3; kusanagi colorpick"]) },
+            { name: Recorder.mode === "record" ? "Stop recording" : "Record the screen", keys: "record video capture", icon: 0xf044a, run: () => Recorder.record() },
+            { name: Recorder.mode === "replay" ? "Stop the replay buffer" : "Start the replay buffer", keys: "replay instant clip", icon: 0xf0450, run: () => Recorder.replay() },
+            { name: "Save replay clip", keys: "clip replay save", icon: 0xf0fd8, run: () => Recorder.save() },
+            { name: "Check for updates", keys: "packages upgrade", icon: 0xf06b0, run: () => Updates.check() },
+            { name: "Install updates", keys: "packages upgrade system", icon: 0xf06b0, run: () => Updates.upgrade() },
+            { name: "Next preset", keys: "look theme cycle", icon: 0xf0e09, run: () => Presets.next() },
+            { name: "Kusanagi setup", keys: "wizard welcome first", icon: 0xf0493, run: () => ipc("setup", "open") },
+            { name: "Kusanagi doctor", keys: "check problems missing dependencies", icon: 0xf04d9,
+              run: () => Quickshell.execDetached([Config.launcher.terminal, "-e", "sh", "-c", "kusanagi doctor; echo; echo 'press Enter'; read x"]) },
+            { name: "Emoji & symbols", keys: "emoji symbol unicode character", icon: 0xf0785, fill: ":" },
+            { name: "Search files", keys: "find files documents", icon: 0xf0214, fill: "/" }
+        ]
+        for (const p of SettingsPages.pages)
+            c.push({ name: "Settings: " + p.name, keys: "settings " + p.keys, icon: p.icon, run: () => ipc("settings", "page", p.id) })
+        for (const p of Presets.all)
+            c.push({ name: "Preset: " + p.name, keys: "preset look theme " + (p.note || ""), icon: 0xf0e09, run: () => Presets.applyNamed(p.id || p.name) })
+        return c
+    }
 
     // 0 = no match; higher is better. prefix > word start > substring > in-order letters
     function score(text, q) {
@@ -112,6 +214,9 @@ PanelWindow {
             const cmd = query.slice(1).trim()
             return cmd ? [{ kind: "run", name: cmd, comment: "Enter to run  ·  Shift+Enter in a terminal", icon: 0xf018d }] : []
         }
+        if (mode === "emoji") return symbolResults(query.slice(1).trim().toLowerCase())
+        if (mode === "files") return files
+        if (mode === "web") { const w = query.slice(1).trim(); return w ? [webItem(w)] : [] }
         if (actionsOf) {
             const q = query.trim().toLowerCase()
             return actionsOf.actions
@@ -133,8 +238,16 @@ PanelWindow {
             }
             if (s > 0 || !q) scored.push({ kind: "app", entry: e, s: s, name: e.name })
         }
+        // Kusanagi's commands: below apps that match as well (only when you type)
+        if (q && Config.launcher.commands)
+            for (const c of commands) {
+                const s = Math.max(score(c.name, q), score(c.keys, q) * 0.7) * 0.85
+                if (s >= 25) scored.push({ kind: "command", cmd: c, name: c.name, comment: "Kusanagi", icon: c.icon, s: s })
+            }
         scored.sort((a, b) => b.s - a.s || a.name.localeCompare(b.name))
-        return scored.slice(0, 40)
+        const top = scored.slice(0, 40)
+        if (q && Config.launcher.webSearch) top.push(webItem(query.trim()))
+        return top
     }
 
     // tiny safe arithmetic: digits, operators, parentheses, a few Math functions
@@ -163,6 +276,21 @@ PanelWindow {
             item.action.execute()
         } else if (item.kind === "calc") {
             Quickshell.execDetached(["wl-copy", item.name])
+        } else if (item.kind === "emoji") {
+            bump("sym:" + item.glyph)
+            // typing needs our window gone first, so focus is back where you were
+            if (inTerminal) Quickshell.execDetached(["sh", "-c", 'sleep 0.25; if command -v wtype >/dev/null; then wtype -- "$1"; else printf %s "$1" | wl-copy; fi', "sh", item.glyph])
+            else Quickshell.execDetached(["wl-copy", item.glyph])
+        } else if (item.kind === "file") {
+            const target = inTerminal ? item.path.slice(0, item.path.lastIndexOf("/")) || "/" : item.path
+            Quickshell.execDetached(["xdg-open", target])
+        } else if (item.kind === "web") {
+            Quickshell.execDetached(["xdg-open", Config.launcher.searchEngine.replace("%s", encodeURIComponent(item.q))])
+        } else if (item.kind === "command") {
+            if (item.cmd.fill) { searchFor(item.cmd.fill); return }
+            close()
+            item.cmd.run()
+            return
         } else if (item.kind === "run") {
             Quickshell.execDetached(inTerminal
                 ? [Config.launcher.terminal, "-e", "sh", "-c", item.name + "; exec $SHELL"]
@@ -241,7 +369,7 @@ PanelWindow {
             CpIcon {
                 x: 22
                 anchors.verticalCenter: parent.verticalCenter
-                cp: root.actionsOf ? 0xf0141 : root.mode === "calc" ? 0xf00ec : root.mode === "run" ? 0xf018d : 0xf0349
+                cp: root.actionsOf ? 0xf0141 : ({ calc: 0xf00ec, run: 0xf018d, emoji: 0xf0785, files: 0xf0214, web: 0xf059f })[root.mode] ?? 0xf0349
                 font.pixelSize: 20
                 color: Theme.accent
             }
@@ -281,7 +409,7 @@ PanelWindow {
                 anchors { left: search.left; verticalCenter: parent.verticalCenter }
                 visible: !search.text
                 text: root.actionsOf ? root.actionsOf.name + " actions    ← back"
-                    : "Search apps    = calculate    > run a command"
+                    : "Search apps    = calc    > run    : emoji    / files    ? web"
                 font.pixelSize: 15
                 color: Theme.textDim
             }
@@ -338,10 +466,17 @@ PanelWindow {
                     }
                     CpIcon {
                         anchors.centerIn: parent
-                        visible: iconBox.iconSrc === ""
+                        visible: iconBox.iconSrc === "" && !row.modelData.glyph
                         cp: row.modelData.kind === "app" ? 0xf003b : (row.modelData.icon || 0)
                         font.pixelSize: 22
                         color: Theme.accent
+                    }
+                    Text {
+                        anchors.centerIn: parent
+                        visible: !!row.modelData.glyph
+                        text: row.modelData.glyph || ""
+                        font.pixelSize: Math.round(root.iconPx * 0.75)
+                        color: Theme.text
                     }
                 }
 
@@ -370,7 +505,8 @@ PanelWindow {
                 CpText {
                     id: hint
                     anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
-                    text: row.modelData.kind === "calc" ? "copy  ↵" : root.hasActions(row.modelData) ? "→ actions  ↵" : "↵"
+                    text: row.modelData.kind === "calc" ? "copy  ↵" : row.modelData.kind === "emoji" ? "copy ↵  ·  type ⇧↵"
+                        : row.modelData.kind === "file" ? "open ↵  ·  folder ⇧↵" : root.hasActions(row.modelData) ? "→ actions  ↵" : "↵"
                     font.pixelSize: 11
                     color: Theme.accent
                     opacity: row.current ? 1 : 0
@@ -436,10 +572,17 @@ PanelWindow {
                         IconImage { anchors.fill: parent; visible: tile.iconSrc !== ""; source: tile.iconSrc; asynchronous: true }
                         CpIcon {
                             anchors.centerIn: parent
-                            visible: tile.iconSrc === ""
+                            visible: tile.iconSrc === "" && !tile.modelData.glyph
                             cp: tile.modelData.kind === "app" ? 0xf003b : (tile.modelData.icon || 0)
                             font.pixelSize: root.iconPx * 0.7
                             color: Theme.accent
+                        }
+                        Text {
+                            anchors.centerIn: parent
+                            visible: !!tile.modelData.glyph
+                            text: tile.modelData.glyph || ""
+                            font.pixelSize: root.iconPx * 0.8
+                            color: Theme.text
                         }
                     }
                     CpText {

@@ -22,7 +22,7 @@ ROOT=$(cd "$(dirname "$0")" && pwd)
 CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
 BIN="$HOME/.local/bin"
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/kusanagi"
-VERSION=$(cat "$ROOT/VERSION" 2>/dev/null || echo dev)
+KVERSION=$(cat "$ROOT/VERSION" 2>/dev/null || echo dev)     # (not VERSION: os-release sets that)
 PRINT=""; DRY=0; YES=0; PLAIN=0; DO_PKG=1; DO_SVC=1; DO_CFG=1; PICK=""; UNINSTALL=0
 
 for a in "$@"; do
@@ -58,18 +58,9 @@ else R0=""; BO=""; DIM=""; TXT=""; WHT=""; RED=""; BLOOD=""; GOLD=""; STEEL=""; 
 
 # ================================================================ detect: distro, privileges, init
 . "${KUSANAGI_OS_RELEASE:-/etc/os-release}" 2>/dev/null || true     # (override: testing other distros)
-ID=${ID:-unknown}; LIKE=" ${ID_LIKE:-} "
-case "$ID $LIKE" in
-    *void*)                              FAM=void ;;
-    *arch*|*artix*|*cachyos*|*endeavouros*|*manjaro*|*garuda*) FAM=arch ;;
-    *gentoo*)                            FAM=gentoo ;;
-    *fedora*|*rhel*|*nobara*)            FAM=fedora ;;
-    *debian*|*ubuntu*|*mint*|*pop*)      FAM=debian ;;
-    *suse*)                              FAM=suse ;;
-    *nixos*)                             FAM=nixos ;;
-    *)                                   FAM=unknown ;;
-esac
-ARTIX=0; case "$ID" in artix) ARTIX=1 ;; esac
+ID=${ID:-unknown}
+. "$ROOT/lib/distro.sh"       # -> FAM, ARTIX, pkg() (one package table, shared with `kusanagi doctor`)
+[ "$FAM" = alpine ] && FAM=unknown    # the installer doesn't drive apk yet: install by hand, as before
 
 if [ "$(id -u)" = 0 ]; then SU=""
 elif have doas; then SU=doas
@@ -85,52 +76,7 @@ elif have s6-rc; then INIT=s6
 else INIT=unknown; fi
 
 # ================================================================ packages
-# logical name -> package per family ("" = not packaged there)
-pkg() {
-    case "$FAM:$1" in
-        arch:quickshell) echo quickshell ;;            void:quickshell) echo quickshell ;;
-        arch:python) echo python ;;                    void:python) echo python3 ;;
-        arch:magick) echo imagemagick ;;               void:magick) echo ImageMagick ;;
-        arch:font) echo ttf-jetbrains-mono-nerd ;;     void:font) echo nerd-fonts-ttf ;;
-        arch:nm) [ $ARTIX = 1 ] && echo "networkmanager networkmanager-$INIT" || echo networkmanager ;;
-        void:nm) echo NetworkManager ;;
-        arch:mango) echo mangowm ;;                    void:mango) echo mangowc ;;
-        arch:hyprland) echo "hyprland xdg-desktop-portal-hyprland" ;;
-        void:hyprland) echo "hyprland xdg-desktop-portal-hyprland" ;;
-        arch:niri|void:niri) echo "niri xdg-desktop-portal-gnome xwayland-satellite" ;;
-        arch:pipewire|void:pipewire) echo "pipewire wireplumber" ;;
-        arch:portal|void:portal) echo "xdg-desktop-portal-gtk" ;;
-        arch:seat) [ $ARTIX = 1 ] && echo "elogind elogind-$INIT dbus-$INIT" || echo "" ;;
-        void:seat) echo "elogind dbus" ;;
-        fedora:quickshell) echo quickshell ;;          fedora:python) echo python3 ;;
-        fedora:magick) echo ImageMagick ;;             fedora:font) echo "" ;;
-        fedora:nm) echo NetworkManager ;;              fedora:mango) echo "" ;;
-        fedora:hyprland) echo "hyprland xdg-desktop-portal-hyprland" ;;
-        fedora:niri) echo "niri xdg-desktop-portal-gnome xwayland-satellite" ;;
-        fedora:pipewire) echo "pipewire wireplumber" ;; fedora:portal) echo "xdg-desktop-portal-gtk" ;;
-        fedora:seat) echo "" ;;
-        gentoo:quickshell) echo gui-apps/quickshell ;; gentoo:python) echo dev-lang/python ;;
-        gentoo:magick) echo media-gfx/imagemagick ;;   gentoo:font) echo "" ;;
-        gentoo:nm) echo net-misc/networkmanager ;;     gentoo:mango) echo "" ;;
-        gentoo:hyprland) echo gui-wm/hyprland ;;       gentoo:niri) echo gui-wm/niri ;;
-        gentoo:pipewire) echo "media-video/pipewire media-video/wireplumber" ;; gentoo:portal) echo sys-apps/xdg-desktop-portal-gtk ;;
-        gentoo:seat) echo sys-auth/elogind ;;
-        debian:python) echo python3 ;;                 debian:magick) echo imagemagick ;;
-        debian:nm) echo network-manager ;;             debian:pipewire) echo "pipewire wireplumber" ;;
-        debian:portal) echo xdg-desktop-portal-gtk ;;  debian:niri) echo niri ;;
-        debian:hyprland) echo hyprland ;;              debian:libnotify) echo libnotify-bin ;;
-        suse:quickshell) echo quickshell ;;            suse:python) echo python3 ;;
-        suse:magick) echo ImageMagick ;;               suse:nm) echo NetworkManager ;;
-        suse:pipewire) echo "pipewire wireplumber" ;;  suse:portal) echo xdg-desktop-portal-gtk ;;
-        suse:niri) echo niri ;;                        suse:hyprland) echo hyprland ;;
-        *:quickshell|*:python|*:magick|*:font|*:nm|*:mango|*:hyprland|*:niri|*:pipewire|*:portal|*:seat) echo "" ;;
-        gentoo:*) case "$1" in wl-clipboard) echo gui-apps/wl-clipboard ;; cliphist) echo gui-apps/cliphist ;; grim) echo gui-apps/grim ;;
-                               slurp) echo gui-apps/slurp ;; gammastep) echo x11-misc/gammastep ;; gamemode) echo games-util/gamemode ;;
-                               swappy) echo gui-apps/swappy ;; foot) echo gui-apps/foot ;; hyprlock) echo gui-apps/hyprlock ;;
-                               libnotify) echo x11-libs/libnotify ;; pavucontrol) echo media-sound/pavucontrol ;; *) echo "" ;; esac ;;
-        *) echo "$1" ;;                                # same name everywhere else
-    esac
-}
+# pkg <logical> -> package name(s) for $FAM: the table lives in lib/distro.sh
 installed() {   # is package $1 installed?
     case "$FAM" in
         arch)   pacman -Q "$1" >/dev/null 2>&1 ;;
@@ -143,13 +89,13 @@ installed() {   # is package $1 installed?
     esac
 }
 compute_packages() {    # -> MISSING, UNPACKAGED
-    WANT="quickshell python magick wl-clipboard cliphist grim slurp gammastep gamemode swappy foot font nm pavucontrol hyprlock libnotify pipewire portal seat"
+    WANT="quickshell python magick wl-clipboard cliphist grim slurp gammastep gamemode swappy foot font emoji nm pavucontrol hyprlock libnotify pipewire portal seat polkit"
     for c in $PICK; do WANT="$WANT $c"; done
     MISSING=""; UNPACKAGED=""
     for w in $WANT; do
         p=$(pkg "$w")
         if [ -z "$p" ]; then
-            case "$w" in seat|font) ;; *) UNPACKAGED="$UNPACKAGED $w" ;; esac
+            case "$w" in seat|font|emoji) ;; *) UNPACKAGED="$UNPACKAGED $w" ;; esac
             continue
         fi
         for one in $p; do installed "$one" || MISSING="$MISSING $one"; done
@@ -191,8 +137,9 @@ svc_cmd() {   # the command(s) enabling $1, one per line
 compute_services() {   # -> SVC_TODO
     SVC_TODO=""
     [ "$INIT" = unknown ] && return
-    for s in dbus elogind NetworkManager; do
-        [ "$INIT" = systemd ] && [ "$s" = elogind ] && continue      # logind is part of systemd
+    for s in dbus elogind NetworkManager polkitd polkit; do
+        # systemd: logind is built in, and polkit starts on demand
+        [ "$INIT" = systemd ] && case "$s" in elogind|polkitd|polkit) continue ;; esac
         svc_exists "$s" || continue
         svc_enabled "$s" || SVC_TODO="$SVC_TODO $s"
     done
@@ -519,11 +466,11 @@ frame() {
         while IFS= read -r l; do at $r $lc; OUT="$OUT$l"; r=$((r + 1)); done <<EOF
 $(logo_colored)
 EOF
-        t="${WHT}K U S A N A G I${R0}  ${RED}草薙${R0}  ${DIM}$VERSION${R0}"
-        at $((top + 17)) $(( (COLS - 25 - ${#VERSION}) / 2 + 1 )); OUT="$OUT$t"
+        t="${WHT}K U S A N A G I${R0}  ${RED}草薙${R0}  ${DIM}$KVERSION${R0}"
+        at $((top + 17)) $(( (COLS - 25 - ${#KVERSION}) / 2 + 1 )); OUT="$OUT$t"
     else
-        t="${STEEL}⚔${R0}  ${WHT}K U S A N A G I${R0}  ${RED}草薙${R0}  ${DIM}$VERSION${R0}"
-        at $top $(( (COLS - 28 - ${#VERSION}) / 2 + 1 )); OUT="$OUT$t"
+        t="${STEEL}⚔${R0}  ${WHT}K U S A N A G I${R0}  ${RED}草薙${R0}  ${DIM}$KVERSION${R0}"
+        at $top $(( (COLS - 28 - ${#KVERSION}) / 2 + 1 )); OUT="$OUT$t"
     fi
     by=$((top + HEAD))
     # box
@@ -857,7 +804,7 @@ fi
 [ $TUI = 1 ] && tui_on
 
 if [ $TUI = 1 ]; then screen_welcome
-else printf '%s⚔  Kusanagi %s installer%s\n  distro: %s (%s)   init: %s   privileges: %s\n' "$BO" "$VERSION" "$R0" "${PRETTY_NAME:-$ID}" "$FAM" "$INIT" "${SU:-none}"
+else printf '%s⚔  Kusanagi %s installer%s\n  distro: %s (%s)   init: %s   privileges: %s\n' "$BO" "$KVERSION" "$R0" "${PRETTY_NAME:-$ID}" "$FAM" "$INIT" "${SU:-none}"
      [ $DRY = 1 ] && echo "  ${YEL}dry run — nothing will be changed${R0}"; fi
 
 if [ -z "$PICK" ] && [ $TUI = 1 ]; then screen_compositors

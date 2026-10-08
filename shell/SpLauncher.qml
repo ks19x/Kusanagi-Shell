@@ -65,6 +65,26 @@ Column {
     }
 
     SpGroup {
+        title: "Search"
+        hint: "Start with  =  to calculate,  >  to run a command,  :  for emoji and symbols,  /  for files,  ?  for the web."
+        CpRow { width: parent.width; label: "Kusanagi commands"; hint: "lock, settings pages, presets, recording… show up when you type"; CpSwitch { on: Config.launcher.commands; onToggled: v => Config.launcher.commands = v } }
+        CpRow { width: parent.width; label: "Web search as the last result"; CpSwitch { on: Config.launcher.webSearch; onToggled: v => Config.launcher.webSearch = v } }
+        CpRow {
+            width: parent.width; label: "Search engine"
+            CpSegmented {
+                width: 360; current: Config.launcher.searchEngine
+                options: [{ label: "DuckDuckGo", value: "https://duckduckgo.com/?q=%s" }, { label: "Google", value: "https://www.google.com/search?q=%s" },
+                          { label: "Brave", value: "https://search.brave.com/search?q=%s" }, { label: "Startpage", value: "https://www.startpage.com/do/search?q=%s" }]
+                onPicked: v => Config.launcher.searchEngine = v
+            }
+        }
+        CpRow {
+            width: parent.width; label: "…or your own"; hint: "%s is the search"
+            CpField { width: 300; text: Config.launcher.searchEngine; onEdited: t => { if (t.includes("%s")) Config.launcher.searchEngine = t } }
+        }
+    }
+
+    SpGroup {
         title: "Clipboard"
         hint: "Super+V · Enter copies · Delete removes"
         Row {
