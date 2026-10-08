@@ -26,8 +26,17 @@ kusanagi msg <target> <fn>   talk to it — e.g. kusanagi msg launcher toggle (s
 kusanagi preset next         cycle looks · kusanagi preset list · kusanagi preset minimal
 kusanagi settings [page]     open Settings
 kusanagi log [-f]            logs
-kusanagi doctor              check dependencies
+kusanagi doctor              check dependencies — and the exact install command for your distro
+kusanagi setup               the setup wizard (opens by itself on the first start)
+kusanagi updates [upgrade]   waiting package updates (any distro + Flatpak) · install them
+kusanagi record replay|save|record|stream|stop   screen recording and the replay buffer
+kusanagi greeter install     Kusanagi as your login screen (greetd)
 ```
+
+The launcher does more than apps: `=` calculates, `>` runs a command, `:` finds emoji and symbols,
+`/` finds files, `?` searches the web — and typing "lock", "replay" or "settings bar" finds Kusanagi
+itself. Kusanagi also locks and blanks the screen when you're away (no hypridle needed) and asks for
+admin passwords itself (a polkit agent).
 
 Keybinds call `kusanagi msg …` — Super+Space launcher, Super+A wallpapers, Super+V clipboard,
 Super+N inbox, Super+I settings, Super+L lock, Super+G game mode, Super+` power menu,
