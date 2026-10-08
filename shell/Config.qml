@@ -25,6 +25,7 @@ Singleton {
     readonly property alias weather: adapter.weather
     readonly property alias dock: adapter.dock
     readonly property alias power: adapter.power
+    readonly property alias greeter: adapter.greeter
     // the bar layout engine (BarSpec.qml, docs/bar.md): [] = the classic bar from the options above
     property alias bars: adapter.bars
 
@@ -70,6 +71,7 @@ Singleton {
                      fill: "fill", parallax: 0.04, dim: 0, slideshow: 0 },
         lock: { engine: "hyprlock", style: "center", blur: 0.8, dim: 0.35, clock: "HH:mm", avatar: true, media: true, greeting: "" },
         power: { style: "row" },
+        greeter: { style: "", user: "", session: "" },
         display: { nightTemp: 4000 },
         windows: { override: false, gapsIn: 8, gapsOut: 8, border: 2 },
         gamemode: { auto: true, effects: true, feral: true, quiet: true, dnd: true, grace: 800, announce: "manual" },
@@ -249,6 +251,12 @@ Singleton {
                 property int gapsIn: 8                // px between windows
                 property int gapsOut: 8               // px from the screen edges
                 property int border: 2                // window border width
+            }
+
+            property JsonObject greeter: JsonObject {
+                property string style: ""             // login screen design ("" = the lock screen's)
+                property string user: ""              // picked first ("" = the first person)
+                property string session: ""           // wayland-sessions id picked first (hyprland, mango, niri …)
             }
 
             property JsonObject power: JsonObject {

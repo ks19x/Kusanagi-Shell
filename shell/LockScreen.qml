@@ -9,6 +9,8 @@ Item {
     id: root
     required property var lock
 
+    // the login screen (greeter.qml) drives this too: it names the chosen user and their picture
+    readonly property string who: root.lock.userName || Config.lock.greeting || Quickshell.env("USER")
     property bool shown: false
     Component.onCompleted: { shown = true; input.forceActiveFocus() }
     readonly property bool visibleState: shown && !lock.unlocking
@@ -129,7 +131,7 @@ Item {
             }
             Line { text: SysInfo.host + " · " + SysInfo.kernel + "   " + Qt.formatDateTime(clock.date, "ddd d MMM  HH:mm:ss"); color: Theme.alpha(Theme.text, 0.55); font.pixelSize: 15 }
             Line { text: " "; font.pixelSize: 10 }
-            Line { text: SysInfo.host + " login: " + (Config.lock.greeting || Quickshell.env("USER")) }
+            Line { text: SysInfo.host + " login: " + (root.who) }
             Row {
                 Line { text: "Password: " + "*".repeat(Math.min(root.lock.password.length, 32)) }
                 Rectangle {
@@ -164,7 +166,7 @@ Item {
                 border.color: Theme.alpha(Theme.accent, 0.8)
                 Image {
                     anchors.fill: parent
-                    source: "file://" + Quickshell.env("HOME") + "/.face"
+                    source: "file://" + (root.lock.face || Quickshell.env("HOME") + "/.face")
                     fillMode: Image.PreserveAspectCrop
                     sourceSize: Qt.size(168, 168)
                     asynchronous: true
@@ -174,7 +176,7 @@ Item {
             CpText {
                 visible: !content.minimal
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: Config.lock.greeting || Quickshell.env("USER")
+                text: root.who
                 font.pixelSize: 16
                 font.bold: true
             }

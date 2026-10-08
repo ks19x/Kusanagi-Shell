@@ -1,6 +1,12 @@
 # Changelog
 
 ## Unreleased
+- **Login screen** (greetd greeter): your lock screen design — or its own — with a user and session
+  picker (Hyprland / MangoWM / niri …), reboot and power off. `kusanagi greeter install` (sudo once:
+  cage, /var/lib/kusanagi-greeter, /usr/local/bin/kusanagi-greeter, greetd's config with the old one
+  kept), `sync` (automatic once installed), `preview`, `status`, `uninstall`. If it can't start, the
+  previous greeter takes over; sessions start through your login shell on their own D-Bus.
+  Settings → Login screen
 - **Lock screen designs** (Settings → Lock & power): Centered, Card, Split, Minimal, Stacked, Terminal
 - **Power menu styles**: Row, Tiles, List (a corner menu), Fullscreen, Pill — letters pick too (L E S R P)
 - **Share a look**: export everything a preset holds to `~/kusanagi-looks/<name>.kusanagi` or copy it

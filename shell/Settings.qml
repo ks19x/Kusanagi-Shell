@@ -31,6 +31,7 @@ FloatingWindow {
         { id: "wallpaper", desc: "Your wallpapers, transitions, parallax and slideshow.", name: "Wallpaper", icon: 0xf0e09, page: "SpWallpaper", keys: "transition parallax slideshow fill dim awww picker" },
         { id: "launcher", desc: "The app launcher and clipboard history.", name: "Launcher & clipboard", icon: 0xf003b, page: "SpLauncher", keys: "apps search clipboard terminal calculator" },
         { id: "lock", desc: "The lock screen and the power menu — how they look and which locker guards you.", name: "Lock & power", icon: 0xf033e, page: "SpLock", keys: "hyprlock blur password test" },
+        { id: "login", desc: "Kusanagi as your login screen — your lock design, with you and your session to pick.", name: "Login screen", icon: 0xf0004, page: "SpLogin", keys: "greeter greetd display manager login session user boot" },
         { id: "notifications", desc: "Popups, do-not-disturb and the volume / mic overlay.", name: "Notifications & OSD", icon: 0xf009a, page: "SpNotifications", keys: "popups dnd osd volume timeout position" },
         { id: "gamemode", desc: "What happens when a game goes fullscreen.", name: "Game mode", icon: 0xf0297, page: "SpGameMode", keys: "games fullscreen performance governor feral blur" },
         { group: "SYSTEM", id: "sound", desc: "Outputs, inputs and per-app volume.", name: "Sound", icon: 0xf057e, page: "SpSound", keys: "audio volume output input microphone apps" },

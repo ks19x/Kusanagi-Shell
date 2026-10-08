@@ -8,6 +8,7 @@
 #   kusanagi preset [name|next|list]    apply a look (default: list them)
 #   kusanagi look export <name>         write ~/kusanagi-looks/<name>.kusanagi (share it)
 #   kusanagi look import <file>         apply a shared look (ones that run commands: review in Settings)
+#   kusanagi greeter install|sync|preview|status|uninstall   the login screen (greetd); install needs sudo once
 #   kusanagi settings [page]    open Settings (optionally on a page: bar, presets, wallpaper…)
 #   kusanagi log [-f]           the current log (-f follows it)
 #   kusanagi wallpaper [file|restore|get]   set the wallpaper (and re-colour everything from it)
@@ -95,6 +96,24 @@ case "$cmd" in
                   list) sed -n 's/^ *id: "\([^"]*\)", name: "\([^"]*\)", note: "\([^"]*\)".*/  \1\t\2 — \3/p' "$SHELL_DIR/Presets.qml" ;;
                   next) qsp ipc call preset next ;;
                   *)    qsp ipc call preset apply "$1" ;;
+              esac ;;
+    greeter)  G="$ROOT/lib/greeter.sh"
+              case "${1:-status}" in
+                  install)   command -v greetd >/dev/null || die "greetd isn't installed (it's the login daemon this uses)"
+                             echo "Kusanagi needs root once to: install cage if missing, create /var/lib/kusanagi-greeter,"
+                             echo "write /usr/local/bin/kusanagi-greeter and point /etc/greetd/config.toml at it (old one kept)."
+                             sudo sh "$G" root-install "$(id -un)" || exit 1
+                             sh "$G" sync "$SHELL_DIR"
+                             echo "Done. greetd reads its config when it starts, so you'll see it after a reboot."
+                             echo "(Restarting greetd now would end a session you logged in to through it.)" ;;
+                  uninstall) sudo sh "$G" root-uninstall ;;
+                  sync)      sh "$G" sync "$SHELL_DIR" "${2:-}" ;;
+                  preview)   if [ -f /var/lib/kusanagi-greeter/shell/greeter.qml ] && [ -r /var/lib/kusanagi-greeter/.config/kusanagi/settings.json ]; then
+                                 HOME=/var/lib/kusanagi-greeter XDG_CONFIG_HOME=/var/lib/kusanagi-greeter/.config setsid qs -p /var/lib/kusanagi-greeter/shell/greeter.qml >/dev/null 2>&1 &
+                             else setsid qs -p "$SHELL_DIR/greeter.qml" >/dev/null 2>&1 & fi ;;
+                  status)    if sh "$G" installed; then echo "installed: greetd starts kusanagi-greeter"; else echo "not installed (greetd uses: $(sed -n '/^\[default_session\]/,/^\[/{s/^[[:space:]]*command[[:space:]]*=[[:space:]]*//p}' /etc/greetd/config.toml 2>/dev/null))"; fi
+                             [ -d /var/lib/kusanagi-greeter/shell ] && echo "synced: $(stat -c %y /var/lib/kusanagi-greeter/shell | cut -d. -f1)"; true ;;
+                  *)         die "usage: kusanagi greeter install | sync | preview | status | uninstall" ;;
               esac ;;
     look)     case "${1:-}" in
                   export) [ $# -ge 2 ] || die "usage: kusanagi look export <name>"; qsp ipc call preset exportLook "$2" ;;

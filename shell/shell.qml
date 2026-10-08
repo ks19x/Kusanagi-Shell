@@ -26,6 +26,7 @@ ShellRoot {
     Osd { id: osd }
     Lock { id: lock }
     ScreenshotOsd {}
+    GreeterSync {}          // the login screen follows your looks (only when it's installed)
     NotificationPopups {}
     // Hyprland's global shortcuts (kusanagi:mediaToggle …); Mango has no such protocol
     LazyLoader { active: Wm.kind === "hyprland"; Shortcuts { shell: shell } }
