@@ -9,6 +9,8 @@
 #   kusanagi look export <name>         write ~/kusanagi-looks/<name>.kusanagi (share it)
 #   kusanagi look import <file>         apply a shared look (ones that run commands: review in Settings)
 #   kusanagi greeter install|sync|preview|status|uninstall   the login screen (greetd); install needs sudo once
+#   kusanagi session <compositor …>   start a desktop session (the login screen uses it): its own D-Bus,
+#                               a runtime folder, a log in ~/.local/state/kusanagi/sessions, one retry
 #   kusanagi settings [page]    open Settings (optionally on a page: bar, presets, wallpaper…)
 #   kusanagi log [-f]           the current log (-f follows it)
 #   kusanagi wallpaper [file|restore|get]   set the wallpaper (and re-colour everything from it)
@@ -116,6 +118,34 @@ case "$cmd" in
                              [ -r /tmp/kusanagi-greeter.log ] && { echo "last start:"; sed 's/^/  /' /tmp/kusanagi-greeter.log | tail -15; }; true ;;
                   *)         die "usage: kusanagi greeter install | sync | preview | status | uninstall" ;;
               esac ;;
+    session)  [ $# -ge 1 ] || die "usage: kusanagi session <compositor command…>"
+              logdir=${XDG_STATE_HOME:-$HOME/.local/state}/kusanagi/sessions
+              mkdir -p "$logdir"
+              log="$logdir/$(basename "$1").log"
+              [ -f "$log" ] && mv -f "$log" "$log.old"
+              { echo "== $(date '+%F %T') starting: $*"; env | grep -E '^(XDG_|DBUS_|WAYLAND|DISPLAY=)' | sort; } > "$log"
+              # compositors refuse to start without a runtime folder
+              if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -d "${XDG_RUNTIME_DIR:-/nonexistent}" ] || [ ! -w "${XDG_RUNTIME_DIR:-/nonexistent}" ]; then
+                  r=/run/user/$(id -u)
+                  if [ ! -d "$r" ] || [ ! -w "$r" ]; then r=/tmp/runtime-$(id -u); mkdir -p "$r" && chmod 700 "$r"; fi
+                  echo "== XDG_RUNTIME_DIR '${XDG_RUNTIME_DIR:-}' was unusable, using $r" >> "$log"
+                  export XDG_RUNTIME_DIR="$r"
+              fi
+              export XDG_SESSION_TYPE=wayland
+              # the login screen picks this session (and you) first next time — `greeter sync` reads it
+              [ -n "${XDG_SESSION_DESKTOP:-}" ] && printf '%s\n' "$XDG_SESSION_DESKTOP" > "$logdir/../last-session"
+              # every session on its own D-Bus (unless one is already there)
+              if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && command -v dbus-run-session >/dev/null; then set -- dbus-run-session "$@"; fi
+              tries=0
+              while :; do
+                  t0=$(date +%s)
+                  "$@" >> "$log" 2>&1
+                  rc=$?
+                  echo "== $(date '+%F %T') exited $rc after $(( $(date +%s) - t0 )) s" >> "$log"
+                  # gone at once with an error — usually the GPU / seat not handed over yet: one more try
+                  if [ $rc -ne 0 ] && [ $(( $(date +%s) - t0 )) -lt 5 ] && [ $tries -lt 1 ]; then tries=1; sleep 1; echo "== retrying" >> "$log"; continue; fi
+                  exit $rc
+              done ;;
     look)     case "${1:-}" in
                   export) [ $# -ge 2 ] || die "usage: kusanagi look export <name>"; qsp ipc call preset exportLook "$2" ;;
                   import) [ $# -ge 2 ] || die "usage: kusanagi look import <file>"

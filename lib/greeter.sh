@@ -121,11 +121,15 @@ sync_greeter() {   # sync_greeter <shell dir> [-q]
     printf '%s\n' "$gwall" > "$D/.config/kusanagi/wallpaper"
     [ -f "$cfg/colors.json" ] && cp "$cfg/colors.json" "$D/.config/kusanagi/colors.json"
     # settings: yours, with the login screen's own design (if you picked one) as the lock style
-    python3 -I - "$cfg/settings.json" "$D/.config/kusanagi/settings.json" <<'PY'
+    last=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/kusanagi/last-session" 2>/dev/null)
+    python3 -I - "$cfg/settings.json" "$D/.config/kusanagi/settings.json" "$last" "$(id -un)" <<'PY'
 import json, sys
 try: d = json.load(open(sys.argv[1]))
 except Exception: d = {}
-g = d.get("greeter", {})
+g = d.setdefault("greeter", {})
+# no default picked in Settings: the session you used last, and you
+if not g.get("session") and sys.argv[3]: g["session"] = sys.argv[3]
+if not g.get("user"): g["user"] = sys.argv[4]
 lock = d.setdefault("lock", {})
 if g.get("style"): lock["style"] = g["style"]
 lock["media"] = False

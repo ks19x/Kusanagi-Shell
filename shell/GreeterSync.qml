@@ -14,5 +14,8 @@ Scope {
         Config.lock.style, Config.lock.blur, Config.lock.dim, Config.lock.clock, Config.lock.avatar, Config.lock.greeting,
         Config.look.font, Config.look.palette, Config.look.accent, String(Theme.accent), String(Theme.bgPanel), wall.text().trim()])
     onWatchedChanged: if (installed) later.restart()
+    // and once per start: it picks up the session you just logged in to (kusanagi session noted it)
+    onInstalledChanged: if (installed) later.restart()
+    Component.onCompleted: if (installed) later.restart()
     Timer { id: later; interval: 4000; onTriggered: Quickshell.execDetached(["kusanagi", "greeter", "sync", "-q"]) }
 }

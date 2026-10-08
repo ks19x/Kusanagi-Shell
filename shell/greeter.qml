@@ -94,7 +94,7 @@ ShellRoot {
     FileView { id: wallFile; path: g.home + "/.config/kusanagi/wallpaper"; blockLoading: true; printErrors: false }
 
     // greetd: ask for the password once, then start the chosen session through the user's login
-    // shell (so their profile runs — PATH and friends), on its own D-Bus session like the TTY did
+    // shell (so their profile runs — PATH and friends) and `kusanagi session` (its own D-Bus …)
     Connections {
         target: Greetd
         function onAuthMessage(message, error, responseRequired, echoResponse) {
@@ -111,7 +111,10 @@ ShellRoot {
             // tell the launcher a session was handed over (so it never falls back after a login)
             const mark = Quickshell.env("KUSANAGI_GREETER_MARK")
             if (mark) Quickshell.execDetached(["touch", mark])
-            Greetd.launch([g.user.shell, "-l", "-c", "exec dbus-run-session " + s.exec],
+            // `kusanagi session` gives it its own D-Bus, a runtime folder, a log and one retry
+            // (plain dbus-run-session when Kusanagi isn't on that user's PATH)
+            Greetd.launch([g.user.shell, "-l", "-c",
+                           "if command -v kusanagi >/dev/null 2>&1; then exec kusanagi session " + s.exec + "; else exec dbus-run-session " + s.exec + "; fi"],
                           ["XDG_SESSION_TYPE=wayland", "XDG_CURRENT_DESKTOP=" + s.desktop, "XDG_SESSION_DESKTOP=" + s.id], true)
         }
     }

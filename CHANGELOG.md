@@ -6,7 +6,9 @@
   cage, /var/lib/kusanagi-greeter, /usr/local/bin/kusanagi-greeter, greetd's config with the old one
   kept), `sync` (automatic once installed), `preview`, `status`, `uninstall`. If it can't start, the
   previous greeter takes over; sessions start through your login shell on their own D-Bus.
-  Settings → Login screen
+  Settings → Login screen. Sessions start through `kusanagi session` (own D-Bus, a runtime folder if
+  the login didn't make one, a log in ~/.local/state/kusanagi/sessions, one retry when the compositor
+  dies at once); the login screen remembers the session you used last
 - **Lock screen designs** (Settings → Lock & power): Centered, Card, Split, Minimal, Stacked, Terminal
 - **Power menu styles**: Row, Tiles, List (a corner menu), Fullscreen, Pill — letters pick too (L E S R P)
 - **Share a look**: export everything a preset holds to `~/kusanagi-looks/<name>.kusanagi` or copy it
