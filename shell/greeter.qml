@@ -113,8 +113,10 @@ ShellRoot {
             if (mark) Quickshell.execDetached(["touch", mark])
             // `kusanagi session` gives it its own D-Bus, a runtime folder, a log and one retry
             // (plain dbus-run-session when Kusanagi isn't on that user's PATH)
+            // greetd joins the command with spaces and runs it through sh: every word is quoted
+            const q = w => "'" + String(w).replace(/'/g, "'\\''") + "'"
             Greetd.launch([g.user.shell, "-l", "-c",
-                           "if command -v kusanagi >/dev/null 2>&1; then exec kusanagi session " + s.exec + "; else exec dbus-run-session " + s.exec + "; fi"],
+                           "if command -v kusanagi >/dev/null 2>&1; then exec kusanagi session " + s.exec + "; else exec dbus-run-session " + s.exec + "; fi"].map(q),
                           ["XDG_SESSION_TYPE=wayland", "XDG_CURRENT_DESKTOP=" + s.desktop, "XDG_SESSION_DESKTOP=" + s.id], true)
         }
     }
