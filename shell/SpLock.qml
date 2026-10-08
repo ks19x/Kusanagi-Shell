@@ -32,6 +32,34 @@ Column {
     }
 
     SpGroup {
+        title: "Design"
+        icon: 0xf033e
+        hint: "The Kusanagi lock screen. Try one with Test — it unlocks itself after 30 s."
+        SpStylePicker {
+            kind: "lock"
+            cardW: 128
+            current: Config.lock.style
+            options: [{ value: "center", label: "Centered" }, { value: "card", label: "Card" }, { value: "split", label: "Split" },
+                      { value: "minimal", label: "Minimal" }, { value: "stacked", label: "Stacked" }, { value: "terminal", label: "Terminal" }]
+            onPicked: v => Config.lock.style = v
+        }
+    }
+
+    SpGroup {
+        title: "Power menu"
+        icon: 0xf0425
+        hint: "Lock, log out, suspend, reboot, shut down (Super+` / Ctrl+Alt+Del). Letters work too: L E S R P."
+        SpStylePicker {
+            kind: "power"
+            cardW: 128
+            current: Config.power.style
+            options: [{ value: "row", label: "Row" }, { value: "tiles", label: "Tiles" }, { value: "list", label: "List" },
+                      { value: "fullscreen", label: "Fullscreen" }, { value: "pill", label: "Pill" }]
+            onPicked: v => { Config.power.style = v; Quickshell.execDetached(["kusanagi", "msg", "power", "open"]) }
+        }
+    }
+
+    SpGroup {
         title: "Look"
         hint: "Applies to the Kusanagi lock screen."
         CpSlider {

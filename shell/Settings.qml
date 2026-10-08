@@ -2,7 +2,6 @@
 // left, one page per topic on the right. Every control writes Config, so changes apply as you make them.
 // Loaded only while open (shell.qml).
 import Quickshell
-import Quickshell.Io
 import QtQuick
 
 FloatingWindow {
@@ -31,7 +30,7 @@ FloatingWindow {
         { id: "panel", desc: "The control panel that drops out of the clock.", name: "Control panel", icon: 0xf056e, page: "SpPanel", keys: "tiles width tab media stats" },
         { id: "wallpaper", desc: "Your wallpapers, transitions, parallax and slideshow.", name: "Wallpaper", icon: 0xf0e09, page: "SpWallpaper", keys: "transition parallax slideshow fill dim awww picker" },
         { id: "launcher", desc: "The app launcher and clipboard history.", name: "Launcher & clipboard", icon: 0xf003b, page: "SpLauncher", keys: "apps search clipboard terminal calculator" },
-        { id: "lock", desc: "The lock screen, and which locker guards your session.", name: "Lock screen", icon: 0xf033e, page: "SpLock", keys: "hyprlock blur password test" },
+        { id: "lock", desc: "The lock screen and the power menu — how they look and which locker guards you.", name: "Lock & power", icon: 0xf033e, page: "SpLock", keys: "hyprlock blur password test" },
         { id: "notifications", desc: "Popups, do-not-disturb and the volume / mic overlay.", name: "Notifications & OSD", icon: 0xf009a, page: "SpNotifications", keys: "popups dnd osd volume timeout position" },
         { id: "gamemode", desc: "What happens when a game goes fullscreen.", name: "Game mode", icon: 0xf0297, page: "SpGameMode", keys: "games fullscreen performance governor feral blur" },
         { group: "SYSTEM", id: "sound", desc: "Outputs, inputs and per-app volume.", name: "Sound", icon: 0xf057e, page: "SpSound", keys: "audio volume output input microphone apps" },
@@ -226,5 +225,4 @@ FloatingWindow {
             }
         }
     }
-    IpcHandler { target: "settest"; function scroll(y: int): void { scroller.contentY = y } }
 }

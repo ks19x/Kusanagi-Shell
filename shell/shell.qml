@@ -146,6 +146,16 @@ ShellRoot {
     IpcHandler {
         target: "preset"
         function apply(name: string): void { Presets.applyNamed(name) }
+        // looks as files: export → ~/kusanagi-looks/<name>.kusanagi; import applies + keeps one, but a look
+        // that runs commands is refused here (Settings → Presets shows those before anything happens)
+        function exportLook(name: string): string { Presets.exportLook(name, false); return Presets.looksDir + "/" + Presets.slug(name) + ".kusanagi" }
+        function importLook(path: string): string {
+            const r = Presets.readLookFile(path)
+            if (r.error) return r.error
+            if (r.commands.length) return "this look runs commands — open Settings → Presets → Share a look to review it"
+            Presets.keep(r.look); Presets.apply(r.look)
+            return "applied " + r.look.name
+        }
         function next(): void { Presets.next() }
     }
     IpcHandler {

@@ -108,6 +108,7 @@ Singleton {
             look: { radius: 18, animSpeed: 1.0, bounce: 1.0, backdrop: 0.3, borders: true, borderAccent: false, shadows: true, palette: "rose-pine" },
             barsTemplate: "aurora",
             panel: { morph: "island", tileStyle: "cards", tileColumns: 4, order: ["media", "weather", "tiles", "sliders", "stats"] }, osd: { style: "pill", position: "top" }, notifications: { style: "comfortable", position: "top-right" },
+            lock: { style: "card" }, power: { style: "row" },
             launcher: { style: "spotlight", layout: "list", iconSize: 32 }
         },
         {
@@ -115,6 +116,7 @@ Singleton {
             look: { radius: 24, animSpeed: 1.0, bounce: 1.8, backdrop: 0.25, borders: false, borderAccent: false, shadows: true, palette: "wallpaper" },
             barsTemplate: "material",
             panel: { morph: "drop", tileStyle: "pills", tileColumns: 2, sliderStyle: "slim", header: "compact", order: ["sliders", "tiles", "media", "stats"] }, osd: { style: "pill", position: "bottom" }, notifications: { style: "minimal", position: "top-center" },
+            lock: { style: "card" }, power: { style: "tiles" },
             launcher: { style: "fullscreen", layout: "grid", iconSize: 56 }
         },
         {
@@ -122,6 +124,7 @@ Singleton {
             look: { radius: 16, animSpeed: 1.25, bounce: 2.0, backdrop: 0.25, borders: true, borderAccent: true, shadows: true, palette: "catppuccin-mocha" },
             barsTemplate: "candy",
             panel: { morph: "island" }, osd: { style: "box" }, notifications: { style: "accent", position: "top-right" },
+            lock: { style: "stacked" }, power: { style: "tiles" },
             launcher: { style: "card", layout: "grid", iconSize: 40 }
         },
         {
@@ -129,6 +132,7 @@ Singleton {
             look: { radius: 18, animSpeed: 1.0, bounce: 0.6, backdrop: 0.3, borders: false, borderAccent: false, shadows: true, palette: "mono" },
             barsTemplate: "notch",
             panel: { morph: "sheet", tileStyle: "icons", tileColumns: 6, sliderStyle: "slim", header: "hidden", tabs: true, order: ["tiles", "sliders", "media", "weather"] }, osd: { style: "box" }, notifications: { style: "minimal", position: "top-center" },
+            lock: { style: "minimal" }, power: { style: "pill" },
             launcher: { style: "spotlight", layout: "list", iconSize: 28 }
         },
         {
@@ -136,6 +140,7 @@ Singleton {
             look: { radius: 2, animSpeed: 0.6, bounce: 0.3, backdrop: 0.35, borders: true, borderAccent: true, shadows: false, palette: "tokyo-night" },
             barsTemplate: "cyber",
             panel: { morph: "fade" }, osd: { style: "minimal", position: "top" }, notifications: { style: "accent", position: "bottom-right" },
+            lock: { style: "terminal" }, power: { style: "list" },
             launcher: { style: "side", layout: "list", iconSize: 28 }
         },
         {
@@ -143,6 +148,7 @@ Singleton {
             look: { radius: 8, animSpeed: 0.8, bounce: 0.4, backdrop: 0.2, borders: true, borderAccent: false, shadows: true, palette: "wallpaper" },
             barsTemplate: "win11",
             panel: { morph: "sheet", tileStyle: "pills", tileColumns: 3, sliderStyle: "slim", header: "compact", order: ["tiles", "sliders", "media"] }, osd: { style: "pill", position: "bottom" }, notifications: { style: "comfortable", position: "bottom-right" },
+            lock: { style: "split" }, power: { style: "list" },
             launcher: { style: "card", layout: "grid", iconSize: 40, position: "center" }
         },
         {
@@ -150,6 +156,7 @@ Singleton {
             look: { radius: 20, animSpeed: 1.4, bounce: 0.4, backdrop: 0.3, borders: true, borderAccent: false, shadows: true, palette: "everforest" },
             barsTemplate: "zen",
             panel: { morph: "fade" }, osd: { style: "minimal", position: "bottom" }, notifications: { style: "minimal", position: "bottom-center" },
+            lock: { style: "minimal" }, power: { style: "pill" },
             launcher: { style: "spotlight", layout: "list", iconSize: 28 }
         },
         {
@@ -182,11 +189,94 @@ Singleton {
         panel: ["morph", "opacity", "tileStyle", "tileColumns", "sliderStyle", "header", "tabs", "order"],
         osd: ["style", "position"],
         notifications: ["style", "position"],
-        launcher: ["style", "position", "layout", "iconSize"]
+        launcher: ["style", "position", "layout", "iconSize"],
+        lock: ["style"],
+        power: ["style"]
     })
     // looks made before these existed: applying one puts these back to their defaults
     readonly property var styleDefaults: ({ launcher: { style: "card", position: "upper" }, osd: { position: "top" }, notifications: { position: "top-right" },
+        lock: { style: "center" }, power: { style: "row" },
         panel: { tileStyle: "cards", tileColumns: 4, sliderStyle: "thick", header: "big", tabs: true, order: ["tiles", "sliders", "media", "weather", "stats"] } })
+
+    // ---- sharing: a whole look as one file (~/kusanagi-looks/<name>.kusanagi) or as pasted text ----
+    // { kusanagi: 1, kind: "look", name, note, created, look: { look, bar, workspaces, panel, osd,
+    //   notifications, launcher, lock, power, bars } } — no wallpaper, no pinned apps (they're yours)
+    readonly property string looksDir: Quickshell.env("HOME") + "/kusanagi-looks"
+    property string lastExport: ""
+    function slug(n) { return (n || "").trim().replace(/[^\w\- ]+/g, "").replace(/\s+/g, "-").toLowerCase() || "my-look" }
+    function lookDoc(name) {
+        const p = snapshot(name)
+        delete p.id
+        return { kusanagi: 1, kind: "look", name: p.name, note: p.note, created: new Date().toISOString(), look: p }
+    }
+    property var pendingWrite: null
+    function exportLook(name, toClipboard) {
+        name = (name || "").trim() || "My look"
+        const text = JSON.stringify(lookDoc(name), null, 2)
+        if (toClipboard) { Quickshell.execDetached(["sh", "-c", "printf '%s' \"$1\" | wl-copy", "sh", text]); lastExport = "clipboard"; return }
+        pendingWrite = { path: looksDir + "/" + slug(name) + ".kusanagi", text: text }
+        mkdir.running = true
+    }
+    Process {
+        id: mkdir
+        command: ["mkdir", "-p", root.looksDir]
+        onExited: if (root.pendingWrite) { writer.path = root.pendingWrite.path; writer.setText(root.pendingWrite.text); root.lastExport = root.pendingWrite.path; root.pendingWrite = null }
+    }
+    FileView { id: writer; printErrors: false }
+
+    // reading one: parse + check, then the page shows it before anything changes
+    function readLook(text) {
+        let d
+        try { d = JSON.parse(text) } catch (e) { return { error: "That isn't a Kusanagi look (not JSON)." } }
+        if (!d || d.kusanagi === undefined || !d.look) return { error: "That isn't a Kusanagi look." }
+        const look = d.look
+        look.name = d.name || look.name || "Imported look"
+        look.note = d.note || look.note || "imported"
+        look.id = "user:" + look.name
+        return { look: look, commands: commandsIn(look) }
+    }
+    function readLookFile(path) { reader.path = ""; reader.path = path.replace(/^file:\/\//, ""); reader.reload(); return readLook(reader.text()) }
+    FileView { id: reader; blockLoading: true; printErrors: false }
+
+    // what a shared look would run on this machine: custom modules' commands, and click/scroll
+    // actions that aren't built in (those run in a shell)
+    readonly property var builtinActions: ["panel", "launcher", "settings", "power", "wallpaper", "clipboard", "lock", "notifs", "dnd",
+                                           "caffeine", "gamemode", "preset", "alt", "media", "volume", "mic", "workspace", "none"]
+    function commandsIn(look) {
+        const out = []
+        const walk = e => {
+            if (!e || typeof e !== "object") return
+            if (e.type === "custom" && e.exec) out.push(e.exec)
+            for (const k of ["click", "rightClick", "middleClick", "scrollUp", "scrollDown"]) {
+                const a = e[k]
+                if (typeof a === "string" && a && !builtinActions.includes(a.split(":")[0])) out.push(a)
+                else if (Array.isArray(a)) out.push(a.join(" "))
+            }
+            for (const v of Object.values(e)) if (v && typeof v === "object") Array.isArray(v) ? v.forEach(walk) : walk(v)
+        }
+        for (const b of look.bars || []) walk(b)
+        return out
+    }
+    // the same look with every command taken out (custom modules dropped, shell actions cleared)
+    function withoutCommands(look) {
+        const copy = JSON.parse(JSON.stringify(look))
+        const clean = e => {
+            if (Array.isArray(e)) return e.filter(x => !(x && typeof x === "object" && x.type === "custom")).map(clean)
+            if (!e || typeof e !== "object") return e
+            for (const k of ["click", "rightClick", "middleClick", "scrollUp", "scrollDown"]) {
+                const a = e[k]
+                if (Array.isArray(a) || (typeof a === "string" && a && !builtinActions.includes(a.split(":")[0]))) delete e[k]
+            }
+            for (const k of Object.keys(e)) e[k] = clean(e[k])
+            return e
+        }
+        copy.bars = clean(copy.bars || [])
+        return copy
+    }
+    function keep(look) {
+        store.saved = saved.filter(s => s.name !== look.name).concat([look])
+        file.writeAdapter()
+    }
 
     // ---- your own ----
     FileView {
@@ -203,8 +293,9 @@ Singleton {
 
     function apply(p) {
         for (const section in lookKeys) {
-            if (!p[section]) continue
-            const target = Config[section], src = Object.assign({}, styleDefaults[section] || {}, p[section])
+            // sections a preset doesn't mention still get their style defaults (older looks reset newer choices)
+            if (!p[section] && !styleDefaults[section]) continue
+            const target = Config[section], src = Object.assign({}, styleDefaults[section] || {}, p[section] || {})
             for (const k of lookKeys[section]) {
                 if (!(k in src)) continue
                 if (k === "modules") { for (const m in src.modules) target.modules[m] = src.modules[m] }

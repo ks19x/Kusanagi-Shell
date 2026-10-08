@@ -45,7 +45,7 @@ Flow {
                 }
                 Loader {
                     anchors.fill: parent
-                    sourceComponent: ({ launcher: launcherC, panel: panelC, notifications: notifC, osd: osdC, corner: cornerC, edge: edgeC, tiles: tilesC, panelLook: lookC })[root.kind] ?? null
+                    sourceComponent: ({ launcher: launcherC, panel: panelC, notifications: notifC, osd: osdC, corner: cornerC, edge: edgeC, tiles: tilesC, panelLook: lookC, lock: lockC, power: powerC })[root.kind] ?? null
                     property var v: card.modelData.value
                 }
             }
@@ -235,6 +235,73 @@ Flow {
                     }
                     Rectangle { width: parent.width; height: v === "compact" || v === "icons" ? 2 : 6; radius: 3; color: root.acc }
                 }
+            }
+        }
+    }
+    Component {
+        id: lockC
+        Item {
+            readonly property string v: parent.v
+            Rectangle { anchors.fill: parent; color: Theme.alpha("#000000", 0.35) }
+            Rectangle { visible: v === "split"; width: parent.width * 0.38; height: parent.height; color: root.surf
+                Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: root.acc } }
+            Rectangle { visible: v === "card"; anchors.centerIn: parent; width: parent.width * 0.5; height: parent.height * 0.8; radius: 6; color: root.surf }
+            // clock
+            Rectangle {
+                visible: v !== "terminal" && v !== "stacked"
+                width: v === "minimal" ? 18 : v === "card" ? 30 : 38; height: v === "minimal" ? 6 : 10; radius: 2; color: Theme.text
+                x: v === "split" ? 8 : v === "minimal" ? 6 : (parent.width - width) / 2
+                y: v === "card" ? parent.height * 0.18 : v === "minimal" ? 6 : parent.height * 0.16
+            }
+            Column { visible: v === "stacked"; x: 10; y: parent.height * 0.2; spacing: 3
+                Rectangle { width: 24; height: 16; radius: 2; color: root.acc }
+                Rectangle { width: 24; height: 16; radius: 2; color: Theme.text } }
+            // avatar + password
+            Rectangle {
+                visible: v !== "terminal" && v !== "minimal"
+                width: 9; height: 9; radius: 4.5; color: "transparent"; border.width: 1; border.color: root.acc
+                x: (v === "split" ? parent.width * 0.19 : v === "stacked" ? parent.width * 0.72 : parent.width / 2) - 4.5
+                y: v === "card" ? parent.height * 0.42 : v === "stacked" ? parent.height * 0.36 : parent.height * 0.55
+            }
+            Rectangle {
+                visible: v !== "terminal"
+                width: 34; height: 6; radius: 3; color: Theme.alpha(Theme.text, 0.3)
+                x: (v === "split" ? parent.width * 0.19 : v === "stacked" ? parent.width * 0.72 : parent.width / 2) - 17
+                y: v === "card" ? parent.height * 0.62 : v === "minimal" ? parent.height * 0.48 : v === "stacked" ? parent.height * 0.56 : parent.height * 0.72
+            }
+            Column { visible: v === "terminal"; x: 12; y: parent.height * 0.32; spacing: 4
+                Rectangle { width: 40; height: 3; color: root.line }
+                Rectangle { width: 30; height: 3; color: Theme.text }
+                Row { spacing: 2; Rectangle { width: 22; height: 3; color: Theme.text } Rectangle { width: 4; height: 6; y: -1.5; color: root.acc } } }
+        }
+    }
+    Component {
+        id: powerC
+        Item {
+            readonly property string v: parent.v
+            Rectangle { anchors.fill: parent; color: Theme.alpha("#000000", v === "fullscreen" ? 0.55 : 0.25) }
+            Rectangle {
+                visible: v === "row" || v === "tiles"
+                anchors.centerIn: parent; width: parent.width * 0.72; height: v === "tiles" ? 26 : 28; radius: 5; color: root.surf
+                Row { anchors.centerIn: parent; spacing: 3
+                    Repeater { model: 5; Rectangle { width: 14; height: 14; radius: v === "tiles" ? 3 : 7; color: index === 0 ? root.acc : Theme.alpha(Theme.text, 0.22); required property int index } } }
+            }
+            Row {
+                visible: v === "fullscreen"; anchors.centerIn: parent; spacing: 5
+                Repeater { model: 5; Rectangle { width: 18; height: 18; radius: 9; color: index === 0 ? root.acc : Theme.alpha(Theme.text, 0.25); required property int index } }
+            }
+            Rectangle {
+                visible: v === "list"
+                x: parent.width - width - 5; y: 5; width: 50; height: 44; radius: 4; color: root.surf
+                Column { x: 3; y: 3; spacing: 2
+                    Repeater { model: 5; Rectangle { width: 44; height: 6; radius: 2; color: index === 0 ? root.acc : Theme.alpha(Theme.text, 0.2); required property int index } } }
+            }
+            Rectangle {
+                visible: v === "pill"
+                anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 8 }
+                width: 64; height: 14; radius: 7; color: root.surf
+                Row { anchors.centerIn: parent; spacing: 3
+                    Repeater { model: 5; Rectangle { width: 8; height: 8; radius: 4; color: index === 0 ? root.acc : Theme.alpha(Theme.text, 0.25); required property int index } } }
             }
         }
     }

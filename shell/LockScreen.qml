@@ -41,42 +41,122 @@ Item {
     Item {
         id: content
         anchors.fill: parent
+        // (style flags below; the clock, the login column and the media pill place themselves by them)
         opacity: root.visibleState ? 1 : 0
         scale: root.visibleState ? 1 : (root.lock.unlocking ? 1.06 : 0.96)
         Behavior on opacity { NumberAnimation { duration: Config.ms(380); easing.type: Easing.OutCubic } }
         Behavior on scale { NumberAnimation { duration: Config.ms(520); easing.type: Easing.OutQuint } }
 
-        SystemClock { id: clock; precision: Config.lock.clock.includes("ss") ? SystemClock.Seconds : SystemClock.Minutes }
+        SystemClock { id: clock; precision: Config.lock.clock.includes("ss") || content.term ? SystemClock.Seconds : SystemClock.Minutes }
 
+        // Config.lock.style: center · card (one frosted card) · split (a panel on the left) · minimal (a corner
+        // clock, just the password) · stacked (huge hours over minutes, login at the right) · terminal (a text prompt)
+        readonly property string style: Config.lock.style
+        readonly property bool card: style === "card"
+        readonly property bool split: style === "split"
+        readonly property bool minimal: style === "minimal"
+        readonly property bool stacked: style === "stacked"
+        readonly property bool term: style === "terminal"
+        readonly property bool leftAligned: split || minimal || stacked
+        readonly property real panelW: Math.round(width * 0.38)
+
+        // ---- backgrounds of the card and split styles ----
+        Rectangle {
+            visible: content.split
+            width: content.panelW; height: parent.height
+            color: Theme.alpha(Theme.bgPanel, 0.62)
+            Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: Theme.alpha(Theme.accent, 0.35) }
+        }
+        Rectangle {
+            id: cardBg
+            visible: content.card
+            width: 440
+            height: clockCol.implicitHeight + login.implicitHeight + 92
+            x: Math.round((parent.width - width) / 2)
+            y: Math.round((parent.height - height) / 2)
+            radius: Math.max(18, Config.look.radius + 6)
+            color: Theme.alpha(Theme.bgPanel, 0.55)
+            border.width: 1
+            border.color: Theme.alpha(Theme.text, 0.1)
+        }
+
+        // ---- the clock ----
         Column {
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: parent.height * 0.18
-            spacing: 4
+            id: clockCol
+            visible: !content.term
+            spacing: content.stacked ? -40 : 4
+            x: content.split ? 80 : content.minimal ? 60 : content.stacked ? Math.round(parent.width * 0.1)
+                : Math.round((parent.width - width) / 2)
+            y: content.card ? cardBg.y + 30 : content.minimal ? 54 : content.stacked ? Math.round((parent.height - height) / 2)
+                : Math.round(parent.height * (content.split ? 0.2 : 0.18))
 
             CpText {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: Qt.formatDateTime(clock.date, Config.lock.clock)
-                font.pixelSize: 128
+                anchors.horizontalCenter: content.leftAligned ? undefined : parent.horizontalCenter
+                text: content.stacked ? Qt.formatDateTime(clock.date, Config.lock.clock.includes("AP") ? "hh" : "HH") : Qt.formatDateTime(clock.date, Config.lock.clock)
+                font.pixelSize: content.stacked ? 200 : content.card ? 88 : content.minimal ? 56 : content.split ? 112 : 128
+                font.bold: true
+                font.letterSpacing: content.minimal ? 0 : -2
+                color: content.stacked ? Theme.accent : Theme.text
+            }
+            CpText {
+                visible: content.stacked
+                text: Qt.formatDateTime(clock.date, "mm")
+                font.pixelSize: 200
                 font.bold: true
                 font.letterSpacing: -2
             }
             CpText {
-                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.horizontalCenter: content.leftAligned ? undefined : parent.horizontalCenter
+                topPadding: content.stacked ? 44 : 0
                 text: Qt.formatDate(clock.date, "dddd, d MMMM")
-                font.pixelSize: 20
+                font.pixelSize: content.minimal ? 15 : 20
                 color: Theme.alpha(Theme.text, 0.75)
             }
+        }
+
+        // ---- terminal: a login prompt ----
+        Column {
+            visible: content.term
+            x: Math.round(parent.width * 0.16)
+            y: Math.round(parent.height * 0.32)
+            spacing: 6
+            readonly property string mono: Config.look.font
+            component Line: Text {
+                font.family: Config.look.font
+                font.pixelSize: 20
+                color: Theme.text
+                textFormat: Text.PlainText
+            }
+            Line { text: SysInfo.host + " · " + SysInfo.kernel + "   " + Qt.formatDateTime(clock.date, "ddd d MMM  HH:mm:ss"); color: Theme.alpha(Theme.text, 0.55); font.pixelSize: 15 }
+            Line { text: " "; font.pixelSize: 10 }
+            Line { text: SysInfo.host + " login: " + (Config.lock.greeting || Quickshell.env("USER")) }
+            Row {
+                Line { text: "Password: " + "*".repeat(Math.min(root.lock.password.length, 32)) }
+                Rectangle {
+                    width: 11; height: 22
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: Theme.accent
+                    SequentialAnimation on opacity { running: content.term && root.visibleState; loops: Animation.Infinite
+                        NumberAnimation { to: 0; duration: 0 } PauseAnimation { duration: 530 } NumberAnimation { to: 1; duration: 0 } PauseAnimation { duration: 530 } }
+                }
+            }
+            Line { visible: root.lock.busy; text: "checking…"; color: Theme.textDim }
+            Line { visible: root.lock.error !== ""; text: "Login incorrect"; color: Theme.danger }
         }
 
         // ---- you + password ----
         Column {
             id: login
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: parent.height * 0.58
             spacing: 16
+            // terminal: still here (it holds the key input) but invisible
+            opacity: content.term ? 0 : 1
+            x: content.split ? Math.round((content.panelW - width) / 2) : content.stacked ? Math.round(parent.width * 0.62)
+                : Math.round((parent.width - width) / 2)
+            y: content.card ? clockCol.y + clockCol.implicitHeight + 28 : content.minimal ? Math.round((parent.height - height) / 2)
+                : content.stacked ? Math.round((parent.height - height) / 2) : Math.round(parent.height * (content.split ? 0.6 : 0.58))
 
             ClippingRectangle {
-                visible: Config.lock.avatar
+                visible: Config.lock.avatar && !content.minimal
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 84; height: 84; radius: 42
                 color: Theme.alpha(Theme.text, 0.1)
@@ -92,6 +172,7 @@ Item {
             }
 
             CpText {
+                visible: !content.minimal
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Config.lock.greeting || Quickshell.env("USER")
                 font.pixelSize: 16
@@ -181,8 +262,9 @@ Item {
 
         // ---- now playing ----
         Rectangle {
-            visible: Config.lock.media && root.lock.player !== null
-            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 48 }
+            visible: Config.lock.media && root.lock.player !== null && !content.term
+            x: content.split ? Math.round((content.panelW - width) / 2) : Math.round((parent.width - width) / 2)
+            anchors { bottom: parent.bottom; bottomMargin: 48 }
             width: Math.min(420, mediaRow.implicitWidth + 32)
             height: 52
             radius: 26

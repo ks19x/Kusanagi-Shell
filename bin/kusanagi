@@ -6,6 +6,8 @@
 #   kusanagi msg <target> <fn> [args]   talk to the running shell, e.g.  kusanagi msg launcher toggle
 #   kusanagi ipc                list every target and function msg understands
 #   kusanagi preset [name|next|list]    apply a look (default: list them)
+#   kusanagi look export <name>         write ~/kusanagi-looks/<name>.kusanagi (share it)
+#   kusanagi look import <file>         apply a shared look (ones that run commands: review in Settings)
 #   kusanagi settings [page]    open Settings (optionally on a page: bar, presets, wallpaper…)
 #   kusanagi log [-f]           the current log (-f follows it)
 #   kusanagi wallpaper [file|restore|get]   set the wallpaper (and re-colour everything from it)
@@ -93,6 +95,12 @@ case "$cmd" in
                   list) sed -n 's/^ *id: "\([^"]*\)", name: "\([^"]*\)", note: "\([^"]*\)".*/  \1\t\2 — \3/p' "$SHELL_DIR/Presets.qml" ;;
                   next) qsp ipc call preset next ;;
                   *)    qsp ipc call preset apply "$1" ;;
+              esac ;;
+    look)     case "${1:-}" in
+                  export) [ $# -ge 2 ] || die "usage: kusanagi look export <name>"; qsp ipc call preset exportLook "$2" ;;
+                  import) [ $# -ge 2 ] || die "usage: kusanagi look import <file>"
+                          f=$(readlink -f "$2") || die "no such file: $2"; qsp ipc call preset importLook "$f" ;;
+                  *)      die "usage: kusanagi look export <name> | import <file>" ;;
               esac ;;
     settings) if [ $# -ge 1 ]; then qsp ipc call settings page "$1"; else qsp ipc call settings open; fi ;;
     log)      f=""; for d in $(ls -t /run/user/"$(id -u)"/quickshell/by-id/*/log.qslog 2>/dev/null); do

@@ -24,6 +24,7 @@ Singleton {
     readonly property alias screenshot: adapter.screenshot
     readonly property alias weather: adapter.weather
     readonly property alias dock: adapter.dock
+    readonly property alias power: adapter.power
     // the bar layout engine (BarSpec.qml, docs/bar.md): [] = the classic bar from the options above
     property alias bars: adapter.bars
 
@@ -67,7 +68,8 @@ Singleton {
         launcher: { style: "card", position: "upper", width: 640, rows: 7, descriptions: true, sortByUsage: true, terminal: "foot", layout: "list", iconSize: 32 },
         wallpaper: { folder: "~/Pictures/Wallpapers", columns: 4, renderer: "kusanagi", transition: "random", duration: 1100,
                      fill: "fill", parallax: 0.04, dim: 0, slideshow: 0 },
-        lock: { engine: "hyprlock", blur: 0.8, dim: 0.35, clock: "HH:mm", avatar: true, media: true, greeting: "" },
+        lock: { engine: "hyprlock", style: "center", blur: 0.8, dim: 0.35, clock: "HH:mm", avatar: true, media: true, greeting: "" },
+        power: { style: "row" },
         display: { nightTemp: 4000 },
         windows: { override: false, gapsIn: 8, gapsOut: 8, border: 2 },
         gamemode: { auto: true, effects: true, feral: true, quiet: true, dnd: true, grace: 800, announce: "manual" },
@@ -213,6 +215,7 @@ Singleton {
 
             property JsonObject lock: JsonObject {
                 property string engine: "hyprlock"    // hyprlock | kusanagi (try Settings → Lock screen → Test first)
+                property string style: "center"       // center | card | split | minimal | stacked | terminal
                 property real blur: 0.8
                 property real dim: 0.35
                 property string clock: "HH:mm"
@@ -246,6 +249,10 @@ Singleton {
                 property int gapsIn: 8                // px between windows
                 property int gapsOut: 8               // px from the screen edges
                 property int border: 2                // window border width
+            }
+
+            property JsonObject power: JsonObject {
+                property string style: "row"          // row | tiles | list | fullscreen | pill
             }
 
             property JsonObject dock: JsonObject {

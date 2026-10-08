@@ -1,6 +1,13 @@
 # Changelog
 
 ## Unreleased
+- **Lock screen designs** (Settings → Lock & power): Centered, Card, Split, Minimal, Stacked, Terminal
+- **Power menu styles**: Row, Tiles, List (a corner menu), Fullscreen, Pill — letters pick too (L E S R P)
+- **Share a look**: export everything a preset holds to `~/kusanagi-looks/<name>.kusanagi` or copy it
+  as text; import from those folders, ~/Downloads or pasted text, with a preview first. Looks that
+  run commands (custom bar modules, shell click actions) are listed before anything applies, with
+  "Apply without its commands"; `kusanagi look export <name>` / `kusanagi look import <file>`
+  (the CLI refuses looks with commands)
 - Control panel **Sound** tab: switch output / input device in one click, their volumes, per-app volume
   sliders. The bar's volume module opens it (middle-click = Sound settings)
 - Control panel **Net** tab: connection + live speeds graph, Wi-Fi list / connect / on-off (when there is a
