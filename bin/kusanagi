@@ -112,7 +112,8 @@ case "$cmd" in
                                  HOME=/var/lib/kusanagi-greeter XDG_CONFIG_HOME=/var/lib/kusanagi-greeter/.config setsid qs -p /var/lib/kusanagi-greeter/shell/greeter.qml >/dev/null 2>&1 &
                              else setsid qs -p "$SHELL_DIR/greeter.qml" >/dev/null 2>&1 & fi ;;
                   status)    if sh "$G" installed; then echo "installed: greetd starts kusanagi-greeter"; else echo "not installed (greetd uses: $(sed -n '/^\[default_session\]/,/^\[/{s/^[[:space:]]*command[[:space:]]*=[[:space:]]*//p}' /etc/greetd/config.toml 2>/dev/null))"; fi
-                             [ -d /var/lib/kusanagi-greeter/shell ] && echo "synced: $(stat -c %y /var/lib/kusanagi-greeter/shell | cut -d. -f1)"; true ;;
+                             [ -d /var/lib/kusanagi-greeter/shell ] && echo "synced: $(stat -c %y /var/lib/kusanagi-greeter/shell | cut -d. -f1)"
+                             [ -r /tmp/kusanagi-greeter.log ] && { echo "last start:"; sed 's/^/  /' /tmp/kusanagi-greeter.log | tail -15; }; true ;;
                   *)         die "usage: kusanagi greeter install | sync | preview | status | uninstall" ;;
               esac ;;
     look)     case "${1:-}" in
