@@ -1,3 +1,4 @@
+//@ pragma Env QT_WAYLAND_DISABLE_WINDOWDECORATION=1
 // greeter.qml — Kusanagi's login screen: a greetd greeter that IS your lock screen design (LockScreen.qml)
 // with a user and session picker and reboot / power off. Started by `kusanagi-greeter` (cage + qs) as
 // greetd's default session, with HOME=/var/lib/kusanagi-greeter: its settings, colours, wallpaper
@@ -122,8 +123,10 @@ ShellRoot {
         id: win
         visible: true
         title: g.preview ? "Kusanagi login screen — preview" : "Kusanagi login"
-        implicitWidth: g.preview ? 1280 : 1920
-        implicitHeight: g.preview ? 800 : 1080
+        // the whole screen (cage fullscreens it anyway); no frame — cage draws none and Qt's own is off above
+        readonly property var scr: Quickshell.screens[0] ?? null
+        implicitWidth: g.preview ? 1280 : (scr ? scr.width : 1920)
+        implicitHeight: g.preview ? 800 : (scr ? scr.height : 1080)
         color: Theme.bgPanel
 
         LockScreen {
