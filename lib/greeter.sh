@@ -41,6 +41,10 @@ root_install() {
     command -v cage >/dev/null || pkg_install cage || die "couldn't install cage"
     guser=$(toml_get default_session user); guser=${guser:-greeter}
     id "$guser" >/dev/null 2>&1 || die "greetd's greeter user '$guser' doesn't exist"
+    # the GPU and input through seatd too when it runs (elogind can be late at boot); video for the GPU
+    [ "${KG_TEST:-}" = 1 ] || for g in _seatd seat video; do
+        getent group "$g" >/dev/null && ! id -nG "$guser" | tr ' ' '\n' | grep -qx "$g" && usermod -aG "$g" "$guser" && echo "added $guser to group $g"
+    done
 
     # the greeter's home: yours to write, the greeter user's to read
     if [ "${KG_TEST:-}" = 1 ]; then install -d -m 750 "$D"; else install -d -o "$owner" -g "$guser" -m 750 "$D"; fi
@@ -55,39 +59,59 @@ root_install() {
 # kusanagi-greeter — Kusanagi's login screen for greetd (written by \`kusanagi greeter install\`).
 # Runs the shell's greeter.qml in cage; if that can't start, the previous greeter takes over.
 D=$D
-# a readable note of what happened at the last start (for \`kusanagi greeter status\`)
+# a readable note of what happened at the last start (for \`kusanagi greeter status\`), and the
+# greeter's own output — both in /tmp: the runtime folder can vanish under us at boot
 NOTE=/tmp/kusanagi-greeter.log
+OUT=/tmp/kusanagi-greeter-\$(id -u).out
 note() { echo "\$(date '+%F %T') \$*" >> "\$NOTE" 2>/dev/null; }
 : > "\$NOTE" 2>/dev/null; chmod 644 "\$NOTE" 2>/dev/null
-# cage and qs need a runtime folder: greetd may name one that doesn't exist (no logind dir for the
-# greeter user) — then use a private one of our own
-if [ -z "\${XDG_RUNTIME_DIR:-}" ] || [ ! -d "\$XDG_RUNTIME_DIR" ] || [ ! -w "\$XDG_RUNTIME_DIR" ]; then
-    note "XDG_RUNTIME_DIR '\${XDG_RUNTIME_DIR:-}' unusable, using a private one"
-    XDG_RUNTIME_DIR=/tmp/kusanagi-greeter-runtime-\$(id -u)
-    mkdir -p "\$XDG_RUNTIME_DIR" && chmod 700 "\$XDG_RUNTIME_DIR"
-    export XDG_RUNTIME_DIR
-fi
-# the greeter user can only read \$D: logs, caches and state go in its runtime folder
+
+# at boot greetd can start us before the GPU and the seat manager (seatd / elogind) are up: wait for
+# them, at most 20 s
+ready() {
+    ls /dev/dri/card* >/dev/null 2>&1 || return 1
+    { [ -S /run/seatd.sock ] && [ -w /run/seatd.sock ]; } || [ -e /run/systemd/seats/seat0 ]
+}
+waitready() {
+    i=0
+    while ! ready && [ \$i -lt 40 ]; do sleep 0.5; i=\$((i + 1)); done
+    [ \$i -gt 0 ] && note "waited \$((i / 2)) s for the GPU/seat (\$(ready && echo ready || echo 'still not ready'))"
+}
+
+# a runtime folder of our own: the one greetd names may not exist yet, or be wiped when elogind starts
+XDG_RUNTIME_DIR=/tmp/kusanagi-greeter-runtime-\$(id -u)
+mkdir -p "\$XDG_RUNTIME_DIR" 2>/dev/null
+[ -O "\$XDG_RUNTIME_DIR" ] || XDG_RUNTIME_DIR=\$(mktemp -d)
+chmod 700 "\$XDG_RUNTIME_DIR"; export XDG_RUNTIME_DIR
+# the greeter user can only read \$D: caches and state go in the runtime folder
 R=\$XDG_RUNTIME_DIR/kusanagi-greeter
 mkdir -p "\$R" || note "can't create \$R"
 export HOME=\$D XDG_CONFIG_HOME=\$D/.config XDG_CACHE_HOME=\$R/cache XDG_STATE_HOME=\$R/state QSG_RENDER_LOOP=threaded
 export KUSANAGI_GREETER_MARK=\$R/launched
-rm -f "\$KUSANAGI_GREETER_MARK"
+
 if [ -f "\$D/shell/greeter.qml" ] && command -v cage >/dev/null && command -v qs >/dev/null; then
-    t0=\$(date +%s)
-    note "starting cage + qs (runtime \$XDG_RUNTIME_DIR)"
-    cage -s -- qs -p "\$D/shell/greeter.qml" >"\$R/greeter.log" 2>&1
-    rc=\$?
-    note "cage exited \$rc after \$(( \$(date +%s) - t0 )) s"
-    tail -n 40 "\$R/greeter.log" >> "\$NOTE" 2>/dev/null
-    sleep 0.2
-    # it handed a session to greetd (it leaves this mark first): done, whatever cage returned
-    [ -f "\$KUSANAGI_GREETER_MARK" ] && exit 0
-    # a login takes longer than 3 s; a crash at start doesn't — then fall back
-    [ \$rc -eq 0 ] && [ \$(( \$(date +%s) - t0 )) -gt 3 ] && exit 0
+    for try in 1 2 3; do
+        waitready
+        rm -f "\$KUSANAGI_GREETER_MARK"
+        t0=\$(date +%s)
+        note "try \$try: starting cage + qs"
+        cage -s -- qs -p "\$D/shell/greeter.qml" >"\$OUT" 2>&1
+        rc=\$?
+        note "cage exited \$rc after \$(( \$(date +%s) - t0 )) s"
+        sleep 0.2
+        # it handed a session to greetd (it leaves this mark first): done, whatever cage returned
+        [ -f "\$KUSANAGI_GREETER_MARK" ] && exit 0
+        # a login takes longer than 3 s; a crash at start doesn't — then try again
+        [ \$rc -eq 0 ] && [ \$(( \$(date +%s) - t0 )) -gt 3 ] && exit 0
+        tail -n 25 "\$OUT" | sed 's/^/    /' >> "\$NOTE" 2>/dev/null
+        sleep 2
+    done
 else
     note "not starting: greeter.qml \$([ -f "\$D/shell/greeter.qml" ] && echo ok || echo missing), cage \$(command -v cage || echo missing), qs \$(command -v qs || echo missing)"
 fi
+# cage can leave the screen in graphics mode: back to text, or the fallback is an invisible prompt
+python3 -c 'import os, fcntl; fd = os.open("/dev/tty", os.O_RDWR); fcntl.ioctl(fd, 0x4B3A, 0)' 2>/dev/null
+printf '\033c' 2>/dev/null
 note "falling back to: $old"
 exec $old
 EOF
