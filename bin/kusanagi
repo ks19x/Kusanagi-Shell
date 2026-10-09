@@ -67,17 +67,49 @@ first_run() {
     fi
 }
 
+# Qt draws through Vulkan where there's a hardware Vulkan driver: same pixels as OpenGL, ~11 MB less RAM
+# and ~25% less CPU while things animate. Qt doesn't fall back by itself (no driver = no shell), so a
+# start that dies under Vulkan is retried on OpenGL and remembered. KUSANAGI_RENDERER=opengl|vulkan forces one.
+RHI_NOTE="${XDG_STATE_HOME:-$HOME/.local/state}/kusanagi/renderer"
+vulkan_driver() {
+    for d in /etc/vulkan/icd.d /usr/share/vulkan/icd.d /usr/local/share/vulkan/icd.d; do
+        for f in "$d"/*.json; do
+            [ -e "$f" ] || continue
+            case ${f##*/} in lvp_*|lavapipe*) ;; *) return 0 ;; esac     # lavapipe = software: no
+        done
+    done
+    return 1
+}
+renderer() {
+    case ${KUSANAGI_RENDERER:-} in opengl|vulkan) echo "$KUSANAGI_RENDERER"; return ;; esac
+    [ "$(cat "$RHI_NOTE" 2>/dev/null)" = opengl ] && { echo opengl; return; }
+    vulkan_driver && echo vulkan || echo opengl
+}
+
+launch() {
+    # threaded renderer = smooth animations; jemalloc told to hand freed memory straight back
+    QSG_RHI_BACKEND=$1 QSG_RENDER_LOOP=threaded \
+    MALLOC_CONF=narenas:1,tcache:false,dirty_decay_ms:0,muzzy_decay_ms:0,retain:false \
+        setsid -f qs -p "$SHELL_DIR" >/dev/null 2>&1 </dev/null
+    i=0; while [ $i -lt 30 ] && ! running; do sleep 0.1; i=$((i + 1)); done
+    running || return 1
+    # a broken Vulkan driver answers IPC first and dies on its first window
+    [ "$1" = vulkan ] && { sleep 1; [ -n "$(instance_pids)" ] && running; }
+}
+
 start() {
     running && { echo "kusanagi is already running"; return 0; }
     [ -n "$(instance_pids)" ] && stop >/dev/null     # there but not answering: replace it
     first_run
     command -v qs >/dev/null || die "quickshell (qs) isn't installed"
-    # threaded renderer = smooth animations; jemalloc told to hand freed memory straight back
-    QSG_RENDER_LOOP=threaded \
-    MALLOC_CONF=narenas:1,tcache:false,dirty_decay_ms:0,muzzy_decay_ms:0,retain:false \
-        setsid -f qs -p "$SHELL_DIR" >/dev/null 2>&1 </dev/null
-    i=0; while [ $i -lt 30 ] && ! running; do sleep 0.1; i=$((i + 1)); done
-    running && echo "kusanagi $VERSION started" || die "didn't come up — see: kusanagi log"
+    r=$(renderer)
+    if ! launch "$r" && [ "$r" = vulkan ] && [ -z "${KUSANAGI_RENDERER:-}" ]; then
+        pids=$(instance_pids); [ -n "$pids" ] && kill $pids 2>/dev/null
+        mkdir -p "${RHI_NOTE%/*}"; echo opengl > "$RHI_NOTE"
+        echo "kusanagi: Vulkan didn't work here — using OpenGL from now on" >&2
+        r=opengl; launch opengl
+    fi
+    running && echo "kusanagi $VERSION started ($r)" || die "didn't come up — see: kusanagi log"
 }
 
 stop() {
@@ -151,6 +183,11 @@ doctor() {
     if ! command -v fc-list >/dev/null || fc-list : family | grep -qiE "emoji"; then ok "an emoji font"
     else bad "an emoji font ${D}(missing — emoji show as boxes in the launcher and apps)$N"; fix emoji; fi
     if t=$(term_cmd); then ok "terminal: $t"; else bad "a terminal ${D}(none found — set \$TERMINAL or launcher.terminal)$N"; fix foot; fi
+    case $(renderer) in
+        vulkan) ok "renderer: Vulkan" ;;
+        *) if vulkan_driver; then note "renderer: OpenGL ${D}(Vulkan failed here once — rm $RHI_NOTE to try again)$N"
+           else note "renderer: OpenGL ${D}(a Vulkan driver would save ~10 MB and some CPU — mesa-vulkan-drivers / vulkan-radeon / vulkan-intel)$N"; fi ;;
+    esac
 
     printf '\n%sOptional%s\n' "$B" "$N"
     if has gpu-screen-recorder gsr-ui || { has flatpak && flatpak info com.dec05eba.gpu_screen_recorder >/dev/null 2>&1; }; then

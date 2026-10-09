@@ -1,6 +1,10 @@
 # Changelog
 
 ## Unreleased
+- **Lighter**: Qt now renders through Vulkan where a hardware Vulkan driver exists — pixel-identical to
+  OpenGL, ~11 MB less private RAM (34 vs 50 MB anon, headless 1080p) and ~25% less CPU opening/closing
+  panels. A start that dies under Vulkan is retried on OpenGL and remembered
+  (`~/.local/state/kusanagi/renderer`); `KUSANAGI_RENDERER=opengl|vulkan` forces one; `kusanagi doctor` shows it
 - **Setup wizard**: opens by itself the first time Kusanagi starts (no settings.json yet) — look, wallpaper,
   bar, lock & idle, extras, login screen, the keys to remember. Any time: `kusanagi setup`, the launcher
   ("setup"), Settings → About

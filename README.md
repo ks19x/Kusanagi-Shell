@@ -83,4 +83,6 @@ Logout, workspaces, game mode effects and the monitor list adapt to the composit
 
 About 70 MB idle with everything (a bare Quickshell window is ~42 MB). Panels are kept ready but their
 contents only exist while open; the wallpaper is kept as a GPU texture only; jemalloc is told to return
-freed memory immediately (see `bin/kusanagi`).
+freed memory immediately, and Qt draws through Vulkan when there's a hardware Vulkan driver — the same
+pixels as OpenGL for ~11 MB less RAM and ~25% less CPU while things animate (it falls back to OpenGL by
+itself if Vulkan doesn't work; `KUSANAGI_RENDERER=opengl` forces it; see `bin/kusanagi`).
