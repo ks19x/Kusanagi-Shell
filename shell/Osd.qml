@@ -1,4 +1,4 @@
-// Osd.qml — one on-screen pill for volume, mic and game mode (replaces VolumeOsd + GameModeOsd).
+// Osd.qml — one on-screen pill for volume, mic, brightness and game mode (replaces VolumeOsd + GameModeOsd).
 // Springs in at Config.osd.position (top | bottom | left | right), morphs between kinds while it's up,
 // Config.osd.style: pill · minimal (a slim strip) · box (a square in the lower middle, macOS-like);
 // and is unmapped entirely when idle. Click-through.
@@ -34,7 +34,7 @@ PanelWindow {
 
     // ---- what to show ----
     property bool showing: false
-    property string kind: "volume"          // volume | mic | game
+    property string kind: "volume"          // volume | mic | brightness | game
     property int icon: 0
     property string label: ""
     property real value: -1                 // 0..1, or -1 for no bar
@@ -67,6 +67,10 @@ PanelWindow {
         function onVolumeChanged() { root.show("mic") }
     }
     Connections {
+        target: Config.osd.brightness ? Brightness : null
+        function onAdjusted() { root.show("brightness") }
+    }
+    Connections {
         target: Config.osd.gamemode ? GameMode : null
         function onChanged(byHand) {
             const a = Config.gamemode.announce
@@ -83,6 +87,10 @@ PanelWindow {
         if (kind === "mic" && sourceAudio) {
             const m = sourceAudio.muted
             return { icon: m ? 0xf036d : 0xf036c, label: m ? "Mic muted" : "Microphone", value: sourceAudio.volume, dim: m }
+        }
+        if (kind === "brightness") {
+            const v = Brightness.available ? Brightness.level : 0.7       // (a preview with nothing to dim)
+            return { icon: v < 0.34 ? 0xf00dd : v < 0.67 ? 0xf00de : 0xf00df, label: "Brightness", value: v, dim: false }
         }
         return { icon: 0xf0297, label: GameMode.active ? "Game mode on" : "Game mode off", value: -1, dim: !GameMode.active }
     }

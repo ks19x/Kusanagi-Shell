@@ -30,6 +30,8 @@ Singleton {
     readonly property alias polkit: adapter.polkit
     readonly property alias recorder: adapter.recorder
     readonly property alias updates: adapter.updates
+    readonly property alias brightness: adapter.brightness
+    readonly property alias bluetooth: adapter.bluetooth
     // true when this start found no settings.json: the setup wizard (Setup.qml) greets you
     property bool firstRun: false
     // the bar layout engine (BarSpec.qml, docs/bar.md): [] = the classic bar from the options above
@@ -43,7 +45,7 @@ Singleton {
     // every tile the control panel knows; panel.tiles picks which show and in what order
     readonly property var allTiles: ["nightlight", "dnd", "mic", "gamemode", "screenshot", "record", "colorpicker",
                                      "wallpaper", "clipboard", "lock", "settings", "launcher", "caffeine",
-                                     "replay", "clip", "updates"]
+                                     "replay", "clip", "updates", "bluetooth"]
 
     // restore one section (or everything) to the defaults
     function reset(section) {
@@ -71,7 +73,7 @@ Singleton {
         panel: { opacity: 0.95, width: 560, defaultTab: 0, showMedia: true, showStats: true, showWeather: true, morph: "island",
                  tileStyle: "cards", tileColumns: 4, sliderStyle: "thick", header: "big", tabs: true, order: ["tiles", "sliders", "media", "weather", "stats"],
                  tiles: ["nightlight", "dnd", "mic", "gamemode", "screenshot", "record", "colorpicker", "wallpaper"] },
-        osd: { position: "top", timeout: 1400, volume: true, mic: true, gamemode: true, style: "pill", showValue: true },
+        osd: { position: "top", timeout: 1400, volume: true, mic: true, gamemode: true, brightness: true, style: "pill", showValue: true },
         notifications: { position: "top-right", timeout: 5000, max: 5, style: "comfortable", progress: true, images: true },
         launcher: { style: "card", position: "upper", width: 640, rows: 7, descriptions: true, sortByUsage: true, terminal: "foot", layout: "list", iconSize: 32,
                     commands: true, webSearch: true, searchEngine: "https://duckduckgo.com/?q=%s" },
@@ -89,7 +91,9 @@ Singleton {
         idle: { enabled: false, lock: 10, screenOff: 15, suspend: 0, media: true, notify: true },
         polkit: { enabled: true },
         recorder: { folder: "~/Videos", fps: 60, quality: "very_high", replay: 30, audio: "desktop", capture: "screen", codec: "auto", streamUrl: "" },
-        updates: { interval: 3, notify: false }
+        updates: { interval: 3, notify: false },
+        brightness: { step: 5, ddc: true },
+        bluetooth: { enabled: true, autoScan: true }
     })
 
     FileView {
@@ -170,7 +174,7 @@ Singleton {
             property JsonObject panel: JsonObject {
                 property real opacity: 0.95
                 property int width: 560
-                property int defaultTab: 0            // 0 home · 1 system · 2 inbox · 3 quick · 4 sound · 5 network
+                property int defaultTab: 0            // 0 home · 1 system · 2 inbox · 3 quick · 4 sound · 5 network · 6 bluetooth
                 property bool showMedia: true
                 property bool showStats: true
                 property bool showWeather: true
@@ -190,6 +194,7 @@ Singleton {
                 property bool volume: true
                 property bool mic: true
                 property bool gamemode: true
+                property bool brightness: true
                 property string style: "pill"         // pill | minimal (a thin bar) | box (a square, lower middle)
                 property bool showValue: true
             }
@@ -312,6 +317,16 @@ Singleton {
             property JsonObject updates: JsonObject {
                 property int interval: 3              // hours between update checks (0 = never)
                 property bool notify: false           // a notification when updates are waiting
+            }
+
+            property JsonObject brightness: JsonObject {
+                property int step: 5                  // % per key press / scroll
+                property bool ddc: true               // external monitors over DDC/CI (ddcutil); laptop screens always work
+            }
+
+            property JsonObject bluetooth: JsonObject {
+                property bool enabled: true           // false = Kusanagi leaves Bluetooth alone (no tab, tile or module data)
+                property bool autoScan: true          // look for new devices while the Bluetooth tab / page is open
             }
 
             property JsonObject weather: JsonObject {

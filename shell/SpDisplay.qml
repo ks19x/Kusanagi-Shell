@@ -1,4 +1,4 @@
-// SpDisplay.qml — monitors (from the compositor), window gaps / borders and night light
+// SpDisplay.qml — monitors (from the compositor), brightness, window gaps / borders and night light
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -48,6 +48,59 @@ Column {
             label: "Edit " + Wm.name + " config"
             icon: 0xf107b
             onClicked: Quickshell.execDetached(["xdg-open", Wm.configFile])
+        }
+    }
+
+    SpGroup {
+        title: "Brightness"
+        hint: "The screens' own backlight — a laptop panel, and monitors over their cable (DDC/CI)."
+        Component.onCompleted: Brightness.refresh()
+        Repeater {
+            model: Brightness.displays
+            CpSlider {
+                required property var modelData
+                width: parent.width; height: 30
+                readonly property real level: Brightness.value(modelData.key)
+                icon: level < 0.34 ? 0xf00dd : level < 0.67 ? 0xf00de : 0xf00df
+                label: modelData.name + (modelData.screen ? "  ·  " + modelData.screen : "")
+                value: level
+                onMoved: v => Brightness.set(modelData.key, v)
+            }
+        }
+        CpText {
+            readonly property string why: ({
+                missing: "Monitors: ddcutil isn't installed — it's what talks to them over the cable.",
+                noi2c: "Monitors: the i2c-dev kernel module isn't loaded, so ddcutil can't reach them.",
+                noaccess: "Monitors: no permission for /dev/i2c-* yet — after the setup, log out and back in.",
+                none: "No monitor answered over DDC/CI — switch DDC/CI on in the monitor's own menu, then look again."
+            })[Brightness.ddcState] ?? ""
+            visible: text !== ""
+            width: parent.width
+            wrapMode: Text.Wrap
+            text: Brightness.detecting && !Brightness.available ? "Looking for screens…" : why
+            font.pixelSize: 12
+            color: Theme.textDim
+        }
+        CpRow {
+            width: parent.width; label: "Monitors over DDC/CI"
+            hint: "External monitors via ddcutil. A change takes a moment to reach them."
+            CpSwitch { on: Config.brightness.ddc; onToggled: v => Config.brightness.ddc = v }
+        }
+        CpRow {
+            width: parent.width; label: "Step"
+            hint: "Per brightness key press or bar scroll."
+            CpStepper { value: Config.brightness.step; from: 1; to: 25; suffix: "%"; onChanged: v => Config.brightness.step = v }
+        }
+        Row {
+            spacing: 8
+            CpChip {
+                visible: Config.brightness.ddc && ["missing", "noi2c", "noaccess"].includes(Brightness.ddcState)
+                on: true
+                label: "Set up monitor brightness"
+                icon: 0xf0493
+                onClicked: Quickshell.execDetached(["kusanagi", "brightness", "setup"])
+            }
+            CpChip { label: Brightness.detecting ? "Looking…" : "Look again"; icon: 0xf0450; onClicked: Brightness.detect() }
         }
     }
 

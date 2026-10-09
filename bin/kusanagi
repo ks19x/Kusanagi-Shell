@@ -20,6 +20,9 @@
 #   kusanagi updates [count|list|upgrade]   available updates (no root): the number · "name<TAB>source"
 #                               lines · upgrade everything in a terminal. Cached in ~/.cache/kusanagi/updates
 #   kusanagi record replay|save|record|stream|stop|status   screen recording (status: one line of JSON)
+#   kusanagi brightness [up|down|<percent>|get|setup]    screen brightness (laptop panel, DDC/CI monitors);
+#                               setup installs ddcutil + i2c access for monitors (sudo once)
+#   kusanagi bluetooth [toggle|on|off|status|setup]      Bluetooth; setup installs BlueZ and starts it (sudo once)
 #   kusanagi distro family|install-cmd …|updates|upgrade-cmd|storage   distro helpers (lib/distro.sh)
 #   kusanagi setup              open the first-run setup
 #   kusanagi version | help
@@ -139,6 +142,78 @@ term_cmd() {   # the user's terminal: $TERMINAL, launcher.terminal, or the first
     done
     return 1
 }
+# run a shell snippet in the user's terminal (detached)
+in_term() {
+    t=$(term_cmd) || return 1
+    # shellcheck disable=SC2086
+    case "${t%% *}" in
+        foot|kitty)            setsid -f $t sh -c "$1" >/dev/null 2>&1 </dev/null ;;
+        wezterm)               setsid -f $t start -- sh -c "$1" >/dev/null 2>&1 </dev/null ;;
+        gnome-terminal|ptyxis) setsid -f $t -- sh -c "$1" >/dev/null 2>&1 </dev/null ;;
+        *)                     setsid -f $t -e sh -c "$1" >/dev/null 2>&1 </dev/null ;;
+    esac
+}
+
+# ---------------------------------------------------------------- one-time setups that need root
+# show what will run as root, ask, run it. From Settings (no terminal) it reopens itself in one.
+root_steps() {   # $1 = title, $2 = the commands (one per line, already prefixed with sudo/doas where needed)
+    if ! [ -t 0 ]; then
+        in_term "'$ROOT/bin/kusanagi' $SETUP_CMD; echo; echo 'press Enter to close'; read x" || die "no terminal found — run: kusanagi $SETUP_CMD"
+        exit 0
+    fi
+    [ -n "$2" ] || { echo "$1: nothing to do — all set."; return 1; }
+    printf '%s — this will run:\n\n' "$1"; printf '%s\n' "$2" | sed 's/^/    /'
+    printf '\nGo ahead? [Y/n] '; read -r a
+    case "$a" in n*|N*) echo "nothing changed"; exit 1 ;; esac
+    printf '%s\n' "$2" | while IFS= read -r c; do echo "→ $c"; sh -c "$c" </dev/tty || { echo "failed: $c"; exit 1; }; done || exit 1
+}
+SU=$( [ "$(id -u)" = 0 ] && echo "" || { command -v doas >/dev/null && ! command -v sudo >/dev/null && echo "doas " || echo "sudo "; } )
+
+brightness_setup() {
+    SETUP_CMD="brightness setup"
+    steps=""
+    command -v ddcutil >/dev/null || steps=$(sh "$DISTRO" install-cmd ddcutil | grep -v '^#')
+    [ -e /sys/module/i2c_dev ] || steps="$steps
+${SU}modprobe i2c-dev"
+    # load it at every boot (systemd, runit/Void, OpenRC and dinit all read modules-load.d)
+    grep -qsx i2c-dev /etc/modules-load.d/*.conf || steps="$steps
+echo i2c-dev | ${SU}tee /etc/modules-load.d/i2c-dev.conf >/dev/null"
+    # /dev/i2c-*: for the person at the seat right away (uaccess), and the i2c group after the next login
+    rule=/etc/udev/rules.d/60-kusanagi-i2c.rules
+    if [ ! -e "$rule" ]; then steps="$steps
+printf '%s\\n' 'KERNEL==\"i2c-[0-9]*\", SUBSYSTEM==\"i2c-dev\", GROUP=\"i2c\", MODE=\"0660\", TAG+=\"uaccess\"' | ${SU}tee $rule >/dev/null
+${SU}groupadd -f -r i2c
+${SU}usermod -aG i2c $(id -un)
+${SU}udevadm control --reload
+${SU}udevadm trigger --subsystem-match=i2c-dev --action=add"
+    fi
+    steps=$(printf '%s\n' "$steps" | sed '/^$/d')
+    root_steps "Monitor brightness (DDC/CI)" "$steps" || true
+    qsp ipc call brightness detect >/dev/null 2>&1
+    echo "done. Your monitors also need DDC/CI switched on in their own menu (usually on by default)."
+    ok=0; for b in /dev/i2c-*; do [ -r "$b" ] && [ -w "$b" ] && ok=1; done
+    [ $ok = 1 ] || echo "If brightness still can't reach them: log out and back in (the i2c group)."
+}
+
+bluetooth_setup() {
+    SETUP_CMD="bluetooth setup"
+    pk=""
+    { command -v bluetoothctl >/dev/null || command -v bluetoothd >/dev/null || [ -x /usr/libexec/bluetooth/bluetoothd ] || [ -x /usr/lib/bluetooth/bluetoothd ]; } || pk="bluez"
+    python3 -c 'import gi' 2>/dev/null || pk="$pk gi"           # the pairing helper (codes / PINs)
+    steps=""
+    # shellcheck disable=SC2086
+    [ -n "$pk" ] && steps=$(sh "$DISTRO" install-cmd $pk | grep -v '^#')
+    root_steps "Bluetooth: packages" "$steps" || true
+    steps=$(sh "$DISTRO" service-cmd bluetooth bluetoothd) || { echo "couldn't find the Bluetooth service for your init — start bluetoothd yourself"; return 1; }
+    command -v rfkill >/dev/null && rfkill list bluetooth 2>/dev/null | grep -q 'Soft blocked: yes' && steps="$steps
+${SU}rfkill unblock bluetooth"
+    steps=$(printf '%s\n' "$steps" | sed '/^$/d')
+    root_steps "Bluetooth: the service" "$steps" || true
+    sleep 1
+    if [ -z "$(ls /sys/class/bluetooth 2>/dev/null)" ]; then echo "Bluetooth is set up, but there's no adapter in this computer (a USB dongle works)."
+    else echo "done — Bluetooth is in the control panel (BT tab) and Settings → Bluetooth."; fi
+}
+
 doctor() {
     if [ -t 1 ]; then G=$(printf '\033[32m'); Rd=$(printf '\033[31m'); Y=$(printf '\033[33m'); D=$(printf '\033[2m'); B=$(printf '\033[1m'); N=$(printf '\033[0m')
     else G=""; Rd=""; Y=""; D=""; B=""; N=""; fi
@@ -199,6 +274,17 @@ doctor() {
     check opt swappy "swappy — edit screenshots" swappy
     check opt hyprlock "hyprlock — the default lock engine" hyprlock
     check opt fd "fd — faster file search" fd fdfind
+    if command -v ddcutil >/dev/null; then
+        ok=0; for b in /dev/i2c-*; do [ -r "$b" ] && [ -w "$b" ] && ok=1; done
+        if [ ! -e /sys/module/i2c_dev ]; then warn "ddcutil — monitor brightness ${D}(the i2c-dev module isn't loaded — run: kusanagi brightness setup)$N"
+        elif [ $ok = 0 ]; then warn "ddcutil — monitor brightness ${D}(no access to /dev/i2c-* — run: kusanagi brightness setup, then log in again)$N"
+        else ok "ddcutil — monitor brightness"; fi
+    elif [ -n "$(ls /sys/class/backlight 2>/dev/null)" ]; then ok "brightness: built-in display ${D}(ddcutil would add external monitors)$N"
+    else note "ddcutil — monitor brightness ${D}(not installed — kusanagi brightness setup)$N"; fi
+    if [ -z "$(ls /sys/class/bluetooth 2>/dev/null)" ]; then note "Bluetooth ${D}(no adapter in this computer)$N"
+    elif ! pgrep -x bluetoothd >/dev/null; then warn "Bluetooth ${D}(there's an adapter, but bluetoothd isn't running — kusanagi bluetooth setup)$N"
+    elif ! python3 -c 'import gi' 2>/dev/null; then warn "Bluetooth ${D}(works; PyGObject would let phones / keyboards pair with a code — kusanagi bluetooth setup)$N"
+    else ok "Bluetooth"; fi
     [ "$fam" = arch ] && check opt checkupdates "checkupdates (pacman-contrib) — the update count" checkupdates
 
     printf '\n%sSession%s\n' "$B" "$N"
@@ -265,17 +351,10 @@ updates() {   # updates [count|list|upgrade]
             return $rc ;;
         upgrade)
             c=$(sh "$DISTRO" upgrade-cmd) || die "don't know how to upgrade this distro"
-            t=$(term_cmd) || die "no terminal found — run it yourself: $c"
             # afterwards: refresh the cached count so the bar catches up
-            inner="$c; echo; '$ROOT/bin/kusanagi' updates count >/dev/null 2>&1; echo 'Done — press Enter'; read x"
-            # shellcheck disable=SC2086
-            case "${t%% *}" in
-                foot|kitty)           setsid -f $t sh -c "$inner" >/dev/null 2>&1 </dev/null ;;
-                wezterm)              setsid -f $t start -- sh -c "$inner" >/dev/null 2>&1 </dev/null ;;
-                gnome-terminal|ptyxis) setsid -f $t -- sh -c "$inner" >/dev/null 2>&1 </dev/null ;;
-                *)                    setsid -f $t -e sh -c "$inner" >/dev/null 2>&1 </dev/null ;;
-            esac
-            echo "upgrading in $t: $c" ;;
+            in_term "$c; echo; '$ROOT/bin/kusanagi' updates count >/dev/null 2>&1; echo 'Done — press Enter'; read x" \
+                || die "no terminal found — run it yourself: $c"
+            echo "upgrading in a terminal: $c" ;;
         *) die "usage: kusanagi updates [count|list|upgrade]" ;;
     esac
 }
@@ -368,6 +447,18 @@ case "$cmd" in
     updates)  updates "$@" ;;
     setup)    qsp ipc call setup open ;;
     record)   exec "$ROOT/scripts/record" "$@" ;;
+    brightness) case "${1:-get}" in
+                  setup)            brightness_setup ;;
+                  up|down|get|detect) qsp ipc call brightness "$1" ;;
+                  set)              [ $# -ge 2 ] || die "usage: kusanagi brightness set <percent>"; qsp ipc call brightness set "${2%\%}" ;;
+                  [0-9]*)           qsp ipc call brightness set "${1%\%}" ;;
+                  *)                die "usage: kusanagi brightness [up|down|<percent>|get|setup]" ;;
+              esac ;;
+    bluetooth) case "${1:-status}" in
+                  setup)                 bluetooth_setup ;;
+                  toggle|on|off|status)  qsp ipc call bluetooth "$1" ;;
+                  *)                     die "usage: kusanagi bluetooth [toggle|on|off|status|setup]" ;;
+              esac ;;
     distro)   exec sh "$DISTRO" "$@" ;;
     version|-v|--version) echo "kusanagi $VERSION" ;;
     help|-h|--help) sed -n '2,/^set -u$/{/^#/s/^# \{0,1\}//p}' "$0" ;;

@@ -8,11 +8,13 @@
 #                                           exit 0 ok · 1 a check failed (count ?) · 2 no checker available
 #   sh lib/distro.sh upgrade-cmd            the command (for sh -c) that upgrades everything
 #   sh lib/distro.sh storage                package cache / orphans / old kernels: key=value lines + the clean-up commands
+#   sh lib/distro.sh service-cmd <name…>    the commands (one per line) that enable + start the first of these
+#                                           services that exists for this init ("" = already on, exit 1 = none)
 # Sourced (. lib/distro.sh) it only defines FAM, ARTIX, D_ID and pkg() — the installer uses that.
 # Testing: KUSANAGI_OS_RELEASE=<fake os-release>, KUSANAGI_INIT=<init>, KUSANAGI_UPDATES_TIMEOUT=<s>.
 # Logical names: quickshell python magick wl-clipboard cliphist grim slurp gammastep gamemode swappy foot
 # font nm pavucontrol hyprlock libnotify pipewire portal seat wtype wf-recorder gpu-screen-recorder polkit
-# fd checkupdates mango hyprland niri
+# fd checkupdates mango hyprland niri ddcutil bluez gi (PyGObject)
 
 # ---------------------------------------------------------------- detect (doesn't touch the caller's vars)
 _d_ids=$( . "${KUSANAGI_OS_RELEASE:-/etc/os-release}" 2>/dev/null; printf '%s|%s' "${ID:-unknown}" "${ID_LIKE:-}")
@@ -92,6 +94,12 @@ pkg() {
         void:emoji|arch:emoji) echo noto-fonts-emoji ;; debian:emoji) echo fonts-noto-color-emoji ;;
         fedora:emoji) echo google-noto-color-emoji-fonts ;; suse:emoji) echo google-noto-coloremoji-fonts ;;
         gentoo:emoji) echo media-fonts/noto-emoji ;;   alpine:emoji) echo font-noto-emoji ;; *:emoji) echo "" ;;
+        # monitor brightness (DDC/CI), Bluetooth and its pairing helper
+        gentoo:ddcutil) echo app-misc/ddcutil ;;       *:ddcutil) echo ddcutil ;;
+        gentoo:bluez) echo net-wireless/bluez ;;       *:bluez) echo bluez ;;
+        void:gi|fedora:gi|suse:gi) echo python3-gobject ;; arch:gi) echo python-gobject ;;
+        debian:gi) echo python3-gi ;;                  gentoo:gi) echo dev-python/pygobject ;;
+        alpine:gi) echo py3-gobject3 ;;                *:gi) echo "" ;;
         # (not part of the installer's list — recording, launcher, file search, update count)
         arch:checkupdates) echo pacman-contrib ;;      *:checkupdates) echo "" ;;
         void:gpu-screen-recorder|arch:gpu-screen-recorder) echo gpu-screen-recorder ;;
@@ -292,6 +300,35 @@ storage() {
         "$cache" "$size" "$clean" "$orph" "$orphrm" "$kern" "$kernrm"
 }
 
+# ---------------------------------------------------------------- services
+# enable + start the first of the names that exists here (bluetooth on systemd/OpenRC, bluetoothd on runit…)
+service_cmd() {
+    INIT=${INIT:-$(_d_init)}; su=$(_d_su)
+    for n in "$@"; do
+        case "$INIT" in
+            systemd) systemctl list-unit-files "$n.service" 2>/dev/null | grep -q "^$n.service" || continue
+                     systemctl is-enabled "$n" >/dev/null 2>&1 && systemctl is-active "$n" >/dev/null 2>&1 && return 0
+                     echo "${su}systemctl enable --now $n" ;;
+            runit)   for d in /etc/sv /etc/runit/sv; do
+                         [ -d "$d/$n" ] || continue
+                         for live in /var/service /run/runit/service; do [ -e "$live/$n" ] && return 0; done
+                         [ -d /var/service ] && echo "${su}ln -s $d/$n /var/service/" || echo "${su}ln -s $d/$n /run/runit/service/"
+                         return 0
+                     done; continue ;;
+            openrc)  [ -x "/etc/init.d/$n" ] || continue
+                     rc-update show 2>/dev/null | grep -qw "$n" || echo "${su}rc-update add $n default"
+                     rc-service "$n" status >/dev/null 2>&1 || echo "${su}rc-service $n start" ;;
+            dinit)   [ -f "/etc/dinit.d/$n" ] || continue
+                     [ -e "/etc/dinit.d/boot.d/$n" ] || echo "${su}dinitctl enable $n" ;;
+            s6)      { [ -d "/etc/s6/sv/$n" ] || s6-rc-db list all 2>/dev/null | grep -qx "$n"; } || continue
+                     echo "${su}s6-service add default $n"; echo "${su}s6-db-reload"; echo "${su}s6-rc -u change $n" ;;
+            *)       return 1 ;;
+        esac
+        return 0
+    done
+    return 1
+}
+
 # ---------------------------------------------------------------- run as a command
 case "$0" in
     *distro.sh)
@@ -304,6 +341,7 @@ case "$0" in
             updates)     updates ;;
             upgrade-cmd) upgrade_cmd ;;
             storage)     storage ;;
+            service-cmd) [ $# -ge 1 ] || { echo "usage: distro.sh service-cmd <name…>" >&2; exit 1; }; service_cmd "$@" ;;
             *)           sed -n '2,/^# Logical/{/^#/s/^# \{0,1\}//p}' "$0"; exit 1 ;;
         esac ;;
 esac

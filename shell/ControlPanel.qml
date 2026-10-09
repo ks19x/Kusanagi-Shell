@@ -1,6 +1,6 @@
 // ControlPanel.qml — drops down out of the bar's clock island: the island widens, then pours
 // down into the panel, and the content fades in last. Closing plays it backwards, quicker.
-// Tabs: Home (tiles, sliders, media, quick stats) · System · Inbox · Quick (the common settings).
+// Tabs: Home (tiles, sliders, media, quick stats) · Sound · Net · Bluetooth (with an adapter) · System · Inbox · Quick.
 // Loaded only while open (shell.qml LazyLoader); detailed stats run only while it's showing.
 import Quickshell
 import Quickshell.Io
@@ -32,9 +32,9 @@ PanelWindow {
     mask: Region { item: root.showing ? backdrop : null }
 
     property bool tabPicked: false     // openTab() chose one; otherwise open on the default tab
-    function openTab(i) { tab = i; tabPicked = true; showing = true }
+    function openTab(i) { tab = i === 6 && !Bt.available ? 5 : i; tabPicked = true; showing = true }
     onShowingChanged: {
-        if (showing && !tabPicked) tab = Config.panel.defaultTab
+        if (showing && !tabPicked) tab = Config.panel.defaultTab === 6 && !Bt.available ? 0 : Config.panel.defaultTab
         tabPicked = false
         if (showing) origin = shellRef && shellRef.barItem ? shellRef.barItem.clockRect() : null
         SysInfo.panelOpen = showing
@@ -45,7 +45,7 @@ PanelWindow {
     Component.onDestruction: SysInfo.panelOpen = false
     onTabChanged: Qt.callLater(() => lastTab = tab)
     // display order of the tabs (values stay put so panel.defaultTab and IPC keep their meaning)
-    readonly property var tabOrder: [0, 4, 5, 1, 2, 3]
+    readonly property var tabOrder: Bt.available ? [0, 4, 5, 6, 1, 2, 3] : [0, 4, 5, 1, 2, 3]
 
     // ---- the morph ----
     property real open: 0
@@ -207,11 +207,12 @@ PanelWindow {
                 options: [
                     { label: "Home", value: 0, icon: 0xf02dc },
                     { label: "Sound", value: 4, icon: 0xf057e },
-                    { label: "Net", value: 5, icon: 0xf06f3 },
+                    { label: "Net", value: 5, icon: 0xf06f3 }
+                ].concat(Bt.available ? [{ label: "BT", value: 6, icon: 0xf00af }] : []).concat([
                     { label: "System", value: 1, icon: 0xf012a },
                     { label: Notifs.count ? "Inbox " + Notifs.count : "Inbox", value: 2, icon: 0xf009a },
                     { label: "Quick", value: 3, icon: 0xf0493 }
-                ]
+                ])
                 onPicked: v => root.tab = v
             }
 
@@ -230,7 +231,7 @@ PanelWindow {
                     width: parent.width
                     // the page only exists while the panel is on screen (the window itself stays ready)
                     active: root.visible
-                    sourceComponent: [home, system, inbox, customize, sound, network][root.tab]
+                    sourceComponent: [home, system, inbox, customize, sound, network, bluetooth][root.tab]
                     onLoaded: {
                         slideIn.from = root.tabOrder.indexOf(root.tab) >= root.tabOrder.indexOf(root.lastTab) ? 28 : -28
                         if (root.tab === root.lastTab) slideIn.from = 0
@@ -255,4 +256,5 @@ PanelWindow {
     Component { id: customize; CpCustomize { panel: root } }
     Component { id: sound; CpSound { panel: root } }
     Component { id: network; CpNetwork { panel: root } }
+    Component { id: bluetooth; CpBluetooth { panel: root } }
 }

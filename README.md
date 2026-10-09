@@ -30,6 +30,8 @@ kusanagi doctor              check dependencies — and the exact install comman
 kusanagi setup               the setup wizard (opens by itself on the first start)
 kusanagi updates [upgrade]   waiting package updates (any distro + Flatpak) · install them
 kusanagi record replay|save|record|stream|stop   screen recording and the replay buffer
+kusanagi brightness up|down|<percent>|setup      screen brightness (laptop panel, monitors over DDC/CI)
+kusanagi bluetooth toggle|status|setup           Bluetooth
 kusanagi greeter install     Kusanagi as your login screen (greetd)
 ```
 

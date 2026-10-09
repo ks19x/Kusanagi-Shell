@@ -78,7 +78,7 @@ Scope {
         if (a === undefined || a === null || a === "" || a === "none") return
         if (Array.isArray(a)) { run(a); return }
         const s = String(a), i = s.indexOf(":"), name = i > 0 ? s.slice(0, i) : s, arg = i > 0 ? s.slice(i + 1) : ""
-        const tabs = { home: 0, sound: 4, network: 5, system: 1, inbox: 2, quick: 3 }
+        const tabs = { home: 0, sound: 4, network: 5, bluetooth: 6, system: 1, inbox: 2, quick: 3 }
         const step = mod && mod.eff && mod.eff.step ? mod.eff.step : 0
         switch (name) {
         case "panel":
@@ -117,6 +117,8 @@ Scope {
             else changeMic(arg === "down" ? -1 : 1, step)
             return
         case "workspace": Wm.scroll(arg === "next" ? -1 : 1); return
+        case "brightness": Brightness.change(arg === "down" ? -1 : 1, step); return
+        case "bluetooth": if (arg === "off") Bt.setOn(false); else if (arg === "on") Bt.setOn(true); else Bt.toggle(); return
         }
         run(["sh", "-c", s])
     }

@@ -1,6 +1,15 @@
 # Changelog
 
 ## Unreleased
+- **Brightness**: laptop panels and external monitors over DDC/CI (ddcutil) — a slider on Home, one per screen
+  in Settings → Display, an OSD pill, a `brightness` bar module (scroll), `kusanagi brightness up|down|<percent>|get`.
+  Writes are coalesced (a drag never queues ddcutil calls). `kusanagi brightness setup` installs ddcutil, loads
+  i2c-dev at boot and gives you /dev/i2c-* (udev uaccess + i2c group)
+- **Bluetooth**: a BT tab in the control panel and Settings → Bluetooth (only with an adapter): on/off, your
+  devices with battery, nearby ones to pair — scanning only while open. Phones / keyboards that show a code
+  get a confirm / PIN card (scripts/bt-agent.py, a BlueZ agent that runs only while Bluetooth is open).
+  Tile `bluetooth`, bar module `bluetooth`, `kusanagi bluetooth toggle|on|off|status|setup` (setup installs
+  BlueZ and enables its service for your init). ~0.5 MB
 - **Lighter**: Qt now renders through Vulkan where a hardware Vulkan driver exists — pixel-identical to
   OpenGL, ~11 MB less private RAM (34 vs 50 MB anon, headless 1080p) and ~25% less CPU opening/closing
   panels. A start that dies under Vulkan is retried on OpenGL and remembered

@@ -76,6 +76,7 @@ Column {
         CpRow { width: parent.width; label: "Show the number"; CpSwitch { on: Config.osd.showValue; onToggled: v => { Config.osd.showValue = v; page.osdPreview() } } }
         CpRow { width: parent.width; label: "Volume"; CpSwitch { on: Config.osd.volume; onToggled: v => Config.osd.volume = v } }
         CpRow { width: parent.width; label: "Microphone"; CpSwitch { on: Config.osd.mic; onToggled: v => Config.osd.mic = v } }
+        CpRow { width: parent.width; label: "Brightness"; CpSwitch { on: Config.osd.brightness; onToggled: v => Config.osd.brightness = v } }
         CpRow { width: parent.width; label: "Game mode"; CpSwitch { on: Config.osd.gamemode; onToggled: v => Config.osd.gamemode = v } }
         CpChip { label: "Preview"; icon: 0xf0208; onClicked: page.osdPreview() }
     }

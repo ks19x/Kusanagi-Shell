@@ -1,4 +1,4 @@
-// CpHome.qml — control panel home: quick tiles, volume/mic, now playing, live mini stats
+// CpHome.qml — control panel home: quick tiles, volume/mic (+ brightness when a screen can be dimmed), now playing, live mini stats
 import Quickshell
 import Quickshell.Io
 import Quickshell.Widgets
@@ -28,6 +28,7 @@ Column {
         function onShowingChanged() {
             if (!root.panel.showing) return
             nightCheck.running = true
+            Brightness.refresh()
             if (Config.panel.tiles.some(t => t === "record" || t === "replay" || t === "clip")) Recorder.refresh()
         }
     }
@@ -64,6 +65,7 @@ Column {
         case "settings": return { icon: 0xf0493, label: "Settings", sub: "Kusanagi" }
         case "launcher": return { icon: 0xf003b, label: "Apps", sub: "Launcher" }
         case "caffeine": return { icon: 0xf0176, label: "Caffeine", sub: Caffeine.active ? "Staying awake" : "Off", on: Caffeine.active }
+        case "bluetooth": return { icon: !Bt.on ? 0xf00b2 : Bt.connected.length ? 0xf00b1 : 0xf00af, label: "Bluetooth", sub: Bt.summary, on: Bt.on }
         }
         return { icon: 0, label: id, sub: "" }
     }
@@ -91,6 +93,7 @@ Column {
         case "settings": panel.runClosed(ipc(["settings", "open"])); break
         case "launcher": panel.runClosed(ipc(["launcher", "open"])); break
         case "caffeine": Caffeine.toggle(); break
+        case "bluetooth": if (Bt.available) Bt.toggle(); break
         }
     }
 
@@ -145,6 +148,16 @@ Column {
                 muted: root.sourceReady && root.source.audio.muted
                 onMoved: v => { if (root.sourceReady) root.source.audio.volume = v }
                 onIconClicked: if (root.sourceReady) root.source.audio.muted = !root.source.audio.muted
+            }
+            // every screen that can be dimmed (laptop panel, DDC/CI monitors) together — each one: Settings → Display
+            CpSlider {
+                visible: Brightness.available
+                width: parent.width
+                slim: Config.panel.sliderStyle === "slim"
+                icon: Brightness.level < 0.34 ? 0xf00dd : Brightness.level < 0.67 ? 0xf00de : 0xf00df
+                label: "Brightness"
+                value: Brightness.level
+                onMoved: v => Brightness.setAll(v)
             }
         }
     }

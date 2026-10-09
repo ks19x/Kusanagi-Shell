@@ -6,12 +6,13 @@
 // so they open on the first frame; settings loads on demand.
 //
 // IPC (kusanagi msg <target> <fn>):
-//   panel     toggle | home | sound | network | system | inbox | quick        launcher  toggle | open | close | search <text> | actions
+//   panel     toggle | home | sound | network | bluetooth | system | inbox | quick   launcher  toggle | open | close | search <text> | actions
 //   settings  toggle | open | page <name> | sound | network wallpaper toggle      clipboard toggle
 //   notifs    toggle | open | close | dnd | clear            lock      lock | test
 //   preset    apply <name> | next
 //   power     toggle | open
-//   osd       preview <volume|mic|game>                      gamemode  toggle
+//   osd       preview <volume|mic|brightness|game>           gamemode  toggle
+//   brightness up | down | set <percent> | get | detect      bluetooth toggle | on | off | status
 //   bar       media | traymenu <n> | template <name> | templates | classic
 //   setup     open                                           idle      status | toggle
 //   record    replay | save | record | stream | stop | status  updates   check | count | upgrade
@@ -98,6 +99,7 @@ ShellRoot {
         function quick(): void { shell.panelTab(3) }
         function sound(): void { shell.panelTab(4) }
         function network(): void { shell.panelTab(5) }
+        function bluetooth(): void { shell.panelTab(6) }
     }
     IpcHandler {
         target: "caffeine"
@@ -189,6 +191,28 @@ ShellRoot {
         function check(): void { Updates.check() }
         function count(): string { return Updates.known ? String(Updates.count) : "?" }
         function upgrade(): void { Updates.upgrade() }
+    }
+    IpcHandler {
+        target: "brightness"
+        // every screen that can be dimmed: up / down by Config.brightness.step, or set a percentage
+        function up(): void { Brightness.change(1) }
+        function down(): void { Brightness.change(-1) }
+        function set(percent: int): void { Brightness.setAll(percent / 100) }
+        function get(): string {
+            return Brightness.available ? Brightness.displays.map(d => `${d.name}${d.screen ? " (" + d.screen + ")" : ""}: ${Math.round(Brightness.value(d.key) * 100)}%`).join("\n")
+                : Brightness.detected ? "nothing to dim" + (Brightness.ddcState && Brightness.ddcState !== "off" ? " (DDC: " + Brightness.ddcState + " — kusanagi doctor)" : "") : "still looking…"
+        }
+        function detect(): void { Brightness.detect() }
+    }
+    IpcHandler {
+        target: "bluetooth"
+        function toggle(): void { Bt.toggle() }
+        function on(): void { Bt.setOn(true) }
+        function off(): void { Bt.setOn(false) }
+        function status(): string {
+            if (!Bt.available) return Config.bluetooth.enabled ? "no adapter (is bluetoothd running? kusanagi doctor)" : "off in Settings"
+            return Bt.summary + (Bt.connected.length ? "\n" + Bt.connected.map(d => d.name + (Bt.battery(d) >= 0 ? " " + Bt.battery(d) + "%" : "")).join("\n") : "")
+        }
     }
     IpcHandler {
         target: "osd"
