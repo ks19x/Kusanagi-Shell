@@ -8,7 +8,7 @@ import re
 import shutil
 import subprocess
 
-HOST = re.compile(r"^(ld-linux.*|lib(c|m|pthread|dl|rt|util|resolv|nss_.*)\.so.*|lib(EGL|GL|GLESv[12]|GLX|GLdispatch|OpenGL|drm.*|gbm|pam|pam_misc)\.so.*)$")
+HOST = re.compile(r"^(ld-linux.*|lib(c|m|mvec|anl|pthread|dl|rt|util|resolv|nss_.*)\.so.*|lib(EGL|GL|GLESv[12]|GLX|GLdispatch|OpenGL|drm.*|gbm|pam|pam_misc)\.so.*)$")
 
 
 def output(*args):
@@ -38,6 +38,7 @@ def main():
         shutil.copytree(source, destination)
         seeds.extend(destination.rglob('*.so'))
     shutil.copytree('/usr/share/pipewire', stage / 'usr/share/pipewire')
+    shutil.copytree('/usr/share/qalculate', stage / 'usr/share/kusanagi/assets/qalculate')
     shutil.copytree('/usr/local/share/kusanagi-bundled-licenses', notices / 'upstream')
     shutil.copytree('/usr/share/common-licenses', notices / 'common-licenses')
 
@@ -90,6 +91,7 @@ def main():
                            ('kusanagi', stage / 'kusanagi'), ('install', stage / 'install')]:
         shutil.copy2(source_dir / source, target)
         target.chmod(0o755)
+    (stage / 'usr/lib/kusanagi/.portable').write_text('glibc-2.39-x86_64\n')
     print(f'Bundled {len(libraries)} libraries; host libc, PAM and graphics libraries retained.')
 
 

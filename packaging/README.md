@@ -9,7 +9,9 @@ Audio plugin paths are restored to their original values before launching host a
 
 The pipeline checks the same archive in fresh Ubuntu 24.04, Debian 13, Fedora 43 and Arch containers.
 It checks command startup, missing libraries and relocation, including a directory containing spaces.
-These checks do not replace testing audio, authentication and rendering in a real Wayland session.
+A separate headless sway check starts the shell and tests IPC. These checks do not replace
+testing audio, authentication and rendering in a real desktop session.
+The portable archive does not install or update the greetd system greeter.
 
 Files in `portable/`:
 

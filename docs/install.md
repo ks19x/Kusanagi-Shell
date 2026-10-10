@@ -126,9 +126,9 @@ remaining tools you actually want. The library bundle does not install or start 
 
 `kusanagi bluetooth setup` and `kusanagi brightness setup` can help with those features.
 
-The greetd login screen is separate from the desktop shell. Get the desktop working first,
-then see `kusanagi greeter install`. That command changes system login configuration and
-requires elevated privileges. `kusanagi greeter uninstall` restores the previous setup.
+The greetd login screen needs a native system installation. The portable archive is for your
+desktop session and does not install or update the system greeter. Existing native installations
+can use `kusanagi greeter install`; `kusanagi greeter uninstall` restores their previous setup.
 
 ## Building from source
 

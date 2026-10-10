@@ -1,6 +1,7 @@
 #include "launcher/math_provider.h"
 
 #include "config/config_service.h"
+#include "core/files/resource_paths.h"
 #include "i18n/i18n.h"
 #include "net/http_client.h"
 #include "wayland/clipboard_service.h"
@@ -58,7 +59,15 @@ void MathProvider::ensureCalculator() const {
   m_calc = std::make_unique<Calculator>();
   // Load any cached rates before definitions so currency units pick them up.
   m_calc->loadExchangeRates();
-  m_calc->loadGlobalDefinitions();
+  const auto bundledDefinitions = paths::assetPath("qalculate");
+  if (std::filesystem::is_directory(bundledDefinitions)) {
+    // Portable builds carry the definitions beside their other assets.
+    for (const char* file : {"prefixes.xml", "currencies.xml", "units.xml", "functions.xml", "datasets.xml", "variables.xml"}) {
+      m_calc->loadDefinitions((bundledDefinitions / file).string().c_str(), false);
+    }
+  } else {
+    m_calc->loadGlobalDefinitions();
+  }
   // Pre-warm internal state (GMP randstate) so the destructor path is safe.
   m_calc->calculate("0");
   m_calc->clearMessages();

@@ -594,6 +594,11 @@ case "$cmd" in
                   *)    qsp ipc call preset apply "$1" ;;
               esac ;;
     greeter)  G="$ROOT/lib/greeter.sh"
+              if [ -f "$ROOT/.portable" ]; then
+                  case "${1:-status}" in install|sync|engine)
+                      die "the portable build is for desktop sessions; use a native system installation for the greetd login screen" ;;
+                  esac
+              fi
               case "${1:-status}" in
                   install)   command -v greetd >/dev/null || die "greetd isn't installed (it's the login daemon this uses)"
                              echo "Kusanagi needs root once to: install cage if missing, create /var/lib/kusanagi-greeter,"
