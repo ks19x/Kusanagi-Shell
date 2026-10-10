@@ -108,6 +108,7 @@ h3 { margin: 0 0 28px; font-size: clamp(22px, 3vw, 30px); line-height: 1.25; fon
 
 .shot { border-radius: var(--r); border: 1px solid var(--line); overflow: hidden; background: var(--panel); }
 .shot img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.demo video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: var(--panel); }
 
 .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
 .tabs button {
@@ -252,7 +253,13 @@ footer { border-top: 1px solid var(--line); padding-block: 36px 56px; color: var
     </div>
   </div>
 
-  <div class="shot"><img src="shots/panel.webp" width="1600" height="900" alt="Kusanagi on MangoWM: two terminals over a katana wallpaper, the control panel open under the clock with sliders, toggles and system stats."></div>
+  <div class="shot demo">
+    <video id="demo" autoplay muted loop playsinline preload="metadata" poster="media/poster.jpg" width="1600" height="900"
+           aria-label="Kusanagi in use: the control panel drops out of the clock, the launcher searches, the clipboard scrolls, a notification pops in, and presets and bar layouts switch live.">
+      <source src="media/demo.webm" type="video/webm">
+      <source src="media/demo.mp4" type="video/mp4">
+    </video>
+  </div>
 
   <section id="look">
     <h2>screens</h2>
@@ -453,6 +460,9 @@ footer { border-top: 1px solid var(--line); padding-block: 36px 56px; color: var
     dtabs.appendChild(b);
   });
   showGroup(0);
+
+  // people who turned motion off get the still frame
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { const v = document.getElementById("demo"); v.removeAttribute("autoplay"); v.pause(); v.controls = true; }
 
   const clock = document.getElementById("clock");
   const tick = () => { const d = new Date(); clock.textContent = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
