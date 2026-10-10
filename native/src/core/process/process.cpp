@@ -1,4 +1,5 @@
 #include "core/process/process.h"
+#include "core/process/portable_environment.h"
 
 #include "core/log.h"
 #include "util/string_utils.h"
@@ -407,6 +408,7 @@ namespace {
       closeFd(outPipe[1]);
       closeFd(errPipe[1]);
 
+      process::portable::restoreHostEnvironment();
       applyEnvOverrides(options.env);
       std::vector<char*> argv = makeArgv(args);
 
@@ -642,6 +644,7 @@ namespace {
 
     std::vector<char*> argv = makeArgv(args);
 
+    process::portable::restoreHostEnvironment();
     ::execvp(argv[0], argv.data());
     const int err = errno;
     writePipeOrIgnore(execStatusPipe[1], &err, sizeof(err));
@@ -717,6 +720,8 @@ namespace {
         continue;
       }
       std::string name{*s, std::string_view(*s).find('=')};
+      if (process::portable::omitFromHostEnvironment(name))
+        continue;
       systemdArgs.emplace_back("-E");
       systemdArgs.push_back(name);
     }

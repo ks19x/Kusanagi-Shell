@@ -1,0 +1,22 @@
+#!/bin/sh
+# Register an extracted bundle; do not copy over another installation.
+set -eu
+bundle=$(dirname "$(readlink -f "$0")")
+bindir="${XDG_BIN_HOME:-$HOME/.local/bin}"
+mkdir -p "$bindir"
+for name in kusanagi kusanagi-shell; do
+  target="$bundle/usr/bin/$name"
+  link="$bindir/$name"
+  if [ -e "$link" ] || [ -L "$link" ]; then
+    if [ "$(readlink -f "$link")" != "$(readlink -f "$target")" ]; then
+      echo "$link already exists. Remove or move the old installation first." >&2
+      exit 1
+    fi
+  fi
+done
+for name in kusanagi kusanagi-shell; do
+  [ -L "$bindir/$name" ] || ln -s "$bundle/usr/bin/$name" "$bindir/$name"
+done
+printf 'Linked Kusanagi in %s. Keep this folder at %s.\n' "$bindir" "$bundle"
+case ":$PATH:" in *":$bindir:"*) ;; *) printf 'Add %s to your PATH.\n' "$bindir" ;; esac
+printf 'Run kusanagi in a terminal inside your Wayland session to finish setup.\n'

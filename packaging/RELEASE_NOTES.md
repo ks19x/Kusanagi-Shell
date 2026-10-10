@@ -1,32 +1,23 @@
-## Install on Arch Linux (x86_64)
+## Linux download
 
-Download the `kusanagi-bin-…-x86_64.pkg.tar.zst` package and `SHA256SUMS` below into the same folder.
-Verify that your package is reported as `OK`, then install it (substitute the downloaded filename):
+Download `kusanagi-<version>-linux-x86_64.tar.xz` and `SHA256SUMS` from this release.
+Verify the archive before extracting it:
 
 ```sh
 sha256sum --ignore-missing -c SHA256SUMS
-sudo pacman -Syu
-sudo pacman -U ./kusanagi-bin-<version>-<pkgrel>-x86_64.pkg.tar.zst
-kusanagi
 ```
 
-Run `kusanagi` in a terminal inside your Wayland session as your normal user. First run configures
-compositor autostart and keybinds, then opens the setup wizard. `kusanagi doctor` checks your setup.
+Extract it somewhere permanent, then run `./install` followed by `./kusanagi` from that folder.
+The installer adds links in `~/.local/bin`; first launch handles compositor setup and appearance.
+No root access or AUR helper is needed.
 
-**No AUR account or helper required.** AUR publication is pending. Download updates from GitHub and
-install them with pacman; this does not add an automatic-update repository.
+Requires x86_64 Linux, glibc 2.39 or newer, a Wayland session and working EGL/GLES drivers.
+Application libraries are included. Graphics drivers, PAM and desktop services come from your system.
+Other architectures, musl systems and older distributions should build from source.
 
-- [Full installation, update and uninstall guide](https://github.com/ks19x/Kusanagi-Shell/blob/main/docs/install.md)
-- [Changelog](https://github.com/ks19x/Kusanagi-Shell/blob/main/CHANGELOG.md)
-- [Report a problem](https://github.com/ks19x/Kusanagi-Shell/issues)
+[Installation, updates and removal](https://github.com/ks19x/Kusanagi-Shell/blob/main/docs/install.md) ·
+[Changelog](https://github.com/ks19x/Kusanagi-Shell/blob/main/CHANGELOG.md) ·
+[Report a bug](https://github.com/ks19x/Kusanagi-Shell/issues)
 
-### Other downloads
-
-- `kusanagi-bin-…-recipe.tar.gz`: checksum-pinned PKGBUILD and metadata for `makepkg -si`.
-- `kusanagi-…-x86_64.tar.zst`: raw installation tree for packagers, not a pacman package.
-- `SHA256SUMS`: checksums of all release archives and packages, not a publisher signature.
-- GitHub's source archives: source code, not the prebuilt application.
-
-The binary targets current Arch Linux x86_64. Other distributions and architectures should build
-from source using the installation guide. CI checks installation, library resolution and CLI startup
-in a fresh Arch container; graphical-session behavior still depends on your compositor and drivers.
+The release pipeline checks this archive on Ubuntu 24.04, Debian 13, Fedora 43 and Arch.
+These are startup and library checks; desktop behavior also depends on your compositor and services.

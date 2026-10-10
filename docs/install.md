@@ -1,92 +1,137 @@
-# Installing Kusanagi
+# Install Kusanagi
 
-Kusanagi is a desktop shell for a Wayland session: bar, launcher, notifications, wallpaper,
-control panel and lock screen. You still need a Wayland compositor and working graphics drivers.
-Run Kusanagi as your regular user, inside your graphical session.
+Kusanagi runs inside a Wayland session. You need a compositor first: MangoWM, Hyprland,
+niri, sway or labwc are the usual choices. KDE Plasma and dwl have additional setup notes below.
 
-- [Arch Linux: prebuilt package](#arch-linux-prebuilt-package)
-- [Arch Linux: package recipe](#arch-linux-package-recipe)
-- [Build from source](#build-from-source)
-- [First launch and compositor setup](#first-launch-and-compositor-setup)
-- [Optional features](#optional-features)
-- [Daily commands](#daily-commands)
-- [Updates](#updates)
-- [Troubleshooting](#troubleshooting)
-- [Uninstall](#uninstall)
+## Portable download
 
-## Arch Linux: prebuilt package
+Get `kusanagi-0.2.0-linux-x86_64.tar.xz` and `SHA256SUMS` from the same
+[GitHub release](https://github.com/ks19x/Kusanagi-Shell/releases). Substitute the version
+below if you downloaded a newer one.
 
-The GitHub release targets **up-to-date Arch Linux on x86_64**. Arch derivatives may ship different
-library versions; if dependencies cannot be resolved, use a source build against your distribution.
-Do not install this package on Void, Debian, Ubuntu, Fedora or other non-Arch distributions.
-
-1. Open [GitHub Releases](https://github.com/ks19x/Kusanagi-Shell/releases) and select a release.
-2. Download its `kusanagi-bin-<version>-<pkgrel>-x86_64.pkg.tar.zst` and `SHA256SUMS` into the same folder.
-3. In a terminal in that folder, verify the download:
-
-   ```sh
-   sha256sum --ignore-missing -c SHA256SUMS
-   ```
-
-   The downloaded package must be listed with `OK`. If verification fails or no file is verified,
-   download both files again from the same release before proceeding. The checksum detects a damaged
-   or mismatched download; it is not a separate publisher signature.
-
-4. Update your Arch system, then install the package. Replace the example filename with the actual
-   downloaded filename (for the first release: `kusanagi-bin-0.2.0-1-x86_64.pkg.tar.zst`):
-
-   ```sh
-   sudo pacman -Syu
-   sudo pacman -U ./kusanagi-bin-0.2.0-1-x86_64.pkg.tar.zst
-   ```
-
-   Pacman installs required dependencies from your configured repositories and tracks installed files
-   for updates and removal. The package is unsigned; normal local-file pacman settings accept this.
-   If your system requires signed local packages, follow your administrator's policy rather than
-   disabling signature checks globally.
-
-5. Continue with [first launch](#first-launch-and-compositor-setup).
-
-No AUR account, `yay`, or `paru` is required. AUR publication is pending.
-
-### Which release file do I need?
-
-| Download | Purpose |
-| --- | --- |
-| `kusanagi-bin-…-x86_64.pkg.tar.zst` | Recommended: install with pacman |
-| `kusanagi-bin-…-recipe.tar.gz` | PKGBUILD, generated .SRCINFO and install message, for makepkg or future AUR submission |
-| `kusanagi-…-x86_64.tar.zst` | Staged `usr/` tree for packagers; not a pacman package |
-| `SHA256SUMS` | Checksums for all three downloads |
-| `kusanagi-…-x86_64.tar.zst.sha256` | Checksum for the raw binary archive |
-| GitHub's “Source code” archives | Source only; these are not the prebuilt application |
-
-Use pacman instead of copying the raw archive into `/usr` by hand.
-
-## Arch Linux: package recipe
-
-Use this if you prefer to inspect the package instructions and repackage the release yourself.
-It downloads the prebuilt archive and verifies its pinned SHA-256 checksum; it does not compile C++.
-
-Download `kusanagi-bin-0.2.0-recipe.tar.gz` and `SHA256SUMS` from the same release, then:
+In the download folder:
 
 ```sh
 sha256sum --ignore-missing -c SHA256SUMS
-sudo pacman -Syu --needed base-devel
-mkdir kusanagi-package
-tar -xzf kusanagi-bin-0.2.0-recipe.tar.gz -C kusanagi-package
-cd kusanagi-package/kusanagi-bin
-less PKGBUILD
-less kusanagi.install
-makepkg -si
 ```
 
-Substitute the version you downloaded. Run `makepkg` as a regular user, not with sudo. It requests
-privileges to install dependencies and the resulting package. Use the recipe attached to the release:
-the repository's recipe is a template whose checksum is filled during the release build.
+Check that the archive is listed with `OK`. Then extract it into a permanent location:
 
-## Build from source
+```sh
+mkdir -p ~/.local/opt
+tar -xJf kusanagi-0.2.0-linux-x86_64.tar.xz -C ~/.local/opt
+cd ~/.local/opt/kusanagi-0.2.0-linux-x86_64
+./install
+./kusanagi
+```
 
-Install Git using your distribution's package manager, then:
+`install` adds `kusanagi` and `kusanagi-shell` links in `~/.local/bin`. It refuses to overwrite
+an existing installation. Keep the extracted folder: those links point into it. Make sure
+`~/.local/bin` is on your PATH; log out and back in if you have just added it.
+
+You can also run `./kusanagi` directly without adding the links. Run it as your regular user,
+not with sudo. Nothing needs to be copied into `/usr`.
+
+### What systems does it run on?
+
+The download is for **x86_64 Linux with glibc 2.39 or newer**. Check with:
+
+```sh
+uname -m
+getconf GNU_LIBC_VERSION
+```
+
+It is built on Ubuntu 24.04 and includes the libraries used by the application. The release
+workflow checks that the same archive starts on Ubuntu 24.04, Debian 13, Fedora 43 and current
+Arch Linux, including after moving it to a path containing spaces. Those are CLI and library
+checks, not a guarantee that every desktop feature works on each distribution.
+
+Your system still supplies:
+
+- A Wayland compositor and EGL/GLES graphics drivers.
+- PAM for authentication and the normal system D-Bus service.
+- A user D-Bus session, fonts and standard command-line tools.
+- Services such as PipeWire, NetworkManager and BlueZ for their respective features.
+
+The bundle does not require systemd. It is intended to work on compatible glibc-based systems,
+including Void glibc. Alpine, Void musl, older glibc systems and ARM need a source build.
+This is a portable download, not a claim that one executable works on every Linux installation.
+
+If the loader reports `libEGL.so.1`, `libGLESv2.so.2` or `libpam.so.0` missing, install your
+distribution’s graphics or PAM runtime package. Use your distribution’s GPU setup instructions;
+the bundle does not replace the graphics driver.
+
+## First launch
+
+Open a terminal inside your Wayland session and run:
+
+```sh
+kusanagi
+```
+
+Choose which compositors should start Kusanagi and which shortcuts to use. The installer
+backs up configuration files it changes and offers choices when a key is already taken.
+The shell then opens its appearance and feature setup.
+
+If you already have Kusanagi settings, automatic setup may be skipped. You can reopen either part:
+
+```sh
+kusanagi install     # autostart and keybinds
+kusanagi setup       # appearance and features
+```
+
+Packaged and portable setup only handles your user configuration. It does not install a
+compositor or enable system services. The source installer can do those additional steps.
+
+### Compositor notes
+
+| Session | What gets added |
+| --- | --- |
+| MangoWM, Hyprland, niri, sway | A Kusanagi config file and an include in the main config |
+| labwc | A marked keyboard block and an autostart entry |
+| KDE Plasma Wayland | Desktop autostart and command shortcuts; log in again to activate them |
+| dwl | A keybinding header and session script; add the header to your dwl config and rebuild |
+
+Plasma’s own panel keeps running unless you disable it yourself. For dwl, the installer prints
+the integration instructions because keybindings are compiled into the compositor.
+
+To inspect the generated setup without applying it:
+
+```sh
+kusanagi install --print=niri
+```
+
+Replace `niri` with `mango`, `hyprland`, `sway`, `labwc`, `kde` or `dwl`.
+
+## Optional features
+
+Run `kusanagi doctor` after setup. It checks the session, required tools and optional features,
+and prints distribution-specific package commands.
+
+| Feature | What it uses |
+| --- | --- |
+| Sound controls | PipeWire and a session manager such as WirePlumber |
+| Wi-Fi and networking | NetworkManager |
+| Bluetooth | BlueZ and bluetoothctl; python-gobject for pairing prompts |
+| Clipboard | wl-clipboard and cliphist |
+| Screenshots | grim and slurp; swappy for editing |
+| Recording | gpu-screen-recorder, or wf-recorder for basic recording |
+| External monitor brightness | ddcutil and access to the monitor’s I²C device |
+| Night light | gammastep, where supported |
+| Emoji | An emoji font; wtype for typing instead of copying |
+
+Most desktop sessions already provide D-Bus, fonts, audio and a portal backend. Install the
+remaining tools you actually want. The library bundle does not install or start these services.
+
+`kusanagi bluetooth setup` and `kusanagi brightness setup` can help with those features.
+
+The greetd login screen is separate from the desktop shell. Get the desktop working first,
+then see `kusanagi greeter install`. That command changes system login configuration and
+requires elevated privileges. `kusanagi greeter uninstall` restores the previous setup.
+
+## Building from source
+
+Install Git, then:
 
 ```sh
 git clone https://github.com/ks19x/Kusanagi-Shell.git
@@ -95,125 +140,51 @@ cd Kusanagi-Shell
 ./install.sh
 ```
 
-For a specific released version, run `git checkout v0.2.0` before the installer (substitute your
-chosen tag). Otherwise the checkout follows the development branch.
+The installer presents its plan before making changes. It can install dependencies and selected
+compositors, configure services and shortcuts, then build the native shell under `~/.local`.
+Keep the checkout because the command links to files inside it.
 
-The installer can install dependencies and selected compositors, enable relevant services, configure
-autostart and keybinds, and build the native shell under `~/.local`. Review its plan before applying.
-Keep the checkout: the local `kusanagi` command links to it. Make sure `~/.local/bin` is in your PATH.
-
-The installer has package mappings for Void, Arch, Fedora, Gentoo, Debian/Ubuntu and openSUSE, with
-support for several init systems. This does not mean every distribution release has sufficiently
-recent libraries or a C++23 compiler. See [native build requirements](../native/BUILDING.md).
-
-Useful installer options:
+Useful options:
 
 ```sh
-./install.sh --plain          # plain terminal interface
-./install.sh --no-services    # manage services yourself
-./install.sh --no-config      # leave compositor configuration to you
-./install.sh --no-packages    # dependencies are already installed
-./install.sh --print=niri     # inspect generated compositor commands
+./install.sh --plain
+./install.sh --no-services
+./install.sh --no-config
+./install.sh --no-packages
 ```
 
-For maintainers creating distribution packages, see [packaging](../packaging/README.md).
+The installer has package mappings for Void, Arch, Fedora, Gentoo, Debian/Ubuntu and openSUSE.
+Older distribution releases may not have the necessary compiler or library versions. See the
+[build requirements](../native/BUILDING.md) for manual builds.
 
-## First launch and compositor setup
+To build a particular release, run `git checkout v0.2.0` before the installer, replacing the tag
+with the version you want.
 
-Inside your Wayland session, open a terminal and run:
+### Arch and AUR
 
-```sh
-kusanagi
-```
+You can use the portable download on Arch just like on other compatible distributions.
+AUR publication is pending. The repository also contains native Arch package recipes for
+maintainers; see [packaging](../packaging/README.md). Do not expect `yay -S kusanagi-bin` to work
+ahead of publication.
 
-On a fresh packaged install this runs per-user setup: select your compositors, choose keybinds and
-configure autostart. It then starts the shell and opens the setup wizard for appearance, wallpaper,
-bar and other preferences. Users with existing settings may skip automatic setup; open it manually:
+## Updating
 
-```sh
-kusanagi install     # compositor autostart and keybinds
-kusanagi setup       # appearance and feature wizard
-kusanagi doctor      # required and optional dependencies, session diagnostics
-```
+For a portable installation:
 
-Packaged per-user setup does not install a compositor or enable system services. Install and start
-a suitable Wayland session first. Do not run the shell with sudo.
+1. Download and verify the new archive.
+2. Run `kusanagi stop`.
+3. Run `kusanagi install --uninstall` to remove the old autostart entries and shortcuts.
+4. Remove the two links you created in `~/.local/bin` (`kusanagi` and `kusanagi-shell`).
+5. Extract the new version, run its `./install`, then `kusanagi install` and `kusanagi`.
 
-| Compositor | Setup behavior |
-| --- | --- |
-| MangoWM, Hyprland, niri, sway | Adds a Kusanagi config file and an include in your compositor config |
-| labwc | Adds a marked keyboard block and an autostart entry |
-| KDE Plasma (Wayland) | Adds desktop autostart and command shortcuts; log out and in for shortcuts |
-| dwl | Generates a header for compiled keybinds and a session script; integrate the header and rebuild dwl |
+Your settings are kept. Once the new version works, you can delete the old extracted folder.
+Kusanagi does not silently replace its own download; get updates from GitHub Releases.
 
-The installer offers choices for conflicting keybinds and backs up edited configuration files.
-You can inspect generated commands with `kusanagi install --print=niri` (or `mango`, `hyprland`,
-`sway`, `labwc`, `kde`, `dwl`). Avoid adding a second autostart if one already launches Kusanagi.
-Plasma keeps its own panel running; decide which panel you want before changing Plasma's startup.
+For a source checkout on `main`, run `git pull --ff-only`, `./install.sh`, then `kusanagi restart`.
+If you checked out a release tag, fetch and select the newer tag instead. Keep local source changes
+committed or backed up before switching versions.
 
-Default bindings include Super+Space (launcher), Super+I (settings), Super+V (clipboard),
-Super+N (notifications) and Super+L (lock). Your selected bindings may differ.
-
-## Optional features
-
-`kusanagi doctor` is the best starting point: it explains missing programs and the install command
-for your distribution. On Arch, `pacman -Qi kusanagi-bin` also lists optional dependencies.
-
-| Feature | Components |
-| --- | --- |
-| Audio controls | PipeWire and WirePlumber running in your session |
-| Wi-Fi/network controls | NetworkManager with its service running |
-| Bluetooth | BlueZ, bluetoothctl; python-gobject for pairing prompts |
-| Portals/file pickers | A desktop portal backend appropriate to your compositor |
-| Night light | gammastep, where supported by your compositor |
-| Recording/replays | gpu-screen-recorder; wf-recorder offers basic recording |
-| External-monitor brightness | ddcutil and access to the monitor's I²C device |
-| Screenshot editing | swappy |
-| Emoji typing | wtype, where supported; noto-fonts-emoji for rendering |
-| Login screen | greetd and cage; optional, separate from the desktop shell |
-
-Some components may come from AUR or other distribution sources. Install only the features you need.
-For features with a setup helper:
-
-```sh
-kusanagi bluetooth setup
-kusanagi brightness setup
-```
-
-The login screen changes system login configuration and is entirely optional. Get your desktop
-session working before trying `kusanagi greeter install`. Use `kusanagi greeter uninstall` to undo it.
-
-## Daily commands
-
-```sh
-kusanagi start
-kusanagi status
-kusanagi restart
-kusanagi stop
-kusanagi settings
-kusanagi msg launcher toggle
-kusanagi preset list
-kusanagi log -f
-```
-
-Settings live in `~/.config/kusanagi/settings.json`, saved presets in
-`~/.config/kusanagi/presets.json`. Back up this directory before major upgrades. These locations
-follow `XDG_CONFIG_HOME` if set. See the [bar guide](bar.md) for layouts and custom modules.
-
-## Updates
-
-**GitHub package:** download the new package and matching `SHA256SUMS`, verify them, run
-`sudo pacman -Syu`, then `sudo pacman -U ./<new-package-filename>` and `kusanagi restart`.
-A manually downloaded package does not automatically receive new Kusanagi releases through
-`pacman -Syu`; check GitHub Releases until an AUR package or package repository is available.
-
-**Recipe:** download the new release's recipe and repeat `makepkg -si` in a fresh folder.
-
-**Source checkout on main:** inside the checkout, run `git pull --ff-only`, then `./install.sh`
-and `kusanagi restart`. If you checked out a release tag, fetch tags and select the newer tag instead.
-Resolve your own source modifications before switching versions.
-
-## Troubleshooting
+## When something goes wrong
 
 Start with:
 
@@ -223,39 +194,48 @@ kusanagi status
 kusanagi log
 ```
 
-- **Command not found:** packaged installs use `/usr/bin/kusanagi`; source installs use
-  `~/.local/bin/kusanagi`. Check `command -v kusanagi` and your PATH. A previous source installation
-  can take precedence over the system package; use `/usr/bin/kusanagi` to check.
-- **A shared library is missing:** on Arch, perform a full `sudo pacman -Syu` and use a current
-  package. Arch library updates can require a new Kusanagi build. On another distribution, build
-  from source. Do not symlink unrelated library versions together.
-- **Shell exits immediately:** run it inside a Wayland graphical session. Check
-  `echo "$XDG_SESSION_TYPE"` and `echo "$WAYLAND_DISPLAY"`, then inspect `kusanagi log`.
-- **No setup or shortcuts:** run `kusanagi install` in a terminal. Existing settings can skip the
-  automatic first-run flow. Reload your compositor or log out and in after configuration changes.
-- **Duplicate bars or notifications:** check your compositor autostart for an existing panel or
-  notification daemon and choose which program should provide that feature.
-- **No audio, network or Bluetooth:** installing a library does not start the corresponding
-  service. Use `kusanagi doctor` and your distribution's service/session setup.
+**Command not found:** check `~/.local/bin` is on PATH, or run the extracted folder’s `./kusanagi`.
+`command -v kusanagi` shows which installation your terminal is using.
 
-When [reporting a bug](https://github.com/ks19x/Kusanagi-Shell/issues), include the release version,
-distribution, compositor, relevant doctor output and logs. Review logs for private information first.
-CI checks package installation and command startup; it does not test a full graphical desktop session.
+**Missing library or GLIBC version:** check the requirements above. Do not fix library errors by
+symlinking unrelated versions together. Build from source if your system is older than the bundle.
 
-## Uninstall
+**Starts and immediately exits:** check `echo "$WAYLAND_DISPLAY"` inside your graphical session,
+then read the log. A terminal over SSH is not normally attached to your Wayland session.
 
-Remove your per-user compositor integration **before** removing the package:
+**Shortcuts do nothing:** rerun `kusanagi install`, then reload the compositor or log out and in.
+Check that the extracted folder has not moved since you configured autostart.
+
+**Duplicate panels or notifications:** check compositor autostart for another bar or notification
+daemon, then choose which one should provide the feature.
+
+**Audio or Bluetooth is missing:** the service must be running, not just installed. Check
+`kusanagi doctor` and your distribution’s service setup.
+
+**Lock screen:** authentication uses your system’s PAM configuration. Test locking and unlocking
+manually before enabling idle locking on a new setup.
+
+For a bug report, include your distribution, compositor, Kusanagi version and relevant log output.
+[Open an issue here](https://github.com/ks19x/Kusanagi-Shell/issues). Check logs for private information
+before posting them.
+
+## Removing it
+
+If you enabled the greetd login screen, run `kusanagi greeter uninstall` first.
+
+For the portable download:
 
 ```sh
 kusanagi stop
 kusanagi install --uninstall
-sudo pacman -R kusanagi-bin
 ```
 
-Run the first two commands separately for each user who configured Kusanagi. If you installed the
-optional greeter, run `kusanagi greeter uninstall` before removing the program as well.
-For dwl, remove the generated header include from your `config.h` and rebuild.
+Then remove the two Kusanagi links you created in `~/.local/bin` and the extracted folder.
+Do not remove links belonging to a different installation. Each user should remove their own
+compositor integration. On dwl, remove the generated header include and rebuild.
 
-For a source installation, run `./install.sh --uninstall` from the original checkout instead of
-`pacman -R`. Settings are kept for future use. Installer backups use `.bak-kusanagi-<timestamp>`;
-review those if you want to restore earlier compositor configuration or overridden shortcuts.
+For a source install, run `./install.sh --uninstall` from its checkout. For an Arch package,
+remove the per-user integration first, then run `sudo pacman -R kusanagi-bin`.
+
+Settings remain in `~/.config/kusanagi/` (`XDG_CONFIG_HOME` if set). Installer backups are named
+`.bak-kusanagi-<timestamp>` beside the original configuration files.

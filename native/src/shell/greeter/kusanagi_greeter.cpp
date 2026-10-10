@@ -1,3 +1,4 @@
+#include "core/process/portable_environment.h"
 #include "shell/greeter/kusanagi_greeter.h"
 
 #include "config/config_types.h"
@@ -153,6 +154,7 @@ namespace kusanagi::greeter {
           args.push_back(const_cast<char*>(a.c_str()));
         }
         args.push_back(nullptr);
+        process::portable::restoreHostEnvironment();
         ::execvp(args[0], args.data());
         ::_exit(127);
       }

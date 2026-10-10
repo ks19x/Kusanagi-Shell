@@ -1,0 +1,83 @@
+name: Arch package
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  arch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    container: archlinux:latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install build dependencies
+        run: |
+          pacman -Syu --noconfirm --needed git base-devel meson ninja zstd \
+            wayland wayland-protocols libglvnd freetype2 fontconfig cairo pango harfbuzz librsvg \
+            libxkbcommon glib2 libsecret libsodium sdbus-cpp libpipewire libwireplumber polkit pam curl \
+            libwebp libjxl libsndfile libqalculate libxml2 md4c tomlplusplus nlohmann-json stb jemalloc libical
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check release version
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            test "v$(cat VERSION)" = "$GITHUB_REF_NAME"
+          fi
+          bash -n packaging/package-arch.sh packaging/aur/kusanagi-bin/PKGBUILD
+          sh -n packaging/release.sh
+
+      - name: Build portable Arch binary and pacman package
+        env:
+          KUSANAGI_JOBS: '2'
+          KUSANAGI_LTO: '0'
+        run: |
+          useradd --create-home builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- sh packaging/release.sh dist
+          runuser -u builder -- bash packaging/package-arch.sh dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kusanagi-arch-x86_64
+          path: dist/*
+          if-no-files-found: error
+
+  install:
+    needs: arch
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: archlinux:latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: kusanagi-arch-x86_64
+          path: dist
+      - name: Verify and install in a fresh Arch container
+        run: |
+          pacman -Syu --noconfirm
+          cd dist
+          sha256sum -c SHA256SUMS
+          pacman -U --noconfirm ./kusanagi-bin-*.pkg.tar.zst
+          pacman -Qkk kusanagi-bin
+          test -x /usr/bin/kusanagi
+          test -f /usr/share/licenses/kusanagi/LICENSE
+          ldd /usr/bin/kusanagi-shell | tee /tmp/kusanagi-libraries.txt
+          ! grep -q 'not found' /tmp/kusanagi-libraries.txt
+          kusanagi-shell --help

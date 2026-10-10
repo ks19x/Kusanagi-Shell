@@ -1,4 +1,4 @@
-name: release
+name: Release
 
 on:
   push:
@@ -13,80 +13,91 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  arch:
+  portable:
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    container: archlinux:latest
+    container: ubuntu:24.04
     defaults:
       run:
         shell: bash
     steps:
-      - name: Install build dependencies
-        run: |
-          pacman -Syu --noconfirm --needed git base-devel meson ninja zstd \
-            wayland wayland-protocols libglvnd freetype2 fontconfig cairo pango harfbuzz librsvg \
-            libxkbcommon glib2 libsecret libsodium sdbus-cpp libpipewire libwireplumber polkit pam curl \
-            libwebp libjxl libsndfile libqalculate libxml2 md4c tomlplusplus nlohmann-json stb jemalloc libical
-
+      - name: Install Git
+        run: apt-get update && apt-get install -y git ca-certificates
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
-
-      - name: Check release version
+      - name: Check version
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             test "v$(cat VERSION)" = "$GITHUB_REF_NAME"
           fi
-          bash -n packaging/package-arch.sh packaging/aur/kusanagi-bin/PKGBUILD
-          sh -n packaging/release.sh
-
-      - name: Build portable Arch binary and pacman package
-        env:
-          KUSANAGI_JOBS: '2'
-          KUSANAGI_LTO: '0'
-        run: |
-          useradd --create-home builder
-          chown -R builder:builder "$GITHUB_WORKSPACE"
-          runuser -u builder -- sh packaging/release.sh dist
-          runuser -u builder -- bash packaging/package-arch.sh dist
-
+      - name: Build dependencies
+        run: bash packaging/portable/build-deps.sh
+      - uses: actions/cache@v4
+        with:
+          path: /root/.cache/ccache
+          key: portable-gcc14-${{ github.sha }}
+          restore-keys: portable-gcc14-
+      - name: Check portable launchers
+        run: python3 packaging/portable/test_portable.py
+      - name: Build portable bundle
+        run: bash packaging/portable/build.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: kusanagi-arch-x86_64
-          path: dist/*
+          name: kusanagi-linux-x86_64
+          path: |
+            dist/*.tar.xz
+            dist/SHA256SUMS
           if-no-files-found: error
 
-  install:
-    needs: arch
+  smoke:
+    needs: portable
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    container: archlinux:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ['ubuntu:24.04', 'debian:13', 'fedora:43', 'archlinux:latest']
+    container: ${{ matrix.image }}
     defaults:
       run:
         shell: bash
     steps:
+      - name: Install host graphics and PAM libraries
+        run: |
+          if command -v apt-get; then
+            apt-get update
+            apt-get install -y --no-install-recommends xz-utils libegl1 libgles2 libpam0g python3 procps
+          elif command -v dnf; then
+            dnf install -y xz mesa-libEGL libglvnd-gles pam python3 procps-ng
+          else
+            pacman -Syu --noconfirm --needed xz libglvnd pam python procps-ng
+          fi
       - uses: actions/download-artifact@v4
         with:
-          name: kusanagi-arch-x86_64
+          name: kusanagi-linux-x86_64
           path: dist
-      - name: Verify and install in a fresh Arch container
+      - name: Check the same archive on this distribution
         run: |
-          pacman -Syu --noconfirm
           cd dist
           sha256sum -c SHA256SUMS
-          pacman -U --noconfirm ./kusanagi-bin-*.pkg.tar.zst
-          pacman -Qkk kusanagi-bin
-          test -x /usr/bin/kusanagi
-          test -f /usr/share/licenses/kusanagi/LICENSE
-          ldd /usr/bin/kusanagi-shell | tee /tmp/kusanagi-libraries.txt
-          ! grep -q 'not found' /tmp/kusanagi-libraries.txt
-          kusanagi-shell --help
+          tar -xf kusanagi-*-linux-x86_64.tar.xz
+          bundle=$(find "$PWD" -maxdepth 1 -type d -name 'kusanagi-*-linux-x86_64')
+          "$bundle/usr/bin/kusanagi-shell" --help
+          "$bundle/usr/bin/kusanagi-shell" --version
+          "$bundle/kusanagi" version
+          ldd "$bundle/usr/libexec/kusanagi-shell" | tee /tmp/kusanagi-libraries.txt
+          if grep -q 'not found' /tmp/kusanagi-libraries.txt; then exit 1; fi
+          # Moving the bundle must not break its library paths.
+          mv "$bundle" "$PWD/relocated bundle"
+          "$PWD/relocated bundle/usr/bin/kusanagi-shell" --version
+          "$PWD/relocated bundle/kusanagi" version
 
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: install
+    needs: smoke
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -96,14 +107,12 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          name: kusanagi-arch-x86_64
+          name: kusanagi-linux-x86_64
           path: dist
       - uses: softprops/action-gh-release@v2
         with:
           body_path: packaging/RELEASE_NOTES.md
           fail_on_unmatched_files: true
           files: |
-            dist/*.tar.zst
-            dist/*.sha256
-            dist/*.tar.gz
+            dist/*.tar.xz
             dist/SHA256SUMS

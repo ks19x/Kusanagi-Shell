@@ -2,3 +2,5 @@
 *.bak*
 shell/hyprquickpaper/config.json
 dist/
+build-portable/
+__pycache__/

@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+bundle=$(dirname "$(dirname "$(dirname "$(readlink -f "$0")")")")
+# Only the shell gets these module paths. Its child-process code restores the host values.
+for name in PIPEWIRE_MODULE_DIR SPA_PLUGIN_DIR PIPEWIRE_CONFIG_DIR WIREPLUMBER_MODULE_DIR; do
+  eval 'present=${'"$name"'+yes}'
+  if [ "$present" = yes ]; then
+    eval 'value=${'"$name"'}'
+    export "KUSANAGI_HOST_$name=$value"
+  fi
+done
+export KUSANAGI_PORTABLE=1
+export PIPEWIRE_MODULE_DIR="$bundle/usr/lib/pipewire-0.3"
+export SPA_PLUGIN_DIR="$bundle/usr/lib/spa-0.2"
+export PIPEWIRE_CONFIG_DIR="$bundle/usr/share/pipewire"
+export WIREPLUMBER_MODULE_DIR="$bundle/usr/lib/wireplumber-0.5"
+exec "$bundle/usr/libexec/kusanagi-shell" "$@"

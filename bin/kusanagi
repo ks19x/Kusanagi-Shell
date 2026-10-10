@@ -1,5 +1,5 @@
 #!/bin/sh
-# kusanagi — sig's desktop shell (Quickshell/QML), as one command.
+# kusanagi — sig's Wayland shell, as one command.
 #   kusanagi [start]            start it (detached, lean memory settings) — does nothing if it's running
 #   kusanagi stop | restart     stop / restart it
 #   kusanagi status [-q]        is it running? (-q: exit code only)
@@ -45,7 +45,8 @@ HOOK="$CONF/hooks/wallpaper"              # optional: run after a wallpaper chan
 # ---------------------------------------------------------------- engine: QML (Quickshell) or native
 # the native binary: installed, else the one built in this checkout (native/build)
 native_bin() {
-    if command -v kusanagi-shell >/dev/null; then command -v kusanagi-shell
+    if [ -x "$ROOT/../../bin/kusanagi-shell" ]; then readlink -f "$ROOT/../../bin/kusanagi-shell"
+    elif command -v kusanagi-shell >/dev/null; then command -v kusanagi-shell
     elif [ -x "$ROOT/native/build/kusanagi-shell" ]; then echo "$ROOT/native/build/kusanagi-shell"
     else return 1; fi
 }
