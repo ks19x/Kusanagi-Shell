@@ -194,7 +194,7 @@ bool KusanagiTaskbar::sync(Renderer& renderer, const Look& look, AnimationManage
   const std::size_t tw = o.value("titleWidth", json()).is_number() && o["titleWidth"].get<int>() > 0 ? o["titleWidth"].get<std::size_t>() : 18;
   std::string indicator = o.value("indicator", json()).is_string() ? o["indicator"].get<std::string>() : std::string();
   if (indicator.empty()) indicator = dock.value("indicator", std::string("dot"));
-  const json colors = o.value("colors", json::object()).is_object() ? o["colors"] : json::object();
+  const json colors = o.contains("colors") && o["colors"].is_object() ? o["colors"] : json::object();
   const float spacing = (o.value("spacing", json()).is_number() ? o["spacing"].get<float>() : 4.0F) * s;
   const json pinsJson = o.value("pinned", json()).is_array() ? o["pinned"] : dock.value("pinned", json::array());
   m_pins.clear();
