@@ -39,6 +39,7 @@ def main():
         seeds.extend(destination.rglob('*.so'))
     shutil.copytree('/usr/share/pipewire', stage / 'usr/share/pipewire')
     shutil.copytree('/usr/local/share/kusanagi-bundled-licenses', notices / 'upstream')
+    shutil.copytree('/usr/share/common-licenses', notices / 'common-licenses')
 
     packages = set()
     libraries = {}

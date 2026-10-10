@@ -21,3 +21,6 @@ Other architectures, musl systems and older distributions should build from sour
 
 The release pipeline checks this archive on Ubuntu 24.04, Debian 13, Fedora 43 and Arch.
 These are startup and library checks; desktop behavior also depends on your compositor and services.
+
+`kusanagi-<version>-library-sources.tar.xz` contains sources for the bundled libraries.
+You do not need it to install or run Kusanagi.

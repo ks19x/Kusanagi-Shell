@@ -31,7 +31,9 @@ CI or a disposable container, not your everyday system. Output is in `dist/`.
 
 The bundle records distribution library packages and versions in
 `usr/share/licenses/kusanagi/bundled/packages.json`, along with their copyright files. The upstream
-sdbus-c++, WirePlumber and stb notices are included separately. Keep those files with the binaries.
+sdbus-c++, WirePlumber and stb notices are included separately. Keep those files with the binaries. The release also includes a separate
+`kusanagi-<version>-library-sources.tar.xz` with the matching Ubuntu source packages, upstream
+sources and bundle build scripts. You do not need that archive to run the application.
 
 ## Release steps
 

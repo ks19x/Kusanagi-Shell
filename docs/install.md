@@ -7,7 +7,8 @@ niri, sway or labwc are the usual choices. KDE Plasma and dwl have additional se
 
 Get `kusanagi-0.2.0-linux-x86_64.tar.xz` and `SHA256SUMS` from the same
 [GitHub release](https://github.com/ks19x/Kusanagi-Shell/releases). Substitute the version
-below if you downloaded a newer one.
+below if you downloaded a newer one. The separate `library-sources` archive is for
+rebuilding the bundled libraries; it is not needed to run Kusanagi.
 
 In the download folder:
 
