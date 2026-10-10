@@ -11,6 +11,14 @@ import subprocess
 HOST = re.compile(r"^(ld-linux.*|lib(c|m|mvec|anl|pthread|dl|rt|util|resolv|nss_.*)\.so.*|lib(EGL|GL|GLESv[12]|GLX|GLdispatch|OpenGL|drm.*|gbm|pam|pam_misc)\.so.*)$")
 
 
+# Libraries the host's graphics drivers load as well. Two copies of one of these can't share a process,
+# and a driver newer than our copy breaks (e.g. Mesa needing a newer libwayland-client), so the host's
+# copy wins whenever it has one; ours is only a fallback (see launch-shell).
+HOST_PREFERRED = re.compile(
+    r"^lib(stdc\+\+|gcc_s|z|zstd|lzma|bz2|expat|ffi|xml2|gmp|elf|edit|tinfo|ncursesw|sensors|xkbcommon"
+    r"|wayland-(client|egl|cursor)|X11(-xcb)?|Xau|Xdmcp|Xext|Xrender|Xfixes|xcb(-.*)?|xshmfence|pciaccess)\.so\..*$")
+
+
 def output(*args):
     return subprocess.check_output(args, text=True, stderr=subprocess.STDOUT)
 
@@ -86,6 +94,12 @@ def main():
         relative = os.path.relpath(libdir, binary.parent)
         rpath = '$ORIGIN' if relative == '.' else '$ORIGIN/' + relative
         subprocess.run(['patchelf', '--set-rpath', rpath, str(binary)], check=True)
+    preferred = libdir / 'host-preferred'
+    preferred.mkdir(exist_ok=True)
+    for name in list(libraries):
+        if HOST_PREFERRED.match(name):
+            (libdir / name).rename(preferred / name)
+            subprocess.run(['patchelf', '--set-rpath', '$ORIGIN/..', str(preferred / name)], check=True)
     source_dir = Path(__file__).resolve().parent
     for source, target in [('launch-shell', stage / 'usr/bin/kusanagi-shell'),
                            ('kusanagi', stage / 'kusanagi'), ('install', stage / 'install')]:

@@ -60,6 +60,24 @@ class PortableTests(unittest.TestCase):
         self.assertEqual((commands / 'kusanagi').resolve(), self.bundle / 'usr/bin/kusanagi')
         self.assertEqual((commands / 'kusanagi-shell').resolve(), self.bundle / 'usr/bin/kusanagi-shell')
 
+    def test_host_copy_wins_over_the_fallback_library(self):
+        shutil.copy2(ROOT / 'packaging/portable/launch-shell', self.bundle / 'usr/bin/kusanagi-shell')
+        child = self.bundle / 'usr/libexec/kusanagi-shell'
+        child.write_text('#!/bin/sh\nprintenv\n')
+        child.chmod(0o755)
+        preferred = self.bundle / 'usr/lib/host-preferred'
+        preferred.mkdir(parents=True)
+        (preferred / 'libc.so.6').write_text('')            # every host has this one
+        (preferred / 'libkusanagi-test.so.9').write_text('')  # and none has this
+        env = dict(self.env, XDG_RUNTIME_DIR=str(self.base / 'runtime'))
+        env.pop('LD_LIBRARY_PATH', None)
+        (self.base / 'runtime').mkdir()
+        output = subprocess.check_output([self.bundle / 'usr/bin/kusanagi-shell'], env=env, text=True)
+        values = dict(line.split('=', 1) for line in output.splitlines() if '=' in line)
+        linked = Path(values['LD_LIBRARY_PATH'].split(':')[0])
+        self.assertEqual(sorted(p.name for p in linked.iterdir()), ['libkusanagi-test.so.9'])
+        self.assertNotIn('KUSANAGI_HOST_LD_LIBRARY_PATH', values)
+
     def test_shell_wrapper_does_not_export_library_path(self):
         shutil.copy2(ROOT / 'packaging/portable/launch-shell', self.bundle / 'usr/bin/kusanagi-shell')
         child = self.bundle / 'usr/libexec/kusanagi-shell'

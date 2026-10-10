@@ -97,7 +97,7 @@ jobs:
           "$bundle/usr/bin/kusanagi-shell" --help
           "$bundle/usr/bin/kusanagi-shell" --version
           "$bundle/kusanagi" version
-          ldd "$bundle/usr/libexec/kusanagi-shell" | tee /tmp/kusanagi-libraries.txt
+          "$bundle/usr/bin/kusanagi-shell" --portable-ldd | tee /tmp/kusanagi-libraries.txt
           if grep -q 'not found' /tmp/kusanagi-libraries.txt; then exit 1; fi
           # Moving the bundle must not break its library paths.
           mv "$bundle" "$PWD/relocated bundle"
@@ -107,17 +107,31 @@ jobs:
   session:
     needs: portable
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    container: ubuntu:24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ['ubuntu:24.04', 'debian:13', 'fedora:43', 'archlinux:latest']
+    container: ${{ matrix.image }}
     defaults:
       run:
         shell: bash
     steps:
+      # The shell draws through the system's own Mesa here, so a newer driver than Ubuntu's shows
+      # up as a failure instead of only in someone's real session.
       - name: Install a headless Wayland session
         run: |
-          apt-get update
-          apt-get install -y --no-install-recommends git ca-certificates xz-utils sway dbus-daemon \
-            libegl1 libgles2 libgl1-mesa-dri libpam0g fonts-dejavu-core python3 procps
+          if command -v apt-get; then
+            apt-get update
+            apt-get install -y --no-install-recommends git ca-certificates xz-utils sway dbus-daemon \
+              libegl1 libgles2 libgl1-mesa-dri libpam0g fonts-dejavu-core python3 procps
+          elif command -v dnf; then
+            dnf install -y git xz sway dbus-daemon mesa-libEGL mesa-dri-drivers libglvnd-gles pam \
+              dejavu-sans-fonts python3 procps-ng shadow-utils util-linux
+          else
+            pacman -Syu --noconfirm --needed git xz sway dbus mesa libglvnd pam ttf-dejavu python \
+              procps-ng shadow util-linux
+          fi
       - uses: actions/checkout@v4
         with:
           persist-credentials: false

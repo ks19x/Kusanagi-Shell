@@ -8,10 +8,10 @@
 namespace process::portable {
 
   inline constexpr std::array variables{
-      "PIPEWIRE_MODULE_DIR", "SPA_PLUGIN_DIR", "PIPEWIRE_CONFIG_DIR", "WIREPLUMBER_MODULE_DIR"
+      "PIPEWIRE_MODULE_DIR", "SPA_PLUGIN_DIR", "PIPEWIRE_CONFIG_DIR", "WIREPLUMBER_MODULE_DIR", "LD_LIBRARY_PATH"
   };
 
-  // Bundle-specific plugin paths must not leak into applications launched by the shell.
+  // Bundle-specific plugin and library paths must not leak into applications launched by the shell.
   inline bool omitFromHostEnvironment(std::string_view name) {
     if (std::getenv("KUSANAGI_PORTABLE") == nullptr)
       return false;

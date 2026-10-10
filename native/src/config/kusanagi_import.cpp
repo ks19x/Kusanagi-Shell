@@ -87,7 +87,7 @@ namespace kusanagi::config {
         return std::nullopt;
       }
       try {
-        const unsigned v = std::stoul(s, nullptr, 16);
+        const auto v = static_cast<unsigned>(std::stoul(s, nullptr, 16));
         return Rgb{((v >> 16) & 0xff) / 255.0, ((v >> 8) & 0xff) / 255.0, (v & 0xff) / 255.0};
       } catch (const std::exception&) {
         return std::nullopt;
@@ -969,6 +969,9 @@ namespace kusanagi::config {
     tbl(t, "dock").insert_or_assign("enabled", false);
     tbl(t, "desktop_widgets").insert_or_assign("enabled", false);
     tbl(t, "backdrop").insert_or_assign("enabled", false);
+    // Kusanagi keeps nothing in the system keyring; a key file of its own means no keyring prompt on first start.
+    tbl(t, "storage").insert_or_assign("key_source", "file");
+    tbl(t, "storage").insert_or_assign("key_file", "$XDG_STATE_HOME/kusanagi/storage.key");
     // No plugins and no plugin sources.
     tbl(t, "plugins").insert_or_assign("auto_update", "none");
 

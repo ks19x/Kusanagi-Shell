@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 bundle=$(dirname "$(dirname "$(dirname "$(readlink -f "$0")")")")
-# Only the shell gets these module paths. Its child-process code restores the host values.
-for name in PIPEWIRE_MODULE_DIR SPA_PLUGIN_DIR PIPEWIRE_CONFIG_DIR WIREPLUMBER_MODULE_DIR; do
+# Only the shell gets these paths. Its child-process code puts the host values back.
+for name in PIPEWIRE_MODULE_DIR SPA_PLUGIN_DIR PIPEWIRE_CONFIG_DIR WIREPLUMBER_MODULE_DIR LD_LIBRARY_PATH; do
   eval 'present=${'"$name"'+yes}'
   if [ "$present" = yes ]; then
     eval 'value=${'"$name"'}'
@@ -14,4 +14,37 @@ export PIPEWIRE_MODULE_DIR="$bundle/usr/lib/pipewire-0.3"
 export SPA_PLUGIN_DIR="$bundle/usr/lib/spa-0.2"
 export PIPEWIRE_CONFIG_DIR="$bundle/usr/share/pipewire"
 export WIREPLUMBER_MODULE_DIR="$bundle/usr/lib/wireplumber-0.5"
+
+# Libraries the graphics drivers share with us: use the system's copy when it has one, ours otherwise.
+host_has() {
+  if [ -n "$ldcache" ]; then
+    printf '%s\n' "$ldcache" | grep -q "^[[:space:]]*$1 (libc6,x86-64"
+    return
+  fi
+  for d in /usr/lib/x86_64-linux-gnu /lib/x86_64-linux-gnu /usr/lib64 /lib64 /usr/lib /lib; do
+    [ -e "$d/$1" ] && return 0
+  done
+  return 1
+}
+preferred="$bundle/usr/lib/host-preferred"
+if [ -d "$preferred" ]; then
+  ldcache=$( { ldconfig -p || /sbin/ldconfig -p || /usr/sbin/ldconfig -p; } 2>/dev/null || true)
+  missing=""
+  for lib in "$preferred"/*; do
+    name=${lib##*/}
+    host_has "$name" || missing="$missing $name"
+  done
+  if [ -n "$missing" ]; then
+    # one folder per extracted copy, holding links to just the libraries this system lacks
+    key=$(printf '%s' "$bundle" | cksum | cut -d' ' -f1)
+    dir="${XDG_RUNTIME_DIR:-/tmp}/kusanagi-portable-$(id -u)-$key"
+    rm -rf "$dir" && mkdir -p "$dir"
+    for name in $missing; do ln -s "$preferred/$name" "$dir/$name"; done
+    export LD_LIBRARY_PATH="$dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  fi
+fi
+
+if [ "${1:-}" = --portable-ldd ]; then
+  exec ldd "$bundle/usr/libexec/kusanagi-shell"
+fi
 exec "$bundle/usr/libexec/kusanagi-shell" "$@"
