@@ -26,8 +26,8 @@ cd ~/.local/opt/kusanagi-0.3.0-linux-x86_64
 ./kusanagi
 ```
 
-`install` adds `kusanagi` and `kusanagi-shell` links in `~/.local/bin`. It refuses to overwrite
-an existing installation. Keep the extracted folder: those links point into it. Make sure
+`install` adds `kusanagi` and `kusanagi-shell` links in `~/.local/bin`. It replaces links from an
+older portable download, but leaves any other installation alone. Keep the extracted folder: those links point into it. Make sure
 `~/.local/bin` is on your PATH; log out and back in if you have just added it.
 
 You can also run `./kusanagi` directly without adding the links. Run it as your regular user,
@@ -170,16 +170,16 @@ ahead of publication.
 
 ## Updating
 
-For a portable installation:
+For a portable installation, download and verify the new archive, extract it next to the old
+one and run its `./install`. It moves the `~/.local/bin` links over to the new folder; your
+settings, autostart and keybinds stay as they are. Then:
 
-1. Download and verify the new archive.
-2. Run `kusanagi stop`.
-3. Run `kusanagi install --uninstall` to remove the old autostart entries and shortcuts.
-4. Remove the two links you created in `~/.local/bin` (`kusanagi` and `kusanagi-shell`).
-5. Extract the new version, run its `./install`, then `kusanagi install` and `kusanagi`.
+```sh
+kusanagi restart
+```
 
-Your settings are kept. Once the new version works, you can delete the old extracted folder.
-Kusanagi does not silently replace its own download; get updates from GitHub Releases.
+Once the new version works you can delete the old folder. Kusanagi never updates itself; new
+versions come from GitHub Releases.
 
 For a source checkout on `main`, run `git pull --ff-only`, `./install.sh`, then `kusanagi restart`.
 If you checked out a release tag, fetch and select the newer tag instead. Keep local source changes

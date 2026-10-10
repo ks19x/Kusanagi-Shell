@@ -46,6 +46,20 @@ class PortableTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(link.read_text(), 'existing user file')
 
+    def test_install_replaces_an_older_download(self):
+        old = self.base / 'kusanagi-0.0.1-linux-x86_64'
+        (old / 'usr/bin').mkdir(parents=True)
+        commands = Path(self.env['XDG_BIN_HOME'])
+        commands.mkdir()
+        for name in ('kusanagi', 'kusanagi-shell'):
+            (old / 'usr/bin' / name).write_text('')
+            (commands / name).symlink_to(old / 'usr/bin' / name)
+        result = subprocess.run([self.bundle / 'install'], env=self.env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('Updated', result.stdout)
+        self.assertEqual((commands / 'kusanagi').resolve(), self.bundle / 'usr/bin/kusanagi')
+        self.assertEqual((commands / 'kusanagi-shell').resolve(), self.bundle / 'usr/bin/kusanagi-shell')
+
     def test_shell_wrapper_does_not_export_library_path(self):
         shutil.copy2(ROOT / 'packaging/portable/launch-shell', self.bundle / 'usr/bin/kusanagi-shell')
         child = self.bundle / 'usr/libexec/kusanagi-shell'

@@ -1,22 +1,33 @@
 #!/bin/sh
-# Register an extracted bundle; do not copy over another installation.
+# Link this extracted download into ~/.local/bin. An older portable download is replaced (that is
+# how you update); anything else already there is left alone.
 set -eu
 bundle=$(dirname "$(readlink -f "$0")")
 bindir="${XDG_BIN_HOME:-$HOME/.local/bin}"
 mkdir -p "$bindir"
+
+old=""
 for name in kusanagi kusanagi-shell; do
-  target="$bundle/usr/bin/$name"
   link="$bindir/$name"
-  if [ -e "$link" ] || [ -L "$link" ]; then
-    if [ "$(readlink -f "$link")" != "$(readlink -f "$target")" ]; then
-      echo "$link already exists. Remove or move the old installation first." >&2
-      exit 1
-    fi
-  fi
+  [ -e "$link" ] || [ -L "$link" ] || continue
+  current=$(readlink -f "$link" || true)
+  [ "$current" = "$(readlink -f "$bundle/usr/bin/$name")" ] && continue
+  case "$current" in
+    */kusanagi-*-linux-x86_64/usr/bin/"$name") [ -L "$link" ] && old=${current%/usr/bin/*} && continue ;;
+  esac
+  echo "$link belongs to another Kusanagi installation. Remove it first, then run ./install again." >&2
+  exit 1
 done
+
 for name in kusanagi kusanagi-shell; do
-  [ -L "$bindir/$name" ] || ln -s "$bundle/usr/bin/$name" "$bindir/$name"
+  ln -sfn "$bundle/usr/bin/$name" "$bindir/$name"
 done
-printf 'Linked Kusanagi in %s. Keep this folder at %s.\n' "$bindir" "$bundle"
+
+if [ -n "$old" ]; then
+  printf 'Updated: %s now points to this folder instead of %s.\n' "$bindir" "$old"
+  printf 'Run "kusanagi restart" to switch over, then you can delete the old folder.\n'
+else
+  printf 'Linked Kusanagi in %s. Keep this folder at %s.\n' "$bindir" "$bundle"
+  printf 'Run kusanagi in a terminal inside your Wayland session to finish setup.\n'
+fi
 case ":$PATH:" in *":$bindir:"*) ;; *) printf 'Add %s to your PATH.\n' "$bindir" ;; esac
-printf 'Run kusanagi in a terminal inside your Wayland session to finish setup.\n'
