@@ -84,7 +84,7 @@ The native shell is in `native/`; `bin/kusanagi` is the command that starts and 
 `lib/` and `scripts/` contain the system helpers.
 
 [Build notes](native/BUILDING.md) | [Architecture](docs/native.md) |
-[Contributing](CONTRIBUTING.md) | [Packaging](packaging/README.md)
+[Contributing](CONTRIBUTING.md) | [Packaging](packaging/README.md) | [Releasing](RELEASING.md)
 
 ## License
 
