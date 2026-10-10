@@ -15,8 +15,8 @@ Requires x86_64 Linux, glibc 2.39 or newer, a Wayland session and working EGL/GL
 Application libraries are included. Graphics drivers, PAM and desktop services come from your system.
 Other architectures, musl systems and older distributions should build from source.
 
-[Installation, updates and removal](https://github.com/ks19x/Kusanagi-Shell/blob/main/docs/install.md) ·
-[Changelog](https://github.com/ks19x/Kusanagi-Shell/blob/main/CHANGELOG.md) ·
+[Installation, updates and removal](https://github.com/ks19x/Kusanagi-Shell/blob/main/docs/install.md) |
+[Changelog](https://github.com/ks19x/Kusanagi-Shell/blob/main/CHANGELOG.md) |
 [Report a bug](https://github.com/ks19x/Kusanagi-Shell/issues)
 
 The release pipeline checks this archive on Ubuntu 24.04, Debian 13, Fedora 43 and Arch.

@@ -4,7 +4,7 @@
 
 pkgname=kusanagi-bin
 _name=kusanagi
-pkgver=0.2.0
+pkgver=0.3.0
 pkgrel=1
 pkgdesc='Desktop shell for Wayland: bar, launcher, control panel, notifications, wallpapers, lock screen (prebuilt)'
 arch=('x86_64')

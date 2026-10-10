@@ -2,7 +2,7 @@
 
 ## Portable Linux release
 
-`release.yml` builds on Ubuntu 24.04 using GCC 14. The archive includes the application’s shared
+`release.yml` builds on Ubuntu 24.04 using GCC 14. The archive includes the application's shared
 libraries and audio modules, but leaves glibc, PAM and EGL/GLES drivers to the host. The minimum
 host glibc is 2.39. No `LD_LIBRARY_PATH` is exported; bundled ELF files use relative RUNPATHs.
 Audio plugin paths are restored to their original values before launching host applications.
@@ -69,7 +69,7 @@ creates a recipe archive containing `PKGBUILD`, `.SRCINFO` and `kusanagi.install
 as an unprivileged Arch user. The generated recipe is ready for review and testing; the source-tree
 recipe is a template with its checksum filled during the build.
 
-AUR publication requires an account and registered SSH key. Once available, clone the package’s
+AUR publication requires an account and registered SSH key. Once available, clone the package's
 AUR repository, copy the three recipe files from the tested build, commit and push. Do not commit
 binaries to AUR. The `kusanagi-git` recipe builds from source instead.
 
@@ -88,4 +88,4 @@ meson install -C build --destdir "$pkgdir"
 
 The command and helpers go under `/usr/lib/kusanagi`, the executable under `/usr/bin`, assets under
 `/usr/share/kusanagi`, and notices under `/usr/share/licenses/kusanagi`. User settings stay in the
-normal XDG directories. A package’s first launch runs only the per-user compositor setup.
+normal XDG directories. A package's first launch runs only the per-user compositor setup.

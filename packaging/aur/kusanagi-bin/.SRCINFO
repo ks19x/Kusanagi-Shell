@@ -1,6 +1,6 @@
 pkgbase = kusanagi-bin
 	pkgdesc = Desktop shell for Wayland: bar, launcher, control panel, notifications, wallpapers, lock screen (prebuilt)
-	pkgver = 0.2.0
+	pkgver = 0.3.0
 	pkgrel = 1
 	url = https://github.com/ks19x/Kusanagi-Shell
 	install = kusanagi.install
@@ -71,11 +71,11 @@ pkgbase = kusanagi-bin
 	optdepends = niri: a compositor Kusanagi sets up
 	optdepends = sway: a compositor Kusanagi sets up
 	optdepends = labwc: a compositor Kusanagi sets up
-	provides = kusanagi=0.2.0
+	provides = kusanagi=0.3.0
 	conflicts = kusanagi
 	options = !strip
 	options = !debug
-	source_x86_64 = https://github.com/ks19x/Kusanagi-Shell/releases/download/v0.2.0/kusanagi-0.2.0-x86_64.tar.zst
+	source_x86_64 = https://github.com/ks19x/Kusanagi-Shell/releases/download/v0.3.0/kusanagi-0.3.0-x86_64.tar.zst
 	sha256sums_x86_64 = SKIP
 
 pkgname = kusanagi-bin

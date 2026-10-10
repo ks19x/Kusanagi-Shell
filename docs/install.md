@@ -5,7 +5,7 @@ niri, sway or labwc are the usual choices. KDE Plasma and dwl have additional se
 
 ## Portable download
 
-Get `kusanagi-0.2.0-linux-x86_64.tar.xz` and `SHA256SUMS` from the same
+Get `kusanagi-0.3.0-linux-x86_64.tar.xz` and `SHA256SUMS` from the same
 [GitHub release](https://github.com/ks19x/Kusanagi-Shell/releases). Substitute the version
 below if you downloaded a newer one. The separate `library-sources` archive is for
 rebuilding the bundled libraries; it is not needed to run Kusanagi.
@@ -20,8 +20,8 @@ Check that the archive is listed with `OK`. Then extract it into a permanent loc
 
 ```sh
 mkdir -p ~/.local/opt
-tar -xJf kusanagi-0.2.0-linux-x86_64.tar.xz -C ~/.local/opt
-cd ~/.local/opt/kusanagi-0.2.0-linux-x86_64
+tar -xJf kusanagi-0.3.0-linux-x86_64.tar.xz -C ~/.local/opt
+cd ~/.local/opt/kusanagi-0.3.0-linux-x86_64
 ./install
 ./kusanagi
 ```
@@ -59,7 +59,7 @@ including Void glibc. Alpine, Void musl, older glibc systems and ARM need a sour
 This is a portable download, not a claim that one executable works on every Linux installation.
 
 If the loader reports `libEGL.so.1`, `libGLESv2.so.2` or `libpam.so.0` missing, install your
-distribution’s graphics or PAM runtime package. Use your distribution’s GPU setup instructions;
+distribution's graphics or PAM runtime package. Use your distribution's GPU setup instructions;
 the bundle does not replace the graphics driver.
 
 ## First launch
@@ -93,7 +93,7 @@ compositor or enable system services. The source installer can do those addition
 | KDE Plasma Wayland | Desktop autostart and command shortcuts; log in again to activate them |
 | dwl | A keybinding header and session script; add the header to your dwl config and rebuild |
 
-Plasma’s own panel keeps running unless you disable it yourself. For dwl, the installer prints
+Plasma's own panel keeps running unless you disable it yourself. For dwl, the installer prints
 the integration instructions because keybindings are compiled into the compositor.
 
 To inspect the generated setup without applying it:
@@ -117,7 +117,7 @@ and prints distribution-specific package commands.
 | Clipboard | wl-clipboard and cliphist |
 | Screenshots | grim and slurp; swappy for editing |
 | Recording | gpu-screen-recorder, or wf-recorder for basic recording |
-| External monitor brightness | ddcutil and access to the monitor’s I²C device |
+| External monitor brightness | ddcutil and access to the monitor's I²C device |
 | Night light | gammastep, where supported |
 | Emoji | An emoji font; wtype for typing instead of copying |
 
@@ -158,7 +158,7 @@ The installer has package mappings for Void, Arch, Fedora, Gentoo, Debian/Ubuntu
 Older distribution releases may not have the necessary compiler or library versions. See the
 [build requirements](../native/BUILDING.md) for manual builds.
 
-To build a particular release, run `git checkout v0.2.0` before the installer, replacing the tag
+To build a particular release, run `git checkout v0.3.0` before the installer, replacing the tag
 with the version you want.
 
 ### Arch and AUR
@@ -195,7 +195,7 @@ kusanagi status
 kusanagi log
 ```
 
-**Command not found:** check `~/.local/bin` is on PATH, or run the extracted folder’s `./kusanagi`.
+**Command not found:** check `~/.local/bin` is on PATH, or run the extracted folder's `./kusanagi`.
 `command -v kusanagi` shows which installation your terminal is using.
 
 **Missing library or GLIBC version:** check the requirements above. Do not fix library errors by
@@ -211,9 +211,9 @@ Check that the extracted folder has not moved since you configured autostart.
 daemon, then choose which one should provide the feature.
 
 **Audio or Bluetooth is missing:** the service must be running, not just installed. Check
-`kusanagi doctor` and your distribution’s service setup.
+`kusanagi doctor` and your distribution's service setup.
 
-**Lock screen:** authentication uses your system’s PAM configuration. Test locking and unlocking
+**Lock screen:** authentication uses your system's PAM configuration. Test locking and unlocking
 manually before enabling idle locking on a new setup.
 
 For a bug report, include your distribution, compositor, Kusanagi version and relevant log output.

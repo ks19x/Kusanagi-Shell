@@ -9,8 +9,8 @@ I build and use it on Void. It works with MangoWM, Hyprland, niri, sway and labw
 additional integration for KDE Plasma and dwl. Your compositor still runs the session;
 Kusanagi provides the desktop around it.
 
-[Install](docs/install.md) · [Releases](https://github.com/ks19x/Kusanagi-Shell/releases) ·
-[Bar configuration](docs/bar.md) · [Changelog](CHANGELOG.md) ·
+[Install](docs/install.md) | [Releases](https://github.com/ks19x/Kusanagi-Shell/releases) |
+[Bar configuration](docs/bar.md) | [Changelog](CHANGELOG.md) |
 [Issues](https://github.com/ks19x/Kusanagi-Shell/issues)
 
 ## Install
@@ -43,7 +43,7 @@ cd Kusanagi-Shell
 The source installer shows its plan before installing dependencies or changing compositor
 configuration. `./install.sh --dry-run` previews it.
 
-## What’s here
+## What's here
 
 - **Bar:** any edge, multiple bars, floating or full-width, custom modules, click actions
   and live layout editing. Start with a template and change it in Settings.
@@ -53,7 +53,7 @@ configuration. `./install.sh --dry-run` previews it.
 - **Session:** lock screen, idle handling, power menu and polkit prompts. A greetd login
   screen is optional.
 
-Some features use external programs. `kusanagi doctor` shows what’s missing and how to
+Some features use external programs. `kusanagi doctor` shows what's missing and how to
 install it on your distribution.
 
 ## Everyday commands
@@ -73,7 +73,7 @@ The default launcher shortcut is Super+Space. The installer lets you choose diff
 bindings and handles clashes with your existing configuration.
 
 In the launcher, `=` calculates, `>` runs a command, `:` searches emoji, `/` searches files
-and `?` searches the web. You can also type things like “settings bar” or “lock”.
+and `?` searches the web. You can also type things like "settings bar" or "lock".
 
 Settings and saved looks live in `~/.config/kusanagi/`. Use the Settings app, or back up and
 edit the files yourself. [The bar guide](docs/bar.md) covers formats, modules and layouts.
@@ -84,8 +84,8 @@ The native shell is in `native/`; `bin/kusanagi` is the command that starts and 
 `lib/` and `scripts/` contain the system helpers. The older Quickshell engine remains in
 `shell/` and can be selected with `kusanagi engine qml` if Quickshell is installed.
 
-[Build notes](native/BUILDING.md) · [Architecture](docs/native.md) ·
-[Contributing](CONTRIBUTING.md) · [Packaging](packaging/README.md)
+[Build notes](native/BUILDING.md) | [Architecture](docs/native.md) |
+[Contributing](CONTRIBUTING.md) | [Packaging](packaging/README.md)
 
 ## License
 

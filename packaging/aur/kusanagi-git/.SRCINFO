@@ -78,7 +78,7 @@ pkgbase = kusanagi-git
 	optdepends = niri: a compositor Kusanagi sets up
 	optdepends = sway: a compositor Kusanagi sets up
 	optdepends = labwc: a compositor Kusanagi sets up
-	provides = kusanagi=0.2.0
+	provides = kusanagi=0.3.0
 	conflicts = kusanagi
 	source = kusanagi::git+https://github.com/ks19x/Kusanagi-Shell.git
 	sha256sums = SKIP
