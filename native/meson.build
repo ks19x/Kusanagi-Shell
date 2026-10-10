@@ -1205,6 +1205,48 @@ install_data('THIRD_PARTY_LICENSES', install_dir: get_option('datadir') / 'kusan
 
 # No desktop entry or app icon, since the shell is started by the kusanagi command.
 
+# -Druntime=true: the whole program for a system-wide package. The kusanagi command and what it runs go
+# to <prefix>/lib/kusanagi (it finds them next to itself), with <prefix>/bin/kusanagi pointing there.
+# Nothing in that tree is written at run time; per-user state lives in the XDG folders.
+if get_option('runtime')
+  fs = import('fs')
+  repo = meson.project_source_root() / '..'
+  rt_dir = get_option('prefix') / 'lib' / 'kusanagi'
+
+  install_data(repo / 'bin' / 'kusanagi', install_dir: rt_dir / 'bin', install_mode: 'rwxr-xr-x')
+  install_data(repo / 'install.sh', install_dir: rt_dir, install_mode: 'rwxr-xr-x')
+  install_data(repo / 'VERSION', install_dir: rt_dir)
+  install_data(
+    repo / 'lib' / 'distro.sh', repo / 'lib' / 'palette.py',
+    install_dir: rt_dir / 'lib', install_mode: 'rwxr-xr-x',
+  )
+  install_data(repo / 'lib' / 'greeter.sh', repo / 'lib' / 'labwc-keys.py', install_dir: rt_dir / 'lib')
+  install_subdir(repo / 'scripts', install_dir: rt_dir)
+  install_subdir(repo / 'assets', install_dir: rt_dir)
+  # the QML engine (kusanagi engine qml); a hyprquickpaper config.json is someone's own, not ours
+  install_subdir(repo / 'shell', install_dir: rt_dir,
+    exclude_files: ['hyprquickpaper/config.json'],
+  )
+  install_symlink('kusanagi',
+    pointing_to: '..' / 'lib' / 'kusanagi' / 'bin' / 'kusanagi',
+    install_dir: get_option('bindir'),
+  )
+
+  lic_dir = get_option('datadir') / 'licenses' / 'kusanagi'
+  if fs.is_file(repo / 'LICENSE')
+    install_data(repo / 'LICENSE', install_dir: lic_dir)
+  endif
+  install_data('THIRD_PARTY_LICENSES', install_dir: lic_dir)
+  install_data('third_party/luau/LICENSE.txt', rename: 'luau-LICENSE.txt', install_dir: lic_dir)
+  install_data('third_party/luau/lua_LICENSE.txt', rename: 'lua-LICENSE.txt', install_dir: lic_dir)
+  install_data('third_party/fzy/LICENSE', rename: 'fzy-LICENSE', install_dir: lic_dir)
+  install_data('third_party/wuffs/LICENSE-APACHE', rename: 'wuffs-LICENSE-APACHE', install_dir: lic_dir)
+  install_data('third_party/wuffs/LICENSE-MIT', rename: 'wuffs-LICENSE-MIT', install_dir: lic_dir)
+  install_data('third_party/material_color_utilities/LICENSE',
+    rename: 'material-color-utilities-LICENSE', install_dir: lic_dir)
+  install_data('assets/fonts/tabler-icons-license.txt', install_dir: lic_dir)
+endif
+
 if build_tests
   wayland_server_dep = dependency('wayland-server')
 

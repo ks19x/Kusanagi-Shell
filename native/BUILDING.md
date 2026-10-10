@@ -30,6 +30,7 @@ sh lib/build-native.sh
 | `-Dtests=enabled\|disabled\|auto` | `auto` | unit tests (`auto`: on for unsanitized debug builds) |
 | `-Djemalloc=enabled\|disabled\|auto` | `auto` | link jemalloc on glibc builds |
 | `-Dnative_optimizations=true` | `false` | optimize for the build machine's CPU (not portable) |
+| `-Druntime=true` | `false` | also install the `kusanagi` command and its files to `<prefix>/lib/kusanagi` and the licenses (for packages) |
 
 ## Development builds
 

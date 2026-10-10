@@ -11,6 +11,11 @@ The native shell is the default engine. `install.sh` builds it with `lib/build-n
 `~/.local/bin/kusanagi-shell` with assets in `~/.local/share/kusanagi/assets`) and doesn't install Quickshell.
 After pulling a new version, rebuild with `sh lib/build-native.sh` and run `kusanagi restart`.
 
+Packages install it system-wide instead (`-Druntime=true`, see `packaging/README.md`): `kusanagi-shell` in
+`/usr/bin`, its assets in `/usr/share/kusanagi/assets` (found next to the binary, so a `--destdir` staging
+tree runs as is), and the `kusanagi` command with what it runs in `/usr/lib/kusanagi`, linked from
+`/usr/bin/kusanagi`. That tree is read-only; per-user state stays in the XDG folders.
+
 ```
 kusanagi engine native     # the native shell (default; remembered in ~/.config/kusanagi/engine)
 kusanagi engine qml        # the QML shell, while it still ships (needs Quickshell)

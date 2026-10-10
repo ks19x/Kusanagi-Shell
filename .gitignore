@@ -1,3 +1,4 @@
 # nothing generated lives in here; settings are in ~/.config/kusanagi
 *.bak*
 shell/hyprquickpaper/config.json
+dist/

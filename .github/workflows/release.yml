@@ -1,0 +1,53 @@
+# A v* tag builds the prebuilt Arch package's tarball and attaches it to that tag's GitHub release.
+# It's built in an archlinux container so the binary links against Arch's libraries (kusanagi-bin on the AUR).
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  arch:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Build packages
+        run: |
+          pacman -Syu --noconfirm --needed git base-devel meson ninja zstd \
+            wayland wayland-protocols libglvnd freetype2 fontconfig cairo pango harfbuzz librsvg \
+            libxkbcommon glib2 libsecret libsodium sdbus-cpp libpipewire libwireplumber polkit pam curl \
+            libwebp libjxl libsndfile libqalculate libxml2 md4c tomlplusplus nlohmann-json stb jemalloc libical
+
+      # git first, so the checkout is a real repository (the build stamps the commit, and release.sh
+      # dates the files from it)
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check the tag matches VERSION
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          test "v$(cat VERSION)" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME but VERSION is $(cat VERSION)"; exit 1; }
+
+      - name: Build the release tarball
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          sh packaging/release.sh dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kusanagi-x86_64
+          path: dist/*
+
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.zst
+            dist/*.sha256

@@ -27,6 +27,9 @@
 #   kusanagi bluetooth [toggle|on|off|status|setup]      Bluetooth; setup installs BlueZ and starts it (sudo once)
 #   kusanagi distro family|install-cmd …|updates|upgrade-cmd|storage   distro helpers (lib/distro.sh)
 #   kusanagi setup              open the first-run setup
+#   kusanagi install [options]  the installer (install.sh). Installed from a package, it only does your part:
+#                               compositors, keybinds, autostart. The first `kusanagi` in a terminal runs it
+#   kusanagi setup-user         the same as  kusanagi install --user
 #   kusanagi engine [qml|native]   which Kusanagi runs: the QML one (Quickshell) or the native binary
 #                               (kusanagi-shell); switching restarts it. KUSANAGI_ENGINE overrides
 #   kusanagi version | help
@@ -258,7 +261,7 @@ start() {
     first_run
     if [ "$ENGINE" = native ]; then
         launch_native && echo "kusanagi $VERSION started (native)" || die "didn't come up — see: kusanagi log"
-        return
+        first_note; return
     fi
     command -v qs >/dev/null || die "quickshell (qs) isn't installed"
     r=$(renderer)
@@ -269,6 +272,7 @@ start() {
         r=opengl; launch opengl
     fi
     running && echo "kusanagi $VERSION started ($r)" || die "didn't come up — see: kusanagi log"
+    first_note
 }
 
 stop() {
@@ -278,6 +282,36 @@ stop() {
     # still there (wedged): make sure it goes
     pids=$(instance_pids); [ -n "$pids" ] && { kill $pids 2>/dev/null; sleep 0.5; pids=$(instance_pids); [ -n "$pids" ] && kill -9 $pids 2>/dev/null; }
     echo "kusanagi stopped"
+}
+
+# ---------------------------------------------------------------- first use
+# A new user's first `kusanagi` runs the per-user installer (compositor autostart + keybinds), then starts the
+# shell, whose own Setup opens because there's no settings.json yet. install.sh leaves .installed behind.
+# Someone with a settings.json and no marker was set up before the marker existed: just remember that.
+MARK="$CONF/.installed"
+PENDING="$CONF/.installer-pending"     # started once without a terminal: offer the installer at the next one
+FIRST_NOTE=0
+first_use() {
+    [ -f "$MARK" ] && return 0
+    mkdir -p "$CONF"
+    if [ -f "$CONF/settings.json" ] && [ ! -f "$PENDING" ]; then echo existing > "$MARK"; return 0; fi
+    if [ -t 0 ] && [ -t 1 ]; then
+        echo "kusanagi: first run for $(id -un): setting up your compositors and keybinds"
+        sh "$ROOT/install.sh" --user --no-start
+        # quit without finishing: don't ask on every start, it's one command away
+        [ -f "$MARK" ] || { echo skipped > "$MARK"; echo "kusanagi: skipped. Run  kusanagi install  any time to set up the keybinds"; }
+        rm -f "$PENDING"
+    else
+        # from a menu or a compositor's autostart: nowhere to show the installer, so start and say how
+        : > "$PENDING"; FIRST_NOTE=1
+    fi
+}
+first_note() {
+    [ "$FIRST_NOTE" = 1 ] || return 0
+    t="Run  kusanagi  in a terminal once to set up keybinds and autostart."
+    if [ "$ENGINE" = native ]; then nmsg notification-show "Kusanagi" "$t" >/dev/null 2>&1 && return 0; fi
+    command -v notify-send >/dev/null && notify-send -a Kusanagi "Kusanagi" "$t"
+    return 0
 }
 
 # ---------------------------------------------------------------- doctor / updates
@@ -531,9 +565,13 @@ updates() {   # updates [count|list|upgrade]
 
 cmd=${1:-start}; [ $# -gt 0 ] && shift
 case "$cmd" in
-    start)    start ;;
+    start)    first_use; start ;;
     stop)     stop ;;
-    restart)  stop >/dev/null; start ;;
+    restart)  first_use; stop >/dev/null; start ;;
+    install|setup-user)
+              [ "$cmd" = setup-user ] && set -- --user "$@"
+              sh "$ROOT/install.sh" "$@"; rc=$?
+              rm -f "$PENDING"; exit $rc ;;
     status)   if running; then [ "${1:-}" = -q ] || echo "kusanagi $VERSION is running"; exit 0
               else [ "${1:-}" = -q ] || echo "kusanagi isn't running"; exit 1; fi ;;
     msg)      [ $# -ge 2 ] || die "usage: kusanagi msg <target> <function> [args]  (see: kusanagi ipc)"

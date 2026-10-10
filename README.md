@@ -33,6 +33,7 @@ kusanagi record replay|save|record|stream|stop   screen recording and the replay
 kusanagi brightness up|down|<percent>|setup      screen brightness (laptop panel, monitors over DDC/CI)
 kusanagi bluetooth toggle|status|setup           Bluetooth
 kusanagi greeter install     Kusanagi as your login screen (greetd)
+kusanagi install             the installer again (installed from a package: just your keybinds/autostart)
 ```
 
 The launcher does more than apps: `=` calculates, `>` runs a command, `:` finds emoji and symbols,
@@ -61,12 +62,31 @@ shell/           the QML shell — shell.qml is the entry point
 assets/logo.svg  the logo
 lib/palette.py   wallpaper → colours
 install.sh       installs deps + compositors, enables services, wires it up
+packaging/       release tarball script, AUR packages
 ```
 
 Settings live in `~/.config/kusanagi/settings.json` (edited live by the Settings app, or by hand).
 Your saved looks: `~/.config/kusanagi/presets.json`.
 
 ## Install
+
+**Arch (AUR):** the prebuilt package, no compiling:
+
+```
+yay -S kusanagi-bin          # or paru -S kusanagi-bin · kusanagi-git builds the latest commit
+kusanagi                     # once per user, in a terminal
+```
+
+The first `kusanagi` in a terminal runs the per-user part of the installer (which compositors start
+Kusanagi, and its keybinds), then starts the shell, whose Setup opens by itself. Started without a
+terminal (a menu, a compositor's autostart) it starts anyway and leaves a notification to run `kusanagi`
+in a terminal once. Again any time: `kusanagi install`. `kusanagi doctor` lists what's missing.
+
+**Other distros:** build it from source with the installer below, or package it: `meson setup build native
+--prefix=/usr --buildtype=release -Dtests=disabled -Druntime=true && meson install -C build --destdir
+<pkgdir>` installs everything (see [packaging/README.md](packaging/README.md)).
+
+**From source** (a git checkout; builds `kusanagi-shell` into `~/.local`):
 
 ```
 ./install.sh                              the TUI: compositors → your keybinds → the plan → install
@@ -78,6 +98,7 @@ Your saved looks: `~/.config/kusanagi/presets.json`.
 ./install.sh --print=niri                 just print the autostart + keys (mango | hyprland | niri |
                                           sway | labwc | kde | dwl)
 ./install.sh --no-build                   skip building kusanagi-shell at the end
+./install.sh --user                       only your part: compositors + keybinds (what a package runs)
 ```
 
 - **Distros:** Void (xbps), Arch and friends — Artix, CachyOS, EndeavourOS, Manjaro, Garuda (pacman,

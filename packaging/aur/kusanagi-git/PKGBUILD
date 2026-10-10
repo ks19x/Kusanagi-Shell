@@ -1,0 +1,69 @@
+# Maintainer: ks19x <326228137+ks19x@users.noreply.github.com>
+# Built from the latest commit. The prebuilt package is kusanagi-bin.
+
+pkgname=kusanagi-git
+_name=kusanagi
+pkgver=0.2.0.r36.gee900e8
+pkgrel=1
+pkgdesc='Desktop shell for Wayland: bar, launcher, control panel, notifications, wallpapers, lock screen (git)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/ks19x/Kusanagi-Shell'
+license=('MIT')
+depends=(
+  'cairo' 'curl' 'fontconfig' 'freetype2' 'gcc-libs' 'glib2' 'glibc' 'harfbuzz' 'jemalloc'
+  'libglvnd' 'libical' 'libjxl' 'libpipewire' 'libqalculate' 'librsvg' 'libsecret' 'libsndfile'
+  'libsodium' 'libwebp' 'libwireplumber' 'libxkbcommon' 'libxml2' 'md4c' 'pam' 'pango' 'polkit'
+  'sdbus-cpp' 'wayland'
+  'cliphist' 'grim' 'imagemagick' 'libnotify' 'python' 'slurp' 'ttf-jetbrains-mono-nerd' 'wl-clipboard'
+)
+makedepends=('git' 'meson' 'ninja' 'nlohmann-json' 'stb' 'tomlplusplus' 'wayland-protocols')
+optdepends=(
+  'pipewire: audio (volume, mic, recording sound)'
+  'wireplumber: PipeWire session manager'
+  'xdg-desktop-portal-gtk: file pickers, screen sharing'
+  'networkmanager: the Wi-Fi / network panel'
+  'bluez: Bluetooth'
+  'bluez-utils: Bluetooth (bluetoothctl)'
+  'python-gobject: pairing Bluetooth devices with a code'
+  'gammastep: night light'
+  'gamemode: game mode'
+  'gpu-screen-recorder: screen recording, replays, streaming'
+  'wf-recorder: screen recording without replays'
+  'ddcutil: brightness of external monitors'
+  'swappy: editing screenshots'
+  'hyprlock: the hyprlock lock screen engine'
+  'pavucontrol: the full audio mixer'
+  'wtype: typing emoji from the launcher'
+  'fd: faster file search'
+  'pacman-contrib: the update count (checkupdates)'
+  'noto-fonts-emoji: emoji in the launcher'
+  'foot: a terminal'
+  'greetd: the Kusanagi login screen'
+  'cage: the Kusanagi login screen'
+  'quickshell: the legacy QML engine (kusanagi engine qml)'
+  'mangowm: a compositor Kusanagi sets up'
+  'hyprland: a compositor Kusanagi sets up'
+  'niri: a compositor Kusanagi sets up'
+  'sway: a compositor Kusanagi sets up'
+  'labwc: a compositor Kusanagi sets up'
+)
+provides=("$_name=${pkgver%%.r*}")
+conflicts=("$_name")
+install=$_name.install
+source=("$_name::git+$url.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$_name"
+  printf '%s.r%s.g%s' "$(cat VERSION)" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
+build() {
+  # release: NDEBUG and the section garbage collection the shell's meson.build sets up for it
+  arch-meson "$_name/native" build --buildtype=release -Dtests=disabled -Djemalloc=enabled -Druntime=true
+  meson compile -C build
+}
+
+package() {
+  meson install -C build --destdir "$pkgdir"
+}

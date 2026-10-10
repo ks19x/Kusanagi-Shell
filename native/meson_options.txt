@@ -6,3 +6,9 @@ option(
   value: false,
   description: 'Optimize for the build machine CPU; output may not be portable',
 )
+option(
+  'runtime',
+  type: 'boolean',
+  value: false,
+  description: 'Also install the kusanagi command and the files it runs (for system-wide packages)',
+)

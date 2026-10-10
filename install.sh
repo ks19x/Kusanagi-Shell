@@ -10,6 +10,9 @@
 #   ./install.sh --print=niri        print Kusanagi's autostart + default keys for
 #                                    mango|hyprland|niri|sway|labwc|kde|dwl
 #   ./install.sh --no-build          don't build the shell (kusanagi-shell) at the end
+#   ./install.sh --user              only your part: compositors, keybinds, autostart (no packages,
+#                                    services, link or build). Automatic when Kusanagi is installed
+#                                    system-wide (a distro package); `kusanagi install` runs it
 #
 # What it does:
 #   1. installs Kusanagi's dependencies + the compositors you pick (pacman/AUR, xbps, dnf, emerge, …)
@@ -20,6 +23,7 @@
 #      (backup first, validated, reverted if invalid); links the `kusanagi` command.
 #      labwc: a marked block in rc.xml + a line in autostart · KDE Plasma: an autostart entry +
 #      command shortcuts in kglobalshortcutsrc · dwl: a keys file to #include in config.h + a start script
+#   4. leaves ~/.config/kusanagi/.installed behind, so `kusanagi` knows this user is set up
 set -u
 
 ROOT=$(cd "$(dirname "$0")" && pwd)
@@ -37,6 +41,8 @@ DO_CFG=1
 DO_BUILD=1
 PICK=""
 UNINSTALL=0
+USER_ONLY=0
+NO_START=0
 
 for a in "$@"; do
   case "$a" in
@@ -49,9 +55,11 @@ for a in "$@"; do
   --no-build) DO_BUILD=0 ;;
   --compositors=*) PICK=$(echo "${a#*=}" | tr ',' ' ') ;;
   --uninstall) UNINSTALL=1 ;;
+  --user) USER_ONLY=1 ;;
+  --no-start) NO_START=1 ;; # (kusanagi's first run starts the shell itself afterwards)
   --print=*) PRINT=${a#*=} ;;
   -h | --help)
-    sed -n '2,24s/^# \{0,1\}//p' "$0"
+    sed -n '2,/^set -u$/{/^#/s/^# \{0,1\}//p}' "$0"
     exit 0
     ;;
   *)
@@ -60,6 +68,17 @@ for a in "$@"; do
     ;;
   esac
 done
+# installed system-wide (a package): the packages are the package manager's job and there's nothing to
+# build, so only the per-user steps run. A checkout you can write to keeps the full installer.
+{ [ -w "$ROOT" ] && [ -d "$ROOT/native" ]; } || USER_ONLY=1
+if [ $USER_ONLY = 1 ]; then
+  DO_PKG=0
+  DO_SVC=0
+  DO_BUILD=0
+  # the packaged command (desktop files and the end screen need a path that works without ~/.local/bin)
+  KCMD=$(command -v kusanagi 2>/dev/null || echo "$ROOT/bin/kusanagi")
+else KCMD="$BIN/kusanagi"; fi
+MARK="$CFG/kusanagi/.installed"
 KEYS=${KUSANAGI_KEYS:-/dev/tty} # (testing: feed keys from a fifo)
 TUI=1
 { [ $PLAIN = 1 ] || [ $YES = 1 ] || ! [ -t 1 ]; } && TUI=0
@@ -519,7 +538,7 @@ bound() {
     printf '%s\t%s\t%s\t%s\t%s\n' "$id" "$b" "$(action_field "$id" 4)" "$(action_field "$id" 2)" "$over"
   done
 }
-kbin() { printf '%s' "$BIN/kusanagi"; } # desktop files get the full path (no shell, no PATH guesswork)
+kbin() { printf '%s' "$KCMD"; } # desktop files get the full path (no shell, no PATH guesswork)
 kde_app_dir() { echo "${XDG_DATA_HOME:-$HOME/.local/share}/applications"; }
 gen_conf() { # gen_conf <compositor> -> stdout (the file Kusanagi writes for it)
   c=$1
@@ -904,6 +923,14 @@ notifications, wallpapers, lock screen — one program.${R0}
   ${DIM}distro${R0}      ${WHT}${PRETTY_NAME:-$ID}${R0} ${DIM}($FAM)${R0}
   ${DIM}init${R0}        ${WHT}$INIT${R0}
   ${DIM}privileges${R0}  ${WHT}${SU:-none needed}${R0}"
+  [ $USER_ONLY = 1 ] && body="${TXT}A desktop shell for Wayland: bar, launcher, control panel,
+notifications, wallpapers, lock screen — one program.${R0}
+
+  ${DIM}distro${R0}      ${WHT}${PRETTY_NAME:-$ID}${R0} ${DIM}($FAM)${R0}
+  ${DIM}installed${R0}   ${WHT}$KVERSION${R0} ${DIM}(system-wide)${R0}
+
+${TXT}This sets Kusanagi up for you: which compositors start it,
+and its keybinds. No password needed.${R0}"
   [ $DRY = 1 ] && body="$body
 
   ${YEL}dry run — nothing will be changed${R0}"
@@ -923,6 +950,7 @@ screen_compositors() {
       on=1
     else
       st="will be installed"
+      [ $USER_ONLY = 1 ] && st="not installed"
       on=0
     fi
     case $c in
@@ -939,8 +967,10 @@ screen_compositors() {
   case "$chk" in *1*) ;; *) chk=0010000 ;; esac # nothing installed: niri
   [ -n "$PICK" ] && chk=$(for c in $ALL_COMPS; do case " $PICK " in *" $c "*) printf 1 ;; *) printf 0 ;; esac done)
   while :; do
+    hint="Missing ones get installed for you."
+    [ $USER_ONLY = 1 ] && hint="Missing ones: install them with your package manager first."
     menu multi "Compositors" "${TXT}Which compositors should Kusanagi run on?${R0}
-${DIM}Missing ones get installed for you.${R0}" "$items" "space pick · ⏎ next · q quit" "$chk" || quit_tui
+${DIM}$hint${R0}" "$items" "space pick · ⏎ next · q quit" "$chk" || quit_tui
     chk=$CHK
     [ -n "$SEL" ] && {
       PICK=$SEL
@@ -1417,8 +1447,11 @@ fi
 # ================================================================ uninstall
 if [ $UNINSTALL = 1 ]; then
   have kusanagi && kusanagi stop >/dev/null 2>&1
-  rm -f "$BIN/kusanagi" "$BIN/kusanagi-shell"
-  rm -rf "${XDG_DATA_HOME:-$HOME/.local/share}/kusanagi/assets"
+  if [ $USER_ONLY = 0 ]; then
+    rm -f "$BIN/kusanagi" "$BIN/kusanagi-shell"
+    rm -rf "${XDG_DATA_HOME:-$HOME/.local/share}/kusanagi/assets"
+  fi
+  rm -f "$MARK"
   [ -L "$CFG/quickshell/kusanagi" ] && rm -f "$CFG/quickshell/kusanagi"
   for f in "$CFG/mango/config.conf" "$CFG/hypr/hyprland.lua" "$CFG/hypr/hyprland.conf" "$CFG/niri/config.kdl" "$CFG/sway/config"; do
     [ -f "$f" ] && grep -q "kusanagi" "$f" && sed -i '/kusanagi include (added by install.sh)/d;/kusanagi\.conf/d;/kusanagi\.lua/d;/kusanagi\.kdl/d' "$f" && echo "removed the include from $f"
@@ -1448,6 +1481,7 @@ if [ $UNINSTALL = 1 ]; then
   [ -f "$CFG/dwl/kusanagi.h" ] && echo "dwl: remove the #include of $CFG/dwl/kusanagi.h from your config.h before rebuilding"
   rm -f "$CFG/dwl/kusanagi.h" "$CFG/dwl/kusanagi.sh"
   echo "Kusanagi uninstalled — your settings are still in $CFG/kusanagi"
+  [ $USER_ONLY = 1 ] && echo "(the program itself belongs to your package manager: remove the package to remove it)"
   exit 0
 fi
 
@@ -1481,7 +1515,10 @@ esac done
 
 # ---- the plan
 [ $TUI = 1 ] && frame "Checking" "${TXT}Looking at what's installed…${R0}" ""
-compute_packages
+if [ $USER_ONLY = 1 ]; then
+  MISSING=""
+  UNPACKAGED=""
+else compute_packages; fi
 compute_services
 if [ $TUI = 1 ]; then
   np=$(echo $MISSING | wc -w)
@@ -1501,18 +1538,24 @@ svc	Services	$sv
 cfg	Compositors	${cf% · }"
   chk="$DO_PKG$DO_SVC$DO_CFG"
   extra=""
+  if [ $USER_ONLY = 1 ]; then
+    items="cfg	Compositors	${cf% · }"
+    chk="$DO_CFG"
+    [ -n "$SVC_TODO" ] && extra="
+${DIM}Not enabled yet: $SVC_TODO. The commands are shown at the end.${R0}"
+  fi
   [ -n "$UNPACKAGED" ] && extra="
 ${YEL}!${R0} ${DIM}not packaged on $FAM, install by hand: $UNPACKAGED${R0}"
-  case "$FAM" in
+  [ $USER_ONLY = 0 ] && case "$FAM" in
   fedora) extra="$extra
 ${DIM}hyprland comes from COPR: solopasha/hyprland${R0}" ;;
   gentoo) extra="$extra
 ${DIM}niri needs the GURU overlay (eselect repository enable guru)${R0}" ;;
   esac
-  case " $SVC_TODO " in *" NetworkManager "*) extra="$extra
+  [ $USER_ONLY = 0 ] && case " $SVC_TODO " in *" NetworkManager "*) extra="$extra
 ${DIM}using dhcpcd/iwd/connman for networking? untick Services — they conflict${R0}" ;; esac
   menu multi "The plan" "${TXT}Here's what happens. Untick anything you'd rather do yourself.${R0}$extra" "$items" \
-    "space toggle · ⏎ $([ $DRY = 1 ] && echo 'dry run' || echo install) · q quit" "$chk" || quit_tui
+    "space toggle · ⏎ $([ $DRY = 1 ] && echo 'dry run' || { [ $USER_ONLY = 1 ] && echo 'set up' || echo install; }) · q quit" "$chk" || quit_tui
   DO_PKG=0
   DO_SVC=0
   DO_CFG=0
@@ -1558,7 +1601,12 @@ if [ $DO_CFG = 1 ]; then
   for c in $PICK; do apply_compositor "$c"; done
 fi
 
-if [ $DRY = 0 ]; then
+if [ $USER_ONLY = 1 ]; then
+  # services need root: shown, not run
+  for s in $SVC_TODO; do
+    say "${YEL}!${R0} ${TXT}$s isn't enabled ($INIT): $(svc_cmd "$s" | paste -sd';' - | sed 's/;/ \&\& /g')${R0}"
+  done
+elif [ $DRY = 0 ]; then
   mkdir -p "$BIN" "$CFG/kusanagi"
   ln -sfn "$ROOT/bin/kusanagi" "$BIN/kusanagi"
   say "${GRN}✓${R0} ${TXT}linked the kusanagi command into ~/.local/bin${R0}"
@@ -1566,7 +1614,9 @@ else task "Link the kusanagi command" bg "ln -sfn $ROOT/bin/kusanagi $BIN/kusana
 # the shell itself: one native binary (native/), built here once — a few minutes
 [ $DO_BUILD = 1 ] && { task "Building the shell (kusanagi-shell)" bg "sh '$ROOT/lib/build-native.sh'" \
   || say "${YEL}!${R0} ${TXT}the shell didn't build — see $LOGF, then: sh lib/build-native.sh${R0}"; }
-case ":$PATH:" in *":$BIN:"*) ;; *) say "${YEL}!${R0} ${TXT}~/.local/bin isn't on your PATH — add it (e.g. in ~/.profile)${R0}" ;; esac
+[ $USER_ONLY = 0 ] && case ":$PATH:" in *":$BIN:"*) ;; *) say "${YEL}!${R0} ${TXT}~/.local/bin isn't on your PATH — add it (e.g. in ~/.profile)${R0}" ;; esac
+# set up: `kusanagi` stops offering this installer on its first run
+[ $DRY = 0 ] && mkdir -p "${MARK%/*}" && echo "$KVERSION" >"$MARK"
 
 # ---- done
 keys=""
@@ -1588,20 +1638,20 @@ if [ $TUI = 1 ]; then
 ${WHT}Done.${R0} ${TXT}Log into $(for c in $PICK; do comp_name $c; done | paste -sd/ - | sed 's|/| / |g') — Kusanagi starts with it.${R0}
 
 $keys"
-  if [ $DRY = 0 ] && [ -n "${WAYLAND_DISPLAY:-}" ] && ! "$BIN/kusanagi" status -q 2>/dev/null; then
+  if [ $DRY = 0 ] && [ $NO_START = 0 ] && [ -n "${WAYLAND_DISPLAY:-}" ] && ! "$KCMD" status -q 2>/dev/null; then
     while :; do
       frame "Ready" "$body" "⏎ start Kusanagi now · q quit"
       readkey
       [ "$K" != resize ] && break
     done
     tui_off
-    [ "$K" = enter ] && "$BIN/kusanagi" start
+    [ "$K" = enter ] && "$KCMD" start
   else
     notice "Ready" "$body"
     tui_off
   fi
-  [ $DRY = 0 ] && "$BIN/kusanagi" doctor 2>/dev/null | tail -n 4
+  [ $DRY = 0 ] && "$KCMD" doctor 2>/dev/null | tail -n 4
 else
-  [ $DRY = 0 ] && [ -x "$BIN/kusanagi" ] && "$BIN/kusanagi" doctor || true
+  [ $DRY = 0 ] && [ -x "$KCMD" ] && "$KCMD" doctor || true
   printf '\n%sDone.%s Log into %s— Kusanagi starts with it. Or right now:  kusanagi\n' "$BO" "$R0" "$(for c in $PICK; do printf '%s ' "$c"; done)"
 fi
