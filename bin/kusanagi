@@ -96,10 +96,11 @@ mango_blur_conflict() {
     [ -f "$m/config.conf" ] || return 1
     c=$(cat "$m"/*.conf 2>/dev/null)
     printf '%s\n' "$c" | grep -qE '^[[:space:]]*blur_layer[[:space:]]*=[[:space:]]*1' || return 1
-    printf '%s\n' "$c" | grep -E '^[[:space:]]*layerrule' | grep 'noblur' | grep -q 'kusanagi-' && return 1
+    # mango's matcher only takes a flat pattern: a nested group like kusanagi-(panel|...) never matches
+    printf '%s\n' "$c" | grep -E '^[[:space:]]*layerrule' | grep 'noblur' | grep -qF 'layer_name:^kusanagi-.*$' && return 1
     return 0
 }
-MANGO_NOBLUR_RULE='layerrule=noblur:1,layer_name:^kusanagi-(panel|attached-panel|bar-.*|osd|notification|launcher|clipboard|screenshot.*|click-shield|panel-click-shield|idle-grace|backdrop)$'
+MANGO_NOBLUR_RULE='layerrule=noblur:1,layer_name:^kusanagi-.*$'
 
 # Kusanagi's IPC (kusanagi msg <target> <fn> [args], what keybinds call) mapped to the native shell's commands
 native_call() {

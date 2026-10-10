@@ -529,6 +529,10 @@ gen_conf() { # gen_conf <compositor> -> stdout (the file Kusanagi writes for it)
   mango)
     echo "# Kusanagi for MangoWM — written by install.sh (re-run it to change keys)"
     echo "exec-once=kusanagi"
+    echo "# no blur or open/close animation on the shell's own surfaces (with blur_optimized a blurred"
+    echo "# panel would show the wallpaper instead of your windows); mango needs a flat pattern here"
+    echo 'layerrule=noblur:1,layer_name:^kusanagi-.*$'
+    echo 'layerrule=noanim:1,layer_name:^kusanagi-.*$'
     echo "# gaps / borders from Settings → Display → Windows (empty unless you turn that on)"
     echo "source-optional=~/.config/kusanagi/mango.conf"
     ;;
