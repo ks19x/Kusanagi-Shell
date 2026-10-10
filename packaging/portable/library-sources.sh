@@ -17,8 +17,14 @@ for name, version in sorted({(p['source'], p['source_version']) for p in package
     print(f'{name}={version}')
 PY
 cd "$work/library-sources/ubuntu"
+# Ubuntu drops superseded versions from its mirrors. When the exact one is gone, take the current
+# source of that package and say so in versions-note.txt.
 while IFS= read -r package; do
-  apt-get source --download-only "$package"
+  apt-get source --download-only "$package" && continue
+  name=${package%%=*}
+  apt-get source --download-only "$name"
+  echo "$name: built against ${package#*=}, which the mirror no longer has; this is the current source" \
+    >> ../versions-note.txt
 done < "$work/packages"
 cp "$work/packages" ../ubuntu-packages.txt
 cd ../upstream
