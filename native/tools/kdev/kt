@@ -1,0 +1,77 @@
+#!/bin/bash
+# kt <slot> up|down|restart|shot <png>|msg <ipc command...>|log|qml-shot <png> ['target fn'...]
+#   A private headless mango (1920x1080) + the native kusanagi-shell with a copy of your Kusanagi
+#   settings (HOME=/tmp/kusanagi-dev/home<slot>). Nothing touches the real desktop.
+#   qml-shot: the QML Kusanagi (a copy of ~/kusanagi/shell) on the same kind of output, for comparison;
+#   each 'target fn' is sent over its IPC (2.5 s apart) before the screenshot.
+# KT_BUS=1 kt <slot> ...: run the shells on a private session bus ($D/bus, no service activation) so
+#   their notification servers can register; `kt <slot> notify <notify-send args...>` posts on it.
+set -u
+ROOT=$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)
+N=$1; shift
+B=/tmp/kusanagi-dev; RT=$B/rt$N; H=$B/home$N; D=$B/s$N
+mkdir -p $RT $D $B/nobin; chmod 700 $RT
+[ -x $B/nobin/kusanagi ] || { printf '#!/bin/sh\nexit 0\n' > $B/nobin/kusanagi; chmod +x $B/nobin/kusanagi; }
+if [ ! -d $H ]; then mkdir -p $H/.config; cp -r "$HOME/.config/kusanagi" $H/.config/; rm -rf $H/.config/kusanagi/palettes
+  python3 - $H/.config/kusanagi/settings.json <<'P'
+import json,sys
+p=sys.argv[1];d=json.load(open(p));d.setdefault("polkit",{})["enabled"]=False;d.setdefault("idle",{})["enabled"]=False;d.setdefault("gamemode",{})["feral"]=False;json.dump(d,open(p,"w"),indent=2)
+P
+fi
+[ -f $D/test.conf ] || echo 'monitorrule=name:HEADLESS-1,width:1920,height:1080,refresh:60' > $D/test.conf
+export XDG_RUNTIME_DIR=$RT HOME=$H
+unset HYPRLAND_INSTANCE_SIGNATURE NIRI_SOCKET SWAYSOCK MANGO_INSTANCE_SIGNATURE
+mango_up() {
+  [ -f $D/mango.pid ] && kill -0 $(cat $D/mango.pid) 2>/dev/null && return
+  WLR_BACKENDS=headless WLR_HEADLESS_OUTPUTS=1 setsid mango -c $D/test.conf > $D/mango.log 2>&1 & echo $! > $D/mango.pid
+  for i in $(seq 50); do [ -S $RT/wayland-0 ] && break; sleep 0.1; done; sleep 0.3
+}
+sig() { ls $RT/mango-*.sock 2>/dev/null | head -1; }
+# private session bus: a minimal config with no <servicedir>, so nothing is ever auto-activated
+bus_up() {
+  [ -n "${KT_BUS:-}" ] || return 0
+  if ! { [ -f $D/bus.pid ] && kill -0 $(cat $D/bus.pid) 2>/dev/null; }; then
+    rm -f $D/bus
+    cat > $D/bus.conf <<CONF
+<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+<busconfig>
+  <type>session</type>
+  <listen>unix:path=$D/bus</listen>
+  <auth>EXTERNAL</auth>
+  <policy context="default"><allow send_destination="*" eavesdrop="true"/><allow eavesdrop="true"/><allow own="*"/></policy>
+</busconfig>
+CONF
+    setsid dbus-daemon --config-file=$D/bus.conf --nofork --print-address > $D/bus.addr 2> $D/bus.log & echo $! > $D/bus.pid
+    for i in $(seq 30); do [ -S $D/bus ] && break; sleep 0.1; done
+  fi
+  export DBUS_SESSION_BUS_ADDRESS=unix:path=$D/bus
+}
+bus_down() { [ -f $D/bus.pid ] && kill $(cat $D/bus.pid) 2>/dev/null; rm -f $D/bus.pid $D/bus; }
+shell_down() { [ -f $D/shell.pid ] && kill $(cat $D/shell.pid) 2>/dev/null; rm -f $D/shell.pid; sleep 0.3; }
+shell_up() {
+  bus_up
+  WAYLAND_DISPLAY=wayland-0 MANGO_INSTANCE_SIGNATURE=$(sig) KUSANAGI_ASSETS_DIR=$ROOT/assets KUSANAGI_IMPORT_DUMP=$D/import.toml MALLOC_CONF=background_thread:false,narenas:1,tcache:false,dirty_decay_ms:0,muzzy_decay_ms:0,retain:false \
+    KUSANAGI_DEV_SLOT=$N PATH=$B/nobin:$PATH setsid $ROOT/build/kusanagi-shell > $D/shell.log 2>&1 & echo $! > $D/shell.pid
+  sleep 4
+}
+case "${1:-}" in
+  up|restart) mango_up; shell_down; shell_up; echo "up (log: $D/shell.log)" ;;
+  down) shell_down; [ -f $D/mango.pid ] && kill $(cat $D/mango.pid) 2>/dev/null; rm -f $D/mango.pid; bus_down; echo down ;;
+  notify) shift; [ -S $D/bus ] || { echo "no private bus (start with KT_BUS=1)"; exit 1; }
+    DBUS_SESSION_BUS_ADDRESS=unix:path=$D/bus notify-send "$@" ;;
+  shot) WAYLAND_DISPLAY=wayland-0 timeout 5 grim -o HEADLESS-1 "$2" && echo "$2" ;;
+  msg) shift; WAYLAND_DISPLAY=wayland-0 $ROOT/build/kusanagi-shell msg "$@" ;;
+  log) cat $D/shell.log ;;
+  qml-shot)
+    shell_down; mango_up; bus_up
+    rm -rf $D/qml; cp -r "$(getent passwd "$(id -un)" | cut -d: -f6)/kusanagi/shell" $D/qml
+    # the copy must never register a real polkit agent on the shared system bus (Config's default applies
+    # before settings.json loads)
+    sed -i 's/active: Config.polkit.enabled \&\& root.attempt/active: false/' $D/qml/Polkit.qml
+    WAYLAND_DISPLAY=wayland-0 MANGO_INSTANCE_SIGNATURE=$(sig) QSG_RHI_BACKEND=vulkan PATH=$B/nobin:$PATH setsid qs -p $D/qml > $D/qml.log 2>&1 & q=$!
+    sleep 6; shift; out=$1; shift
+    for c in "$@"; do WAYLAND_DISPLAY=wayland-0 qs -p $D/qml ipc call $c >/dev/null 2>&1; sleep 2.5; done
+    WAYLAND_DISPLAY=wayland-0 timeout 5 grim -o HEADLESS-1 "$out"; kill $q; echo "$out" ;;
+  *) sed -n '2,6p' "$0" ;;
+esac

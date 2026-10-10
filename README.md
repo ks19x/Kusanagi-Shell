@@ -2,9 +2,9 @@
 
 # Kusanagi 草薙
 
-sig's desktop shell for Wayland (MangoWM, Hyprland and niri): wallpaper, bar, control panel, launcher,
+sig's desktop shell for Wayland (MangoWM, Hyprland, niri, sway, labwc, KDE Plasma's KWin and dwl): wallpaper, bar, control panel, launcher,
 notifications, OSD, lock screen, clipboard, wallpaper picker, settings — one program, configured from
-its own Settings app. Built on [Quickshell](https://quickshell.org) (QML), started by the `kusanagi` command.
+its own Settings app. One native C++ binary (`kusanagi-shell`), started by the `kusanagi` command.
 
 ## The bar is yours
 
@@ -44,11 +44,20 @@ Keybinds call `kusanagi msg …` — Super+Space launcher, Super+A wallpapers, S
 Super+N inbox, Super+I settings, Super+L lock, Super+G game mode, Super+` power menu,
 Print / Super+Shift+S screenshots, Super+Shift+C colour picker.
 
+## Native shell
+
+`native/` is Kusanagi as one C++ binary, `kusanagi-shell`, and the default engine: the installer builds it
+(`sh lib/build-native.sh` rebuilds it after an update; the build packages come from
+`sh lib/distro.sh pkgname shell-build`). The original QML shell (`shell/`, on Quickshell) still ships as
+`kusanagi engine qml`. How the native shell is laid out and how to work on it: [docs/native.md](docs/native.md).
+Third-party notices are in `native/THIRD_PARTY_LICENSES`.
+
 ## Layout
 
 ```
 bin/kusanagi     the command
-shell/           the shell itself (QML) — shell.qml is the entry point
+native/          the native shell (C++, kusanagi-shell)
+shell/           the QML shell — shell.qml is the entry point
 assets/logo.svg  the logo
 lib/palette.py   wallpaper → colours
 install.sh       installs deps + compositors, enables services, wires it up
@@ -66,7 +75,9 @@ Your saved looks: `~/.config/kusanagi/presets.json`.
 ./install.sh -y --compositors=niri,hyprland
 ./install.sh --no-packages | --no-services | --no-config
 ./install.sh --uninstall                  remove links + includes (settings stay)
-./install.sh --print=niri                 just print the autostart + keys (mango | hyprland | niri)
+./install.sh --print=niri                 just print the autostart + keys (mango | hyprland | niri |
+                                          sway | labwc | kde | dwl)
+./install.sh --no-build                   skip building kusanagi-shell at the end
 ```
 
 - **Distros:** Void (xbps), Arch and friends — Artix, CachyOS, EndeavourOS, Manjaro, Garuda (pacman,
@@ -75,11 +86,31 @@ Your saved looks: `~/.config/kusanagi/presets.json`.
   only if they exist and aren't already on (on Artix it pulls the `-<init>` service packages).
 - **Keybinds:** got a config already? Keep your binds and pick free keys for Kusanagi in the TUI
   (clashes are blocked), or let Kusanagi's keys win (mango: clashing lines get commented out and
-  `--uninstall` restores them; Hyprland: `unbind`; niri: included last), or add no keys at all.
-- **Compositors:** installs whichever of MangoWM, Hyprland and niri you pick if missing, then adds one
-  include line to each config (backup first, validated, reverted if invalid). Already-wired configs are left alone.
+  `--uninstall` restores them; Hyprland: `unbind`; niri, sway, labwc: Kusanagi's keys come last; KDE:
+  KDE's own shortcut on that key is cleared, backup kept), or add no keys at all. Volume, mic, brightness
+  and media keys go to Kusanagi wherever they're free.
+- **Compositors:** installs whichever of MangoWM, Hyprland, niri, sway, labwc, KDE Plasma and dwl you pick
+  if missing, then wires Kusanagi in (backup first, validated where the compositor can check, reverted if
+  invalid). Already-wired configs are left alone.
+  - mango, Hyprland, niri, sway: `kusanagi.<conf|lua|kdl>` + one include line (sway: starts your config
+    from `/etc/sway/config` if you have none).
+  - labwc: rc.xml has no include, so the keys go in a marked `<!-- kusanagi:begin … end -->` block at the
+    end of `<keyboard>` (must parse as XML or rc.xml isn't touched), and `kusanagi &` into `autostart`.
+  - KDE Plasma: `~/.config/autostart/kusanagi.desktop`, and each key as a command shortcut
+    (`~/.local/share/applications/kusanagi-key-*.desktop` + its `[services]` group in
+    `kglobalshortcutsrc`) — active from your next Plasma login. plasmashell keeps drawing its own panel;
+    to run Kusanagi alone, leave plasmashell out (systemd: `systemctl --user mask plasma-plasmashell`).
+  - dwl: keys are compiled in, so it writes `~/.config/dwl/kusanagi.h` — add
+    `#include "/home/you/.config/dwl/kusanagi.h"` inside `keys[]` in your `config.h` and rebuild — and
+    `~/.config/dwl/kusanagi.sh`, which starts dwl with Kusanagi (start your session with it). dwl is built
+    from source on most distros.
 
 Logout, workspaces, game mode effects and the monitor list adapt to the compositor Kusanagi runs on.
+Gaps and borders from Settings → Display → Windows work on mango, Hyprland and sway (hidden elsewhere);
+game mode turns compositor effects off on mango and Hyprland, and follows fullscreen windows everywhere
+the compositor reports them (wlr foreign-toplevel: mango, Hyprland, niri, sway, labwc; KWin's own
+scripting on KDE; dwl only with its IPC/foreign-toplevel patches). Screenshots and the colour picker
+use Spectacle / KWin's picker on KDE.
 
 ## Memory
 

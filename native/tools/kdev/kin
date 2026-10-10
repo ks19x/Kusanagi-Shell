@@ -1,0 +1,37 @@
+#!/bin/bash
+# kin <slot> move X Y | click X Y [left|right|middle] | scroll X Y up|down [n] | key <keysym> [mods] | type <text> | drag X1 Y1 X2 Y2
+#   Injects pointer/keyboard input into a kt slot's headless mango (virtual pointer + virtual keyboard).
+#   Commands chain in one call: kin 3 click 960 15 wait 400 key Escape
+#   Also: dclick X Y [btn] | warp X Y (no glide) | press|release [btn] | hscroll X Y left|right [n] |
+#         wait <ms> | globals (list the compositor's Wayland globals). mods: ctrl+shift+alt+super.
+#   The pointer stays where the last command left it (hover states persist): a per-slot injector keeps the
+#   virtual pointer/keyboard plugged in until the slot's compositor exits ($B/rt<slot>/kin.sock).
+set -u
+K=$(dirname "$(readlink -f "$0")"); ROOT=$(cd "$K/../.." && pwd)
+B=/tmp/kusanagi-dev; BIN=$B/kin-bin; GEN=$B/kin-gen
+[ $# -ge 2 ] || { sed -n '2,7p' "$0"; exit 2; }
+N=$1; shift
+# stop a slot's injector (only if that pid still is one)
+killserver() { local p; p=$(cat "$1" 2>/dev/null) && grep -qa kin-bin /proc/$p/cmdline 2>/dev/null && kill $p; rm -f "$1"; }
+if [ ! -x $BIN ] || [ $K/kin.c -nt $BIN ] || [ $K/wlr-virtual-pointer-unstable-v1.xml -nt $BIN ]; then
+  mkdir -p $GEN
+  for x in $K/wlr-virtual-pointer-unstable-v1.xml $ROOT/protocols/virtual-keyboard-unstable-v1.xml; do
+    n=$(basename $x .xml)
+    wayland-scanner client-header $x $GEN/$n-client-protocol.h && wayland-scanner private-code $x $GEN/$n-protocol.c || exit 1
+  done
+  cc -O1 -Wall -Wno-unused-parameter -o $BIN.tmp -I$GEN $K/kin.c $GEN/*-protocol.c $(pkg-config --cflags --libs wayland-client xkbcommon) \
+    && mv $BIN.tmp $BIN || exit 1
+  for f in $B/rt*/kin.pid; do [ -f "$f" ] && killserver "$f"; done   # running injectors use the old code
+fi
+[ -S $B/rt$N/wayland-0 ] || { echo "kin: slot $N has no compositor (kt $N up)"; exit 1; }
+export XDG_RUNTIME_DIR=$B/rt$N WAYLAND_DISPLAY=wayland-0
+[ "$1" = globals ] && exec $BIN globals
+# one long-lived injector per slot (it exits with the compositor): the pointer/keyboard stay plugged in
+# between calls, so hover states hold and clients see one keymap
+SOCK=$B/rt$N/kin.sock
+$BIN --send $SOCK wait 0 2>/dev/null || {
+  killserver $B/rt$N/kin.pid
+  setsid $BIN --serve $SOCK >/dev/null 2>&1 < /dev/null & echo $! > $B/rt$N/kin.pid
+  for i in $(seq 50); do [ -S $SOCK ] && $BIN --send $SOCK wait 0 2>/dev/null && break; sleep 0.05; done
+}
+exec $BIN --send $SOCK "$@"

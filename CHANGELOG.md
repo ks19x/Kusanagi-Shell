@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+- **Native weather and network lookups**: the weather card follows Settings → Panel → weather location and units
+  (empty location = where your IP is). IP location comes from ipwho.is, place names from Open-Meteo, the optional public-IP
+  lookup uses api.ipify.org. No startup ping, no plugin or palette catalogs, no calendar sign-in service.
 - **Brightness**: laptop panels and external monitors over DDC/CI (ddcutil) — a slider on Home, one per screen
   in Settings → Display, an OSD pill, a `brightness` bar module (scroll), `kusanagi brightness up|down|<percent>|get`.
   Writes are coalesced (a drag never queues ddcutil calls). `kusanagi brightness setup` installs ddcutil, loads

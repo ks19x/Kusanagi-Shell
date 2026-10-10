@@ -3,9 +3,13 @@
 dir="${KUSANAGI_SCREENSHOTS:-$HOME/Pictures/Screenshots}"
 mkdir -p "$dir"
 file="$dir/$(date +%Y-%m-%d_%H-%M-%S).png"
+# grim needs wlr-screencopy (mango, Hyprland, niri, sway, labwc, dwl); KWin doesn't offer it — Spectacle does it there
+kwin() { case "${XDG_CURRENT_DESKTOP:-}" in *KDE*) command -v spectacle >/dev/null ;; *) false ;; esac; }
 case "${1:-region}" in
-    full) grim "$file" ;;
-    *)    geo=$(slurp -d) || exit 0; grim -g "$geo" "$file" ;;
+    full) if kwin; then spectacle -b -n -f -o "$file"; else grim "$file"; fi ;;
+    *)    if kwin; then spectacle -b -n -r -o "$file"
+          else geo=$(slurp -d) || exit 0; grim -g "$geo" "$file"; fi ;;
 esac || exit 1
+[ -s "$file" ] || exit 0 # (Spectacle: selection cancelled)
 wl-copy --type image/png < "$file"
 kusanagi msg screenshot notify "$file" >/dev/null 2>&1 || notify-send -a Screenshot -i "$file" "Screenshot saved" "$file"

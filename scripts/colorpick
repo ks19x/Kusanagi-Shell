@@ -1,6 +1,16 @@
 #!/bin/sh
 # kusanagi colorpick — click a pixel, its hex goes to the clipboard
-pos=$(slurp -p) || exit 0
-hex=$(grim -g "$pos" -t ppm - | magick - -format '#%[hex:p{0,0}]' info:-) || exit 1
+case "${XDG_CURRENT_DESKTOP:-}" in
+    *KDE*) # KWin has no wlr-screencopy for grim, but its own colour picker (answers (u) 0xAARRGGBB)
+        if command -v busctl >/dev/null; then
+            v=$(busctl --user --timeout=120 call org.kde.KWin /ColorPicker org.kde.kwin.ColorPicker pick 2>/dev/null | awk '{ print $2 }')
+        else
+            v=$(dbus-send --session --reply-timeout=120000 --print-reply=literal --dest=org.kde.KWin /ColorPicker org.kde.kwin.ColorPicker.pick 2>/dev/null | awk '/uint32/ { print $NF }')
+        fi
+        [ -n "$v" ] || { notify-send -a "Colour picker" "Couldn't pick a colour" "KWin's colour picker didn't answer"; exit 1; }
+        hex=$(printf '#%06x' $(( v & 0xFFFFFF ))) ;;
+    *)  pos=$(slurp -p) || exit 0
+        hex=$(grim -g "$pos" -t ppm - | magick - -format '#%[hex:p{0,0}]' info:-) || exit 1 ;;
+esac
 printf '%s' "$hex" | wl-copy
 notify-send -a "Colour picker" "$hex" "copied to clipboard"

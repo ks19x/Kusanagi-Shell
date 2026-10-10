@@ -9,6 +9,8 @@
 #   kusanagi look export <name>         write ~/kusanagi-looks/<name>.kusanagi (share it)
 #   kusanagi look import <file>         apply a shared look (ones that run commands: review in Settings)
 #   kusanagi greeter install|sync|preview|status|uninstall   the login screen (greetd); install needs sudo once
+#   kusanagi greeter engine [qml|native]   which login screen runs: greeter.qml (default) or the native one
+#                               (kusanagi-shell --greeter; falls back to the QML one if it can't start)
 #   kusanagi session <compositor …>   start a desktop session (the login screen uses it): its own D-Bus,
 #                               a runtime folder, a log in ~/.local/state/kusanagi/sessions, one retry
 #   kusanagi settings [page]    open Settings (optionally on a page: bar, presets, wallpaper…)
@@ -25,6 +27,8 @@
 #   kusanagi bluetooth [toggle|on|off|status|setup]      Bluetooth; setup installs BlueZ and starts it (sudo once)
 #   kusanagi distro family|install-cmd …|updates|upgrade-cmd|storage   distro helpers (lib/distro.sh)
 #   kusanagi setup              open the first-run setup
+#   kusanagi engine [qml|native]   which Kusanagi runs: the QML one (Quickshell) or the native binary
+#                               (kusanagi-shell); switching restarts it. KUSANAGI_ENGINE overrides
 #   kusanagi version | help
 set -u
 
@@ -35,11 +39,145 @@ VERSION=$(cat "$ROOT/VERSION" 2>/dev/null || echo dev)
 WALL="$CONF/wallpaper"                    # path of the current wallpaper
 HOOK="$CONF/hooks/wallpaper"              # optional: run after a wallpaper change (gets the path)
 
-qsp() { qs -p "$SHELL_DIR" "$@"; }
+# ---------------------------------------------------------------- engine: QML (Quickshell) or native
+# the native binary: installed, else the one built in this checkout (native/build)
+native_bin() {
+    if command -v kusanagi-shell >/dev/null; then command -v kusanagi-shell
+    elif [ -x "$ROOT/native/build/kusanagi-shell" ]; then echo "$ROOT/native/build/kusanagi-shell"
+    else return 1; fi
+}
+# native unless you chose QML (kusanagi engine qml), or there's no native build yet and Quickshell is here
+ENGINE=${KUSANAGI_ENGINE:-$(cat "$CONF/engine" 2>/dev/null || { native_bin >/dev/null || ! command -v qs >/dev/null && echo native || echo qml; })}
+case $ENGINE in qml) ;; *) ENGINE=native ;; esac
+# the login screen's engine (kusanagi greeter engine): QML only where you chose it, or Quickshell is all there is
+greeter_engine() { cat "$CONF/greeter-engine" 2>/dev/null || { command -v qs >/dev/null && echo qml || echo native; }; }
+nmsg() { b=$(native_bin) || die "the native shell isn't built (meson setup native/build && ninja -C native/build)"; timeout 3 "$b" msg "$@"; }
+# presets work without a running shell too (they only write settings.json; `next` needs the running one's memory)
+npreset() {
+    if [ "$ENGINE" = native ] && running; then nmsg preset "$@"
+    else b=$(native_bin) || die "the native shell isn't built (meson setup native/build && ninja -C native/build)"; "$b" preset "$@"; fi
+}
+
+qsp() {
+    if [ "$ENGINE" = native ]; then
+        # `qsp ipc call <target> <fn> [args]` goes to the native IPC; `qsp ipc show` lists its commands
+        [ "${1:-}" = ipc ] || return 1; shift
+        case "${1:-}" in
+            show) nmsg --help ;;
+            call) shift; native_call "$@" ;;
+        esac
+        return
+    fi
+    qs -p "$SHELL_DIR" "$@"
+}
 # a wedged instance mustn't hang us: every probe gets 2 s
-running() { timeout 2 qs -p "$SHELL_DIR" ipc show >/dev/null 2>&1; }
-instance_pids() { pgrep -f "^qs -p $SHELL_DIR\$"; }
+running() {
+    if [ "$ENGINE" = native ]; then nmsg status >/dev/null 2>&1
+    else timeout 2 qs -p "$SHELL_DIR" ipc show >/dev/null 2>&1; fi
+}
+instance_pids() {
+    if [ "$ENGINE" = native ]; then pgrep -x kusanagi-shell
+    else pgrep -f "^qs -p $SHELL_DIR\$"; fi
+}
+
+# with the native shell, Settings and Setup are the shell's own windows (kusanagi-settings / kusanagi-setup)
+settings_app() {   # settings_app toggle | page <name> | hide | open [page]
+    case "$1" in
+        hide)     running && nmsg kusanagi-settings hide >/dev/null; return 0 ;;
+        page)     nmsg kusanagi-settings open "${2:-}" >/dev/null ;;
+        open)     if [ -n "${2:-}" ]; then nmsg kusanagi-settings open "$2"; else nmsg kusanagi-settings open; fi >/dev/null ;;
+        *)        nmsg kusanagi-settings "$@" >/dev/null ;;
+    esac || die "Kusanagi isn't running — start it: kusanagi"
+}
+# mango blurs every layer surface when blur_layer=1; with blur_optimized it shows the blurred wallpaper there,
+# so the native shell's full-screen click shields would hide your windows unless a layer rule exempts them
+mango_blur_conflict() {
+    m="${XDG_CONFIG_HOME:-$HOME/.config}/mango"
+    [ -f "$m/config.conf" ] || return 1
+    c=$(cat "$m"/*.conf 2>/dev/null)
+    printf '%s\n' "$c" | grep -qE '^[[:space:]]*blur_layer[[:space:]]*=[[:space:]]*1' || return 1
+    printf '%s\n' "$c" | grep -E '^[[:space:]]*layerrule' | grep 'noblur' | grep -q 'kusanagi-' && return 1
+    return 0
+}
+MANGO_NOBLUR_RULE='layerrule=noblur:1,layer_name:^kusanagi-(panel|attached-panel|bar-.*|osd|notification|launcher|clipboard|screenshot.*|click-shield|panel-click-shield|idle-grace|backdrop)$'
+
+# Kusanagi's IPC (kusanagi msg <target> <fn> [args], what keybinds call) mapped to the native shell's commands
+native_call() {
+    t=${1:-}; f=${2:-}; [ $# -ge 2 ] && shift 2 || shift $#
+    case "$t:$f" in
+        panel:toggle)                  nmsg panel-toggle control-center ;;
+        panel:home|panel:quick|panel:system|panel:sound|panel:network|panel:bluetooth|panel:inbox)
+                                       nmsg panel-toggle control-center "$f" ;;
+        launcher:toggle|launcher:open) nmsg panel-toggle launcher ;;
+        launcher:close)                nmsg panel-close launcher ;;
+        launcher:search)               nmsg panel-open launcher "$*" ;;
+        launcher:actions)              nmsg launcher-actions ;;
+        settings:toggle)               settings_app toggle ;;
+        settings:open|settings:show)   settings_app open ;;
+        settings:hide)                 settings_app hide ;;
+        settings:page)                 settings_app page "$@" ;;
+        settings:sound|settings:network) settings_app page "$f" ;;
+        notifs:toggle)                 nmsg panel-toggle control-center inbox ;;
+        notifs:open)                   nmsg panel-open control-center inbox ;;
+        notifs:close)                  nmsg panel-close control-center ;;
+        notifs:dnd)                    nmsg notification-dnd-toggle ;;
+        notifs:clear)                  nmsg notification-clear-history ;;
+        notifs:test)                   nmsg notification-show "Kusanagi" "A test notification" ;;
+        lock:lock|lock:test)           nmsg lock "$f" ;;
+        power:toggle|power:open)       nmsg panel-toggle session ;;
+        clipboard:toggle)              nmsg panel-toggle clipboard ;;
+        wallpaper:toggle)              nmsg panel-toggle wallpaper ;;
+        caffeine:toggle)               nmsg caffeine-toggle ;;
+        caffeine:on)                   nmsg caffeine-enable ;;
+        caffeine:off)                  nmsg caffeine-disable ;;
+        brightness:up|brightness:down) nmsg "brightness-$f" ;;
+        volume:up|volume:down|volume:mute) nmsg "volume-$f" "$@" ;;
+        mic:mute)                      nmsg mic-mute ;;
+        mic:up|mic:down)               nmsg "mic-volume-$f" "$@" ;;
+        media:toggle|media:play|media:pause|media:stop|media:next|media:previous) nmsg media "$f" ;;
+        brightness:set)                nmsg brightness-set "$@" ;;
+        brightness:get)                nmsg brightness-get ;;
+        brightness:detect)             nmsg brightness-detect ;;
+        bluetooth:toggle)              nmsg bluetooth-toggle ;;
+        bluetooth:on)                  nmsg bluetooth-enable ;;
+        bluetooth:off)                 nmsg bluetooth-disable ;;
+        bluetooth:status)              nmsg bluetooth-summary ;;
+        osd:preview)                   nmsg osd-preview "$@" ;;
+        gamemode:toggle|gamemode:on|gamemode:off|gamemode:status) nmsg gamemode "$f" ;;
+        gamemode:auto)                 case "${1:-true}" in true|1|on) nmsg gamemode auto-on ;; *) nmsg gamemode auto-off ;; esac ;;
+        setup:open)                    "$0" setup ;;
+        screenshot:notify)             nmsg screenshot-notify "$*" ;;
+        bar:media)                     nmsg media-popup toggle ;;
+        bar:traymenu)                  nmsg tray-menu "$@" ;;
+        bar:template)                  nmsg bar-layout template "$@" ;;
+        bar:classic)                   nmsg bar-layout classic ;;
+        bar:templates)                 nmsg bar-layout list ;;
+        preset:apply)                  npreset apply "$@" ;;
+        preset:next)                   npreset next ;;
+        preset:exportLook)             npreset export "$@" ;;
+        preset:importLook)             npreset import "$@" ;;
+        idle:status|idle:toggle)       nmsg idle "$f" ;;
+        record:replay|record:save|record:record|record:stream|record:stop|record:status) nmsg record "$f" ;;
+        updates:check|updates:count|updates:upgrade) nmsg updates "$f" ;;
+        *)                             die "unknown: $t $f (see: kusanagi ipc)" ;;
+    esac
+}
 die() { echo "kusanagi: $*" >&2; exit 1; }
+# which compositor this session runs: mango hyprland niri sway labwc kde dwl, "other", or "" (no Wayland here)
+compositor() {
+    if [ -n "${MANGO_INSTANCE_SIGNATURE:-}" ]; then echo mango
+    elif [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then echo hyprland
+    elif [ -n "${NIRI_SOCKET:-}" ]; then echo niri
+    elif [ -n "${SWAYSOCK:-}" ]; then echo sway
+    elif [ -n "${LABWC_PID:-}" ]; then echo labwc
+    elif [ -n "${KUSANAGI_DWL_PID:-}" ]; then echo dwl
+    else case "${XDG_CURRENT_DESKTOP:-}:${XDG_SESSION_DESKTOP:-}" in
+        *[Mm]ango*) echo mango ;; *[Hh]ypr*) echo hyprland ;; *niri*) echo niri ;; *[Ss]way*) echo sway ;;
+        *labwc*) echo labwc ;; *KDE*|*[Pp]lasma*) echo kde ;; *dwl*) echo dwl ;;
+        *) if command -v mmsg >/dev/null && pgrep -x mango >/dev/null 2>&1; then echo mango
+           elif [ -n "${WAYLAND_DISPLAY:-}" ]; then echo other; fi ;;
+    esac; fi
+}
 
 # set the wallpaper: remember it, build colours from it, run the user's hook (e.g. re-theme a rice)
 wallpaper_set() {
@@ -49,6 +187,8 @@ wallpaper_set() {
     printf '%s\n' "$f" > "$WALL"
     python3 "$ROOT/lib/palette.py" "$f" "$CONF/colors.json" 2>/dev/null || echo "kusanagi: couldn't build colours (needs python3 + ImageMagick)" >&2
     [ -x "$HOOK" ] && "$HOOK" "$f" >/dev/null 2>&1 &
+    # the native shell keeps its own current wallpaper: tell it (the colours follow colors.json)
+    [ "$ENGINE" = native ] && running && nmsg wallpaper-set "$f" >/dev/null 2>&1
     # renderer "awww" (Settings → Wallpaper): hand the picture to awww instead of drawing it ourselves
     if grep -q '"renderer": "awww"' "$CONF/settings.json" 2>/dev/null && command -v awww >/dev/null; then
         pgrep -x awww-daemon >/dev/null || { setsid -f awww-daemon >/dev/null 2>&1 </dev/null; sleep 0.3; }
@@ -89,6 +229,17 @@ renderer() {
     vulkan_driver && echo vulkan || echo opengl
 }
 
+launch_native() {
+    b=$(native_bin) || die "the native shell isn't built (meson setup native/build && ninja -C native/build)"
+    # running from a checkout: its assets are next to it
+    case $b in "$ROOT"/*) export KUSANAGI_ASSETS_DIR="$ROOT/native/assets" ;; esac
+    # freed pages go back at once (decay 0), so jemalloc's background purge thread (it wakes the shell ~4x/s) can stay off
+    MALLOC_CONF=background_thread:false,narenas:1,tcache:false,dirty_decay_ms:0,muzzy_decay_ms:0,retain:false \
+        setsid -f "$b" >/dev/null 2>&1 </dev/null
+    i=0; while [ $i -lt 30 ] && ! running; do sleep 0.1; i=$((i + 1)); done
+    running
+}
+
 launch() {
     # threaded renderer = smooth animations; jemalloc told to hand freed memory straight back
     QSG_RHI_BACKEND=$1 QSG_RENDER_LOOP=threaded \
@@ -104,6 +255,10 @@ start() {
     running && { echo "kusanagi is already running"; return 0; }
     [ -n "$(instance_pids)" ] && stop >/dev/null     # there but not answering: replace it
     first_run
+    if [ "$ENGINE" = native ]; then
+        launch_native && echo "kusanagi $VERSION started (native)" || die "didn't come up — see: kusanagi log"
+        return
+    fi
     command -v qs >/dev/null || die "quickshell (qs) isn't installed"
     r=$(renderer)
     if ! launch "$r" && [ "$r" = vulkan ] && [ -z "${KUSANAGI_RENDERER:-}" ]; then
@@ -117,7 +272,7 @@ start() {
 
 stop() {
     [ -n "$(instance_pids)" ] || { echo "kusanagi isn't running"; return 0; }
-    timeout 3 qs -p "$SHELL_DIR" kill >/dev/null 2>&1
+    [ "$ENGINE" = qml ] && timeout 3 qs -p "$SHELL_DIR" kill >/dev/null 2>&1
     i=0; while [ $i -lt 20 ] && [ -n "$(instance_pids)" ]; do sleep 0.1; i=$((i + 1)); done
     # still there (wedged): make sure it goes
     pids=$(instance_pids); [ -n "$pids" ] && { kill $pids 2>/dev/null; sleep 0.5; pids=$(instance_pids); [ -n "$pids" ] && kill -9 $pids 2>/dev/null; }
@@ -237,7 +392,10 @@ doctor() {
     [ "$fam" = nixos ] && warn "NixOS: the fixes below are package names for your configuration.nix"
 
     printf '\n%sRequired%s\n' "$B" "$N"
-    check req quickshell "quickshell (qs)" qs quickshell
+    if [ "$ENGINE" = native ]; then
+        if b=$(native_bin); then ok "the shell: $b"
+        else bad "the shell (kusanagi-shell) ${D}(not built — required: sh $ROOT/lib/build-native.sh)$N"; req=$((req + 1)); fix shell-build; fi
+    else check req quickshell "quickshell (qs)" qs quickshell; fi
     check req python "python3 — colours from the wallpaper, settings tools" python3
     check req wl-clipboard "wl-clipboard (wl-copy)" wl-copy
     font=$(setting look.font); [ -n "$font" ] || font="JetBrainsMono Nerd Font"
@@ -258,11 +416,15 @@ doctor() {
     if ! command -v fc-list >/dev/null || fc-list : family | grep -qiE "emoji"; then ok "an emoji font"
     else bad "an emoji font ${D}(missing — emoji show as boxes in the launcher and apps)$N"; fix emoji; fi
     if t=$(term_cmd); then ok "terminal: $t"; else bad "a terminal ${D}(none found — set \$TERMINAL or launcher.terminal)$N"; fix foot; fi
-    case $(renderer) in
+    [ "$ENGINE" = qml ] && case $(renderer) in
         vulkan) ok "renderer: Vulkan" ;;
         *) if vulkan_driver; then note "renderer: OpenGL ${D}(Vulkan failed here once — rm $RHI_NOTE to try again)$N"
            else note "renderer: OpenGL ${D}(a Vulkan driver would save ~10 MB and some CPU — mesa-vulkan-drivers / vulkan-radeon / vulkan-intel)$N"; fi ;;
     esac
+    if [ "$ENGINE" = native ] && mango_blur_conflict; then
+        warn "mango blurs layer surfaces: panels hide your windows ${D}(add to mango's config.conf, then reload):$N"
+        note "$MANGO_NOBLUR_RULE"
+    fi
 
     printf '\n%sOptional%s\n' "$B" "$N"
     if has gpu-screen-recorder gsr-ui || { has flatpak && flatpak info com.dec05eba.gpu_screen_recorder >/dev/null 2>&1; }; then
@@ -288,11 +450,18 @@ doctor() {
     [ "$fam" = arch ] && check opt checkupdates "checkupdates (pacman-contrib) — the update count" checkupdates
 
     printf '\n%sSession%s\n' "$B" "$N"
-    if [ -n "${MANGO_INSTANCE_SIGNATURE:-}" ] || { command -v mmsg >/dev/null && run mango; }; then ok "compositor: mango"
-    elif [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then ok "compositor: Hyprland"
-    elif [ -n "${NIRI_SOCKET:-}" ]; then ok "compositor: niri"
-    elif [ -n "${WAYLAND_DISPLAY:-}" ]; then warn "compositor: ${XDG_CURRENT_DESKTOP:-unknown} — Kusanagi knows mango, Hyprland and niri best"
-    else note "no Wayland session here (run this from inside your desktop for the session checks)"; fi
+    case $(compositor) in
+        mango)    ok "compositor: mango" ;;
+        hyprland) ok "compositor: Hyprland" ;;
+        niri)     ok "compositor: niri" ;;
+        sway)     ok "compositor: sway" ;;
+        labwc)    ok "compositor: labwc" ;;
+        kde)      ok "compositor: KDE Plasma (KWin)"
+                  run plasmashell && warn "plasmashell is running: its panel sits next to Kusanagi's bar ${D}(Kusanagi alone: systemctl --user mask plasma-plasmashell, or leave it out of your session)$N" ;;
+        dwl)      ok "compositor: dwl ${D}(Kusanagi's keys need the #include in config.h — install.sh wrote ~/.config/dwl/kusanagi.h)$N" ;;
+        "")       note "no Wayland session here (run this from inside your desktop for the session checks)" ;;
+        *)        warn "compositor: ${XDG_CURRENT_DESKTOP:-unknown} — Kusanagi knows mango, Hyprland, niri, sway, labwc, KDE Plasma and dwl" ;;
+    esac
     if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then ok "D-Bus session bus"
     else bad "no D-Bus session bus ${D}— start the compositor with dbus-run-session (kusanagi session does)$N"; fi
     if run pipewire; then ok "PipeWire running$(run wireplumber || echo " ${Y}(but no wireplumber)$N")"
@@ -367,10 +536,20 @@ case "$cmd" in
     status)   if running; then [ "${1:-}" = -q ] || echo "kusanagi $VERSION is running"; exit 0
               else [ "${1:-}" = -q ] || echo "kusanagi isn't running"; exit 1; fi ;;
     msg)      [ $# -ge 2 ] || die "usage: kusanagi msg <target> <function> [args]  (see: kusanagi ipc)"
+              # the QML shell has no volume / mic / media targets: those keys go straight to wpctl / playerctl
+              if [ "$ENGINE" = qml ]; then case "$1:$2" in
+                  volume:up)   exec wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+ ;;
+                  volume:down) exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- ;;
+                  volume:mute) exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
+                  mic:mute)    exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle ;;
+                  media:toggle) exec playerctl play-pause ;;
+                  media:*)     exec playerctl "$2" ;;
+              esac; fi
               qsp ipc call "$@" ;;
     ipc)      qsp ipc show ;;
     preset)   case "${1:-list}" in
-                  list) sed -n 's/^ *id: "\([^"]*\)", name: "\([^"]*\)", note: "\([^"]*\)".*/  \1\t\2 — \3/p' "$SHELL_DIR/Presets.qml" ;;
+                  list) if b=$(native_bin); then "$b" preset list      # built in + your own (no running shell needed)
+                        else sed -n 's/^ *id: "\([^"]*\)", name: "\([^"]*\)", note: "\([^"]*\)".*/  \1\t\2 — \3/p' "$SHELL_DIR/Presets.qml"; fi ;;
                   next) qsp ipc call preset next ;;
                   *)    qsp ipc call preset apply "$1" ;;
               esac ;;
@@ -380,20 +559,40 @@ case "$cmd" in
                              echo "Kusanagi needs root once to: install cage if missing, create /var/lib/kusanagi-greeter,"
                              echo "write /usr/local/bin/kusanagi-greeter and point /etc/greetd/config.toml at it (old one kept)."
                              sudo sh "$G" root-install "$(id -un)" || exit 1
-                             sh "$G" sync "$SHELL_DIR"
+                             KG_NATIVE_BIN=$(native_bin 2>/dev/null) sh "$G" sync "$SHELL_DIR"
                              echo "Done. greetd reads its config when it starts, so you'll see it after a reboot."
                              echo "(Restarting greetd now would end a session you logged in to through it.)" ;;
                   uninstall) sudo sh "$G" root-uninstall ;;
-                  sync)      sh "$G" sync "$SHELL_DIR" "${2:-}" ;;
-                  preview)   if [ -f /var/lib/kusanagi-greeter/shell/greeter.qml ] && [ -r /var/lib/kusanagi-greeter/.config/kusanagi/settings.json ]; then
+                  sync)      KG_NATIVE_BIN=$(native_bin 2>/dev/null) sh "$G" sync "$SHELL_DIR" "${2:-}" ;;
+                  engine)    case "${2:-}" in
+                                 "") greeter_engine ;;
+                                 qml|native)
+                                     [ "$2" = native ] && { native_bin >/dev/null || die "the native shell isn't built (meson setup native/build && ninja -C native/build)"; }
+                                     mkdir -p "$CONF"; echo "$2" > "$CONF/greeter-engine"
+                                     echo "login screen engine: $2"
+                                     if sh "$G" installed; then
+                                         if [ "$2" = native ] && ! grep -q 'kusanagi-shell --greeter' /usr/local/bin/kusanagi-greeter 2>/dev/null; then
+                                             echo "the installed launcher predates the native login screen: run  kusanagi greeter install  once"
+                                         fi
+                                         echo "the login screen picks it up from the next:  kusanagi greeter sync"
+                                     fi ;;
+                                 *) die "usage: kusanagi greeter engine [qml|native]" ;;
+                             esac ;;
+                  preview)   if [ "$(greeter_engine)" = native ]; then
+                                 # the native one: the synced copy (what the login screen shows), else this one
+                                 if [ -x /var/lib/kusanagi-greeter/native/kusanagi-shell ] && [ -r /var/lib/kusanagi-greeter/.config/kusanagi/settings.json ]; then
+                                     HOME=/var/lib/kusanagi-greeter XDG_CONFIG_HOME=/var/lib/kusanagi-greeter/.config setsid /var/lib/kusanagi-greeter/native/kusanagi-shell --greeter --preview >/dev/null 2>&1 &
+                                 else b=$(native_bin) || die "the native shell isn't built"; setsid "$b" --greeter --preview >/dev/null 2>&1 & fi
+                             elif [ -f /var/lib/kusanagi-greeter/shell/greeter.qml ] && [ -r /var/lib/kusanagi-greeter/.config/kusanagi/settings.json ]; then
                                  HOME=/var/lib/kusanagi-greeter XDG_CONFIG_HOME=/var/lib/kusanagi-greeter/.config setsid qs -p /var/lib/kusanagi-greeter/shell/greeter.qml >/dev/null 2>&1 &
                              else setsid qs -p "$SHELL_DIR/greeter.qml" >/dev/null 2>&1 & fi ;;
                   status)    if sh "$G" installed; then echo "installed: greetd starts kusanagi-greeter"; else echo "not installed (greetd uses: $(sed -n '/^\[default_session\]/,/^\[/{s/^[[:space:]]*command[[:space:]]*=[[:space:]]*//p}' /etc/greetd/config.toml 2>/dev/null))"; fi
                              [ -d /var/lib/kusanagi-greeter/shell ] && echo "synced: $(stat -c %y /var/lib/kusanagi-greeter/shell | cut -d. -f1)"
+                             echo "engine: $(greeter_engine) (synced: $(cat /var/lib/kusanagi-greeter/engine 2>/dev/null || echo qml))"
                              gu=$(sed -n '/^\[default_session\]/,/^\[/{s/^[[:space:]]*user[[:space:]]*=[[:space:]]*"\(.*\)".*/\1/p}' /etc/greetd/config.toml 2>/dev/null)
                              [ -S /run/seatd.sock ] && [ -n "$gu" ] && ! id -nG "$gu" 2>/dev/null | tr ' ' '\n' | grep -qx _seatd && echo "note: $gu isn't in group _seatd — run: kusanagi greeter install"
                              [ -r /tmp/kusanagi-greeter.log ] && { echo "last start:"; sed 's/^/  /' /tmp/kusanagi-greeter.log | tail -15; }; true ;;
-                  *)         die "usage: kusanagi greeter install | sync | preview | status | uninstall" ;;
+                  *)         die "usage: kusanagi greeter install | sync | preview | status | engine [qml|native] | uninstall" ;;
               esac ;;
     session)  [ $# -ge 1 ] || die "usage: kusanagi session <compositor command…>"
               logdir=${XDG_STATE_HOME:-$HOME/.local/state}/kusanagi/sessions
@@ -429,8 +628,14 @@ case "$cmd" in
                           f=$(readlink -f "$2") || die "no such file: $2"; qsp ipc call preset importLook "$f" ;;
                   *)      die "usage: kusanagi look export <name> | import <file>" ;;
               esac ;;
-    settings) if [ $# -ge 1 ]; then qsp ipc call settings page "$1"; else qsp ipc call settings open; fi ;;
-    log)      f=""; for d in $(ls -t /run/user/"$(id -u)"/quickshell/by-id/*/log.qslog 2>/dev/null); do
+    settings) if [ "$ENGINE" = native ]; then settings_app open "${1:-}"
+              elif [ $# -ge 1 ]; then qsp ipc call settings page "$1"; else qsp ipc call settings open; fi ;;
+    log)      if [ "$ENGINE" = native ]; then
+                  f="${XDG_CACHE_HOME:-$HOME/.cache}/kusanagi/kusanagi-shell.log"
+                  [ -f "$f" ] || die "no log yet ($f)"
+                  if [ "${1:-}" = -f ]; then exec tail -f "$f"; else exec cat "$f"; fi
+              fi
+              f=""; for d in $(ls -t /run/user/"$(id -u)"/quickshell/by-id/*/log.qslog 2>/dev/null); do
                   qs log "$d" 2>/dev/null | head -3 | grep -q "$SHELL_DIR" && { f=$d; break; }; done
               [ -n "$f" ] || die "no log found (is it running?)"
               if [ "${1:-}" = -f ]; then qs log -f "$f"; else qs log "$f"; fi ;;
@@ -445,18 +650,29 @@ case "$cmd" in
     edit)     ${VISUAL:-${EDITOR:-mousepad}} "$CONF/settings.json" ;;
     doctor)   doctor ;;
     updates)  updates "$@" ;;
-    setup)    qsp ipc call setup open ;;
+    setup)    if [ "$ENGINE" = native ]; then nmsg kusanagi-setup open >/dev/null || die "Kusanagi isn't running — start it: kusanagi"
+              else qsp ipc call setup open; fi ;;
+    engine)   case "${1:-}" in
+                  "")         echo "$ENGINE" ;;
+                  qml|native) [ "$1" = native ] && { native_bin >/dev/null || die "the native shell isn't built yet"; }
+                              old=$ENGINE; stop >/dev/null; mkdir -p "$CONF"; echo "$1" > "$CONF/engine"
+                              ENGINE=$1; start; [ "$old" != "$1" ] && echo "engine: $old → $1"
+                              [ "$1" = native ] && mango_blur_conflict && {
+                                  echo "note: mango blurs layer surfaces (blur_layer=1): open panels would hide your windows."
+                                  echo "      add this to ~/.config/mango/config.conf and reload mango:"; echo "      $MANGO_NOBLUR_RULE"; }; true ;;
+                  *)          die "usage: kusanagi engine [qml|native]" ;;
+              esac ;;
     record)   exec "$ROOT/scripts/record" "$@" ;;
     brightness) case "${1:-get}" in
                   setup)            brightness_setup ;;
-                  up|down|get|detect) qsp ipc call brightness "$1" ;;
+                  up|down|get|detect) qsp ipc call brightness "${1:-get}" ;;
                   set)              [ $# -ge 2 ] || die "usage: kusanagi brightness set <percent>"; qsp ipc call brightness set "${2%\%}" ;;
                   [0-9]*)           qsp ipc call brightness set "${1%\%}" ;;
                   *)                die "usage: kusanagi brightness [up|down|<percent>|get|setup]" ;;
               esac ;;
     bluetooth) case "${1:-status}" in
                   setup)                 bluetooth_setup ;;
-                  toggle|on|off|status)  qsp ipc call bluetooth "$1" ;;
+                  toggle|on|off|status)  qsp ipc call bluetooth "${1:-status}" ;;
                   *)                     die "usage: kusanagi bluetooth [toggle|on|off|status|setup]" ;;
               esac ;;
     distro)   exec sh "$DISTRO" "$@" ;;

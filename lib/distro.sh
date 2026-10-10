@@ -12,9 +12,9 @@
 #                                           services that exists for this init ("" = already on, exit 1 = none)
 # Sourced (. lib/distro.sh) it only defines FAM, ARTIX, D_ID and pkg() — the installer uses that.
 # Testing: KUSANAGI_OS_RELEASE=<fake os-release>, KUSANAGI_INIT=<init>, KUSANAGI_UPDATES_TIMEOUT=<s>.
-# Logical names: quickshell python magick wl-clipboard cliphist grim slurp gammastep gamemode swappy foot
+# Logical names: shell-build quickshell python magick wl-clipboard cliphist grim slurp gammastep gamemode swappy foot
 # font nm pavucontrol hyprlock libnotify pipewire portal seat wtype wf-recorder gpu-screen-recorder polkit
-# fd checkupdates mango hyprland niri ddcutil bluez gi (PyGObject)
+# fd checkupdates mango hyprland niri sway labwc kde (KDE Plasma / KWin) dwl ddcutil bluez gi (PyGObject)
 
 # ---------------------------------------------------------------- detect (doesn't touch the caller's vars)
 _d_ids=$( . "${KUSANAGI_OS_RELEASE:-/etc/os-release}" 2>/dev/null; printf '%s|%s' "${ID:-unknown}" "${ID_LIKE:-}")
@@ -49,6 +49,11 @@ _d_init() {   # same detection as install.sh (only Artix's NetworkManager packag
 pkg() {
     INIT=${INIT:-$(_d_init)}
     case "$FAM:$1" in
+        # the native shell's build (lib/build-native.sh): meson, a C++23 compiler and the libraries
+        void:shell-build) echo "base-devel meson ninja pkg-config wayland-devel wayland-protocols MesaLib-devel freetype-devel fontconfig-devel cairo-devel pango-devel harfbuzz-devel librsvg-devel libxkbcommon-devel glib-devel libsecret-devel libsodium-devel polkit-devel pipewire-devel wireplumber-devel libcurl-devel libqalculate-devel libxml2-devel libmd4c-devel json-c++ tomlplusplus-devel libical-devel pam-devel libwebp-devel libjxl-devel libsndfile-devel sdbus-c++-devel jemalloc-devel stb" ;;
+        arch:shell-build) echo "base-devel meson ninja wayland wayland-protocols libglvnd freetype2 fontconfig cairo pango harfbuzz libxkbcommon glib2 libsecret libsodium sdbus-cpp libpipewire wireplumber polkit pam curl libwebp libjxl libsndfile librsvg libqalculate libxml2 md4c tomlplusplus nlohmann-json stb jemalloc libical" ;;
+        fedora:shell-build) echo "meson ninja-build gcc-c++ wayland-devel wayland-protocols-devel libEGL-devel mesa-libGLES-devel freetype-devel fontconfig-devel cairo-devel pango-devel harfbuzz-devel libxkbcommon-devel glib2-devel libsecret-devel libsodium-devel sdbus-cpp-devel pipewire-devel wireplumber-devel pam-devel polkit-devel libcurl-devel libwebp-devel libjxl-devel libsndfile-devel librsvg2-devel libqalculate-devel libxml2-devel md4c-devel tomlplusplus-devel json-devel stb_image_resize2-devel stb_image_write-devel jemalloc-devel libical-devel" ;;
+        debian:shell-build) echo "build-essential meson ninja-build pkg-config libwayland-dev wayland-protocols libfreetype-dev libfontconfig-dev libcairo2-dev libpango1.0-dev librsvg2-dev libxkbcommon-dev libepoxy-dev libgles-dev libwebp-dev libjxl-dev libsndfile1-dev libcurl4-gnutls-dev libmd4c-dev nlohmann-json3-dev libsdbus-c++-dev libsecret-1-dev libsodium-dev libstb-dev libtomlplusplus-dev libpipewire-0.3-dev libpam0g-dev libpolkit-agent-1-dev libpolkit-gobject-1-dev libqalculate-dev libwireplumber-0.5-dev libxml2-dev libjemalloc-dev libical-dev" ;;
         arch:quickshell) echo quickshell ;;            void:quickshell) echo quickshell ;;
         arch:python) echo python ;;                    void:python) echo python3 ;;
         arch:magick) echo imagemagick ;;               void:magick) echo ImageMagick ;;
@@ -89,7 +94,17 @@ pkg() {
         alpine:hyprland) echo "hyprland xdg-desktop-portal-hyprland" ;; alpine:niri) echo niri ;;
         alpine:pipewire) echo "pipewire wireplumber" ;; alpine:portal) echo xdg-desktop-portal-gtk ;;
         alpine:seat) echo seatd ;;
-        *:quickshell|*:python|*:magick|*:font|*:nm|*:mango|*:hyprland|*:niri|*:pipewire|*:portal|*:seat) echo "" ;;
+        *:shell-build|*:quickshell|*:python|*:magick|*:font|*:nm|*:mango|*:hyprland|*:niri|*:pipewire|*:portal|*:seat) echo "" ;;
+        # more compositors (each with its desktop portal); dwl is configured by editing config.h, so most
+        # people build it from source — the package gives you dwl's default keys only
+        gentoo:sway) echo "gui-wm/sway gui-libs/xdg-desktop-portal-wlr" ;;
+        void:sway|arch:sway|fedora:sway|debian:sway|suse:sway|alpine:sway) echo "sway xdg-desktop-portal-wlr" ;;
+        gentoo:labwc) echo "gui-wm/labwc gui-libs/xdg-desktop-portal-wlr" ;;
+        void:labwc|arch:labwc|fedora:labwc|debian:labwc|suse:labwc|alpine:labwc) echo "labwc xdg-desktop-portal-wlr" ;;
+        void:kde|arch:kde|fedora:kde|debian:kde|alpine:kde) echo "plasma-desktop xdg-desktop-portal-kde" ;;
+        gentoo:kde) echo kde-plasma/plasma-meta ;;     suse:kde) echo patterns-kde-kde_plasma ;;
+        arch:dwl|debian:dwl|alpine:dwl) echo dwl ;;   gentoo:dwl) echo gui-wm/dwl ;;
+        *:sway|*:labwc|*:kde|*:dwl) echo "" ;;
         # colour emoji for the launcher's ":" search (and every app)
         void:emoji|arch:emoji) echo noto-fonts-emoji ;; debian:emoji) echo fonts-noto-color-emoji ;;
         fedora:emoji) echo google-noto-color-emoji-fonts ;; suse:emoji) echo google-noto-coloremoji-fonts ;;
@@ -120,10 +135,12 @@ _d_su() { if [ "$(id -u)" = 0 ]; then echo ""; elif _d_have doas; then echo "doa
 # how to get something that isn't packaged here (one line, no "#")
 _d_hint() {
     case "$1" in
+        shell-build)         echo "Kusanagi's build packages aren't listed for $FAM — install meson, ninja, a C++23 compiler and the libraries in native/meson.build, then: sh lib/build-native.sh" ;;
         quickshell)          echo "quickshell isn't packaged on $FAM — build it from source: https://quickshell.org/docs/guide/install-setup/" ;;
         gpu-screen-recorder) echo "gpu-screen-recorder isn't packaged on $FAM — use the Flatpak: flatpak install flathub com.dec05eba.gpu_screen_recorder" ;;
         font)                echo "no Nerd Font package on $FAM — get JetBrainsMono Nerd Font from https://www.nerdfonts.com/font-downloads into ~/.local/share/fonts, then: fc-cache -f" ;;
         mango)               echo "mango isn't packaged on $FAM — build it from source: https://github.com/DreamMaoMao/mangowc" ;;
+        dwl)                 echo "dwl isn't packaged on $FAM — build it from source (keys live in its config.h): https://codeberg.org/dwl/dwl" ;;
         checkupdates|seat)   ;;   # Arch-only / not needed here
         *)                   echo "$1 isn't packaged on $FAM — install it by hand" ;;
     esac

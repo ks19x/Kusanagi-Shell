@@ -1,0 +1,3 @@
+#!/bin/bash
+# kb: build the native shell. Builds share one build dir and take turns, so it's safe to run from several shells.
+exec flock /tmp/kusanagi-dev-build.lock ninja -C "$(dirname "$(readlink -f "$0")")/../../build" -j10 "$@"
