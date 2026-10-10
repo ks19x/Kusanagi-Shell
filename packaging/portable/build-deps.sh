@@ -8,9 +8,9 @@ apt-get install -y --no-install-recommends \
   python3 file xz-utils zstd libwayland-dev wayland-protocols libegl-dev libgles-dev \
   libfreetype-dev libfontconfig-dev libcairo2-dev libpango1.0-dev librsvg2-dev \
   libxkbcommon-dev libglib2.0-dev libsecret-1-dev libsodium-dev libsystemd-dev \
-  libpipewire-0.3-dev libspa-0.2-dev libspa-0.2-modules libpipewire-0.3-modules \
+  libpipewire-0.3-dev libspa-0.2-dev libspa-0.2-modules libpipewire-0.3-modules pipewire-bin \
   libpam0g-dev libpolkit-agent-1-dev libcurl4-gnutls-dev libwebp-dev libjxl-dev \
-  libsndfile1-dev libqalculate-dev libxml2-dev libmd4c-dev libtomlplusplus-dev \
+  libsndfile1-dev libqalculate-dev libqalculate-data libxml2-dev libmd4c-dev libtomlplusplus-dev \
   nlohmann-json3-dev libjemalloc-dev libical-dev liblua5.4-dev
 
 export CC=gcc-14 CXX=g++-14

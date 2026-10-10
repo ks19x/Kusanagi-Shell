@@ -35,7 +35,8 @@ jobs:
           fi
       - name: Build dependencies
         run: bash packaging/portable/build-deps.sh
-      - uses: actions/cache@v4
+      - name: Restore compiler cache
+        uses: actions/cache/restore@v4
         with:
           path: /root/.cache/ccache
           key: portable-gcc14-${{ github.sha }}
@@ -44,6 +45,12 @@ jobs:
         run: python3 packaging/portable/test_portable.py
       - name: Build portable bundle
         run: bash packaging/portable/build.sh
+      - name: Save compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: /root/.cache/ccache
+          key: portable-gcc14-${{ github.sha }}-${{ github.run_attempt }}-${{ github.run_id }}
       - name: Collect bundled library sources
         run: bash packaging/portable/library-sources.sh
       - uses: actions/upload-artifact@v4
