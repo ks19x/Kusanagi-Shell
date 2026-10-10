@@ -4,7 +4,11 @@
 
 Kusanagi is now a native C++ program (`kusanagi-shell`) instead of a Quickshell config. It reads the
 same `settings.json`, keeps the same look and is driven by the same `kusanagi` command, but starts
-faster and uses less memory. The old QML version is still there as `kusanagi engine qml`.
+faster and uses less memory. The QML version is gone, and Quickshell is no longer needed;
+`kusanagi engine` only answers `native` now, for old scripts.
+
+If the login screen was set up with an earlier version, run `kusanagi greeter install` once to
+switch it to the native one. Until then the old launcher keeps working as before.
 
 New:
 

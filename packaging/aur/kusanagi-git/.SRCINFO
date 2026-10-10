@@ -72,7 +72,6 @@ pkgbase = kusanagi-git
 	optdepends = foot: a terminal
 	optdepends = greetd: the Kusanagi login screen
 	optdepends = cage: the Kusanagi login screen
-	optdepends = quickshell: the legacy QML engine (kusanagi engine qml)
 	optdepends = mangowm: a compositor Kusanagi sets up
 	optdepends = hyprland: a compositor Kusanagi sets up
 	optdepends = niri: a compositor Kusanagi sets up

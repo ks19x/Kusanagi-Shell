@@ -1223,10 +1223,6 @@ if get_option('runtime')
   install_data(repo / 'lib' / 'greeter.sh', repo / 'lib' / 'labwc-keys.py', install_dir: rt_dir / 'lib')
   install_subdir(repo / 'scripts', install_dir: rt_dir)
   install_subdir(repo / 'assets', install_dir: rt_dir)
-  # the QML engine (kusanagi engine qml); a hyprquickpaper config.json is someone's own, not ours
-  install_subdir(repo / 'shell', install_dir: rt_dir,
-    exclude_files: ['hyprquickpaper/config.json'],
-  )
   install_symlink('kusanagi',
     pointing_to: '..' / 'lib' / 'kusanagi' / 'bin' / 'kusanagi',
     install_dir: get_option('bindir'),

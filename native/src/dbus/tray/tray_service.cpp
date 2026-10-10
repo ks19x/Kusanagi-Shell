@@ -344,7 +344,7 @@ namespace {
     }
 
     // Some providers omit children-display but still populate children ids.
-    // Treat a non-empty children vector as submenu-capable to match qs behavior.
+    // Treat a non-empty children vector as submenu-capable, as other tray hosts do.
     if (const auto it = props.find("children"); it != props.end()) {
       if (hasInt32ChildrenInVariant(it->second)) {
         out.hasSubmenu = true;

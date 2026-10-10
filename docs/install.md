@@ -129,6 +129,8 @@ remaining tools you actually want. The library bundle does not install or start 
 The greetd login screen needs a native system installation. The portable archive is for your
 desktop session and does not install or update the system greeter. Existing native installations
 can use `kusanagi greeter install`; `kusanagi greeter uninstall` restores their previous setup.
+A login screen set up before 0.3.0 still runs the old QML version until you run
+`kusanagi greeter install` once more.
 
 ## Building from source
 

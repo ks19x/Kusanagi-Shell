@@ -952,7 +952,7 @@ namespace kusanagi::config {
 
     tbl(t, "brightness").insert_or_assign("enable_ddcutil", get<bool>(s, "brightness", "ddc", true));
 
-    // Weather: weather.location is a place name; empty means "where my IP is", like the QML shell.
+    // Weather: weather.location is a place name; empty means "where my IP is".
     {
       std::string place = get<std::string>(s, "weather", "location", "");
       place.erase(0, place.find_first_not_of(" \t"));
