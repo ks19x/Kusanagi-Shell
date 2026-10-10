@@ -3,23 +3,18 @@
 `native/` is Kusanagi as one C++23 Wayland client, `kusanagi-shell`: wallpaper, bars, control panel,
 launcher, notifications, OSD, lock screen, polkit dialog, clipboard, wallpaper picker, Settings and Setup,
 and the greetd login screen (`kusanagi-shell --greeter`). The `kusanagi` command starts it, and it is
-configured by the same `~/.config/kusanagi/settings.json` as the QML shell in `shell/`.
+configured by `~/.config/kusanagi/settings.json`.
 
 ## Using it
 
-The native shell is the default engine. `install.sh` builds it with `lib/build-native.sh` (meson, installed to
-`~/.local/bin/kusanagi-shell` with assets in `~/.local/share/kusanagi/assets`) and doesn't install Quickshell.
+`install.sh` builds it with `lib/build-native.sh` (meson, installed to `~/.local/bin/kusanagi-shell` with
+assets in `~/.local/share/kusanagi/assets`).
 After pulling a new version, rebuild with `sh lib/build-native.sh` and run `kusanagi restart`.
 
 Packages install it system-wide instead (`-Druntime=true`, see `packaging/README.md`): `kusanagi-shell` in
 `/usr/bin`, its assets in `/usr/share/kusanagi/assets` (found next to the binary, so a `--destdir` staging
 tree runs as is), and the `kusanagi` command with what it runs in `/usr/lib/kusanagi`, linked from
 `/usr/bin/kusanagi`. That tree is read-only; per-user state stays in the XDG folders.
-
-```
-kusanagi engine native     # the native shell (default; remembered in ~/.config/kusanagi/engine)
-kusanagi engine qml        # the QML shell, while it still ships (needs Quickshell)
-```
 
 Keybinds call `kusanagi msg <target> <fn>`, which the CLI translates to the native IPC
 (`kusanagi-shell msg <command> [args]`). `kusanagi settings` and `kusanagi setup` open the shell's own
@@ -68,9 +63,8 @@ Build dependencies: `sh lib/distro.sh pkgname shell-build` names the packages fo
 `native/BUILDING.md`.
 
 - `native/tools/kdev/kb` builds `native/build` (one build at a time, safe to run from several shells).
-- `native/tools/kdev/kt <slot> up|shot|msg|qml-shot|down` runs a private headless mango with the native
-  shell and a copy of your settings, plus the QML shell on the same kind of output for screenshot
-  comparisons. Nothing touches the real desktop.
+- `native/tools/kdev/kt <slot> up|shot|msg|log|down` runs a private headless mango with the native
+  shell and a copy of your settings. Nothing touches the real desktop.
 - `native/tools/kdev/kin <slot> click|key|type|scroll ...` injects input into a `kt` slot.
 
 `KUSANAGI_IDLE_PROFILE=1` logs what wakes the shell every 10 s. `KUSANAGI_ASSETS_DIR` points the shell at
@@ -89,9 +83,6 @@ by SIGTERM to its PID). Without ext-session-lock the lock falls back to swaylock
 
 ## Status
 
-Everything the QML shell does is native. QML (`shell/`) remains only as the `qml` engine and as the default
-login screen where Quickshell is installed.
-
 | Surface | State |
 |---|---|
 | settings.json, colors.json and wallpaper translated to config, live reload | done |
@@ -103,6 +94,6 @@ login screen where Quickshell is installed.
 | Lock screen (6 styles), polkit dialog | done |
 | Game mode, idle (held off in game mode and while media plays) | done |
 | Settings (all 19 pages), Setup wizard (first run too) | done, `src/shell/kusanagi/settings/`, see docs/native-settings.md |
-| Greeter | native `kusanagi-shell --greeter`: default where Quickshell isn't installed, otherwise opt-in with `kusanagi greeter engine native` (falls back to greeter.qml). Login screen auto-sync done |
+| Greeter | `kusanagi-shell --greeter` in cage, falling back to greetd's previous greeter if it can't start. Login screen auto-sync done. Launchers from before 0.3.0 (QML login screen) keep working until `kusanagi greeter install` replaces them |
 | Recorder, updates, presets, bar layouts, idle | done, native IPC in `src/shell/kusanagi/kusanagi_ipc.cpp`. Presets and bar templates are in `presets.*` and `bar_templates.*`; `kusanagi-shell preset` works without a running shell |
-| Installer, doctor, CLI | done, no Quickshell needed |
+| Installer, doctor, CLI | done |

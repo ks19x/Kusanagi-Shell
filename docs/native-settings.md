@@ -1,6 +1,6 @@
 # Native Settings: framework and page guide
 
-Kusanagi's Settings window, the native counterpart of `shell/Settings.qml` and `shell/Sp*.qml`, is part of `kusanagi-shell`.
+Kusanagi's Settings window is part of `kusanagi-shell`.
 The window, its control kit and the pages live in `native/src/shell/kusanagi/settings/`:
 
 | File | What |
@@ -35,8 +35,8 @@ kusanagi-shell msg kusanagi-settings hide
 It answers `open <page>` or `closed`. Without a page it reopens the last one (Presets the first time). The
 generic `SettingsWindow::open` opens this window too.
 
-The window keeps Quickshell's app id `org.quickshell` on purpose: the user's mango rule
-`windowrule=isfloating:1,appid:^(...|org.quickshell|...)$` floats it at 1080x720 like the QML one.
+The window keeps the app id `org.quickshell`, from when Kusanagi was a Quickshell config, on purpose:
+existing window rules such as mango's `windowrule=isfloating:1,appid:^(...|org.quickshell|...)$` float it.
 Closing it frees the whole scene; nothing stays in memory.
 
 ## The setup wizard
@@ -90,7 +90,7 @@ a hidden item takes no room and no spacing.
 ## Values: reading, writing, bindings
 
 - `value("osd.timeout")` returns the `json` at that dotted path in settings.json, else the default
-  (`defaults()` holds the same defaults table the QML shell had), else null. `get<T>(path, fallback)` converts.
+  (`defaults()` holds the defaults table), else null. `get<T>(path, fallback)` converts.
   `truthy(json)` is JS truthiness.
 - `set("look.radius", 18)` writes one key; `write({{"look.animSpeed", 1.4}, {"look.bounce", 0.4}})` writes
   several at once. A `null` value removes the key. `reset("panel")` and `reset()` reset a section or everything.
@@ -131,40 +131,38 @@ Binding dnd{
 
 ## Controls
 
-All are `Item`s (sp_kit.h has the exact signatures). Sizes, radii, colours, hover and press states and timings
-match the QML controls they replace.
+All are `Item`s (sp_kit.h has the exact signatures).
 
-| QML | Native | Notes |
-|---|---|---|
-| `Column { spacing }` | `Column(spacing)` | children full width, top to bottom |
-| `Flow { spacing }` | `Flow(spacing = 6)` | children at their own width, wrapped |
-| `Row { spacing }` | `HRow(spacing = 8)` | side by side, vertically centred |
-| `SpGroup { title; hint; icon }` | `Group(title, hint = {}, icon = 0)` | `add<...>` goes into the card (spacing 14); `bindHint(fn)` for a hint that changes ("" hides it) |
-| `SpFold { title; hint; open }` | `Fold(title, hint, open)` | `bindHint(fn)`, `setOpen()`; body spacing 6 |
-| `CpRow { label; hint; <control> }` | `Row(label, hint, std::unique_ptr<Item>)` or `Row(label, control)` | height is max(34, control); `bindHint(fn)` for a live hint ("Idle: armed") |
-| `CpText` | `Text(text, TextOpts{px, bold, color, wrap, elide, topPadding, letterSpacing, family})` | `bindText(fn)`, `bindColor(fn)`, `setText()` |
-| `CpText` 11 bold dim with topPadding (the "Design" headings) | `Heading(text, topPadding = 4)` | |
-| `CpSwitch { on; onToggled }` | `Switch(Binding)` | writes true or false; `setFixedWidth(w)` stretches the track |
-| `CpSlider { value; valueText; step; label; icon; onMoved }` | `Slider(Binding, SliderOpts{icon, label, toUnit, fromUnit, text, step, height = 30})` | `toUnit(json)` gives 0..1, `fromUnit(0..1)` gives json; drag, click, wheel |
-| `CpSlider { muted; onIconClicked }`, icon or label from state | `SliderOpts{..., iconFn, labelFn, muted, onIconClicked}` | for values outside settings.json (volumes, brightness) use a hand-made `Binding`; `muted()` greys the fill (180 ms); with `onIconClicked` the icon circle is its own button |
-| `Repeater { model }` over a changing list | `Repeater(keysFn, makeFn(key), spacing = 14)` | rebuilt when the keys change; items read their entry's live state in `sync()`; takes no room while empty |
-| `enabled: x; opacity: enabled ? 1 : 0.4` | `item->enabledIf(fn)` | dimmed and ignores the pointer while false (Display's gap sliders) |
-| SpGroup with a changing title | `group->bindTitle(fn)` | e.g. the Updates page's "3 updates waiting" |
-| `CpSegmented { options; current; fontSize; width }` | `Segmented(Binding, std::vector<Option>{{label, value, icon}}, width, fontPx = 11)` | value is any json (strings, ints) |
-| `CpStepper { value; from; to; step; suffix }` | `Stepper(Binding, StepperOpts{from, to, step, suffix, scale})` | shows value / scale (e.g. ms as s with scale 1000) |
-| `CpChip { label; icon; on; onClicked }` | `Chip(label, icon = 0, fontFamily = {})` | `->onClick(fn)->onWhen(fn)->labelFrom(fn)` |
-| chip that sets a value (styles, fonts) | `choiceChip(label, path, value, fontFamily = {})` | lit while `path == value` |
-| `CpField { text; placeholder; icon; onAccepted / onEdited }` | `Field(std::optional<Binding>, FieldOpts{width, placeholder, icon, applyOnEdit, convert, onEdited, onAccepted})` | shows the value (not while typing); writes on Enter, or on every edit; `convert(text)` returns json, or `nullopt` to refuse |
-| text field for one path | `textField(path, width, placeholder = {}, allowEmpty = false)` | trims; refuses empty unless allowed |
-| `CpIconButton { icon; onClicked }` | `IconButton(icon, onClick, size = 34, iconPx = 16)` | `setFilled()`, `enabledWhen(fn)` (0.3 opacity when off) |
-| accent swatch circles | `Swatch(colorFn, onFn, onClick, size = 28, ring = 3)` | ring in the text colour, grows on hover |
-| the bar editor's colour row (dot, field, token dots) | `ColorPick(Binding)` | tokens accent accent2 text dim faint bg card danger warn ok transparent; "a, b" is a gradient array |
-| folder or file path | `PathField(path, width, placeholder = {})` | field plus a button that opens it (xdg-open) |
-| `SpStylePicker { kind; options; current; cardW }` | `StylePicker(kind, std::vector<Option>{{label, value, 0, note}}, Binding, cardW = 168)` | kinds launcher panel notifications osd corner edge tiles panelLook lock power |
-| `SpFontPicker { current; onPicked }` | `FontPicker(Binding)` | fonts via fc-list off the UI thread; only visible rows exist |
-| `SpAppPicker { exclude; onPicked }` | `AppPicker(picked, exclude = {}, max = 8)` | desktop entries, icons from the icon theme |
-| `BarPreview { bar; snapshot; pickable; selKey; onPicked; onMoved }` | `BarPreview(barFn, heightFn, BarPreviewOpts{snapshot, pickable, screenW, screenH, desktop, fixedScale})` | `->selKey(fn)->onPicked(fn)->onMoved(fn)`; uses the real bar widgets (`WidgetFactory::current()`) laid out like the bar; with snapshot it lays out once per spec, look and width |
-| Loader or custom QML | a small `Item` subclass in your page file | see below |
+| Control | Notes |
+|---|---|
+| `Column(spacing)` | children full width, top to bottom |
+| `Flow(spacing = 6)` | children at their own width, wrapped |
+| `HRow(spacing = 8)` | side by side, vertically centred |
+| `Group(title, hint = {}, icon = 0)` | a settings card; `add<...>` goes into the card (spacing 14); `bindHint(fn)` for a hint that changes ("" hides it); `bindTitle(fn)` for a changing title (the Updates page's "3 updates waiting") |
+| `Fold(title, hint, open)` | a card that folds; `bindHint(fn)`, `setOpen()`; body spacing 6 |
+| `Row(label, hint, std::unique_ptr<Item>)` or `Row(label, control)` | a labelled control; height is max(34, control); `bindHint(fn)` for a live hint ("Idle: armed") |
+| `Text(text, TextOpts{px, bold, color, wrap, elide, topPadding, letterSpacing, family})` | `bindText(fn)`, `bindColor(fn)`, `setText()` |
+| `Heading(text, topPadding = 4)` | 11 px bold dim headings (the "Design" headings) |
+| `Switch(Binding)` | writes true or false; `setFixedWidth(w)` stretches the track |
+| `Slider(Binding, SliderOpts{icon, label, toUnit, fromUnit, text, step, height = 30})` | `toUnit(json)` gives 0..1, `fromUnit(0..1)` gives json; drag, click, wheel |
+| `SliderOpts{..., iconFn, labelFn, muted, onIconClicked}` | icon or label from state; for values outside settings.json (volumes, brightness) use a hand-made `Binding`; `muted()` greys the fill (180 ms); with `onIconClicked` the icon circle is its own button |
+| `Repeater(keysFn, makeFn(key), spacing = 14)` | a changing list: rebuilt when the keys change; items read their entry's live state in `sync()`; takes no room while empty |
+| `item->enabledIf(fn)` | dimmed and ignores the pointer while false (Display's gap sliders) |
+| `Segmented(Binding, std::vector<Option>{{label, value, icon}}, width, fontPx = 11)` | one-of-N picker; value is any json (strings, ints) |
+| `Stepper(Binding, StepperOpts{from, to, step, suffix, scale})` | shows value / scale (e.g. ms as s with scale 1000) |
+| `Chip(label, icon = 0, fontFamily = {})` | `->onClick(fn)->onWhen(fn)->labelFrom(fn)` |
+| `choiceChip(label, path, value, fontFamily = {})` | a chip that sets a value (styles, fonts); lit while `path == value` |
+| `Field(std::optional<Binding>, FieldOpts{width, placeholder, icon, applyOnEdit, convert, onEdited, onAccepted})` | shows the value (not while typing); writes on Enter, or on every edit; `convert(text)` returns json, or `nullopt` to refuse |
+| `textField(path, width, placeholder = {}, allowEmpty = false)` | text field for one path; trims; refuses empty unless allowed |
+| `IconButton(icon, onClick, size = 34, iconPx = 16)` | `setFilled()`, `enabledWhen(fn)` (0.3 opacity when off) |
+| `Swatch(colorFn, onFn, onClick, size = 28, ring = 3)` | accent swatch circle; ring in the text colour, grows on hover |
+| `ColorPick(Binding)` | the bar editor's colour row (dot, field, token dots); tokens accent accent2 text dim faint bg card danger warn ok transparent; "a, b" is a gradient array |
+| `PathField(path, width, placeholder = {})` | folder or file path: field plus a button that opens it (xdg-open) |
+| `StylePicker(kind, std::vector<Option>{{label, value, 0, note}}, Binding, cardW = 168)` | kinds launcher panel notifications osd corner edge tiles panelLook lock power |
+| `FontPicker(Binding)` | fonts via fc-list off the UI thread; only visible rows exist |
+| `AppPicker(picked, exclude = {}, max = 8)` | desktop entries, icons from the icon theme |
+| `BarPreview(barFn, heightFn, BarPreviewOpts{snapshot, pickable, screenW, screenH, desktop, fixedScale})` | `->selKey(fn)->onPicked(fn)->onMoved(fn)`; uses the real bar widgets (`WidgetFactory::current()`) laid out like the bar; with snapshot it lays out once per spec, look and width |
+| a small `Item` subclass in your page file | anything custom; see below |
 
 There is no dropdown, since no page needs one; use `Segmented` or chips.
 
@@ -222,35 +220,22 @@ native/tools/kdev/kb                                    # build
 native/tools/kdev/kt <slot> up                          # private headless mango + the dev shell
 native/tools/kdev/kt <slot> msg kusanagi-settings open <page>
 native/tools/kdev/kt <slot> shot /tmp/n.png             # look at it with the Read tool
-native/tools/kdev/kt <slot> qml-shot /tmp/q.png 'settings page <page>'   # the QML Settings, same output
 native/tools/kdev/kin <slot> click X Y wait 500 type text key Return scroll X Y down 3
 ```
 
-- Both windows tile (the test mango has no float rule) at slightly different spots, because borders and gaps
-  differ. Compare crops relative to each window's top-left corner: find the mango border, crop the same
-  window-relative rect from both, and stack them.
 - To see whole pages without scrolling, put a tall output in your slot's mango config before `up`, e.g.
   `echo 'monitorrule=name:HEADLESS-1,width:1920,height:3000,refresh:60' > /tmp/kusanagi-dev/s<slot>/test.conf`.
-  Both the native and the QML window then show the full page.
+  The window then shows the full page.
 - Writes: watch `/tmp/kusanagi-dev/home<slot>/.config/kusanagi/settings.json` and the shell log
   (`kt <slot> log | grep "config changed"` shows one reload per burst of changes).
 - Never click "Restart Kusanagi", "Clear history" or other actions that reach outside the test slot.
 
-## Known differences from the QML shell
+## Known limitations
 
-- Text is Pango, not Qt. Wrapped multi-line text has a slightly larger line step (about 1 to 2 px per line),
-  glyph advances differ by a fraction of a pixel (a 9 px note may wrap one word earlier), and CJK fallback
-  spacing differs.
-- The font list comes from fontconfig (`fc-list`), so its count differs from Qt's; "SpaceMono Nerd Font" shows
-  a chip that Qt hid.
-- The About page's second hero line reads "<user>'s kusanagi-shell" followed by its version, where QML
-  showed "Quickshell" and its version.
-- The Control panel page's "bluetooth" tile chip reads "Bluetooth" (QML printed "undefined" because its name
-  table lacked it).
 - The test notification goes through `notification-show`, so it also lands in the history.
 - Search fields don't select all on focus, and the caret uses the accent colour (the shared Input control).
-- Sound: devices are labelled by node.nick, then description, then name, like Quickshell, but listed in the
-  PipeWire service's order rather than registry order, so two inputs can swap places.
+- Sound: devices are labelled by node.nick, then description, then name, and listed in the PipeWire
+  service's order rather than registry order, so two inputs can swap places.
 - Display: brightness comes from the shell's brightness service, which has no "detecting" signal, so "Look
   again" shows its busy label for 4 s. A DDC monitor's name is its Wayland output model rather than ddcutil's
   model. The gaps override is applied by `kusanagi::wm` (wm_layout.h) on startup and on every windows.* change,
@@ -260,5 +245,4 @@ native/tools/kdev/kin <slot> click X Y wait 500 type text key Return scroll X Y 
 - Settings > Bar: the preview draws the bar's native module widgets, so it shows what the native bar shows
   (e.g. the tray and taskbar widgets: no window titles in the Taskbar template's preview, the native network
   glyph). The raw JSON box lists keys sorted rather than in insertion order, in the look font rather than
-  JetBrainsMono, with a line step about 1 px larger. The QML preview loses one 1 px separator to its scaling;
-  the native one draws both.
+  JetBrainsMono.

@@ -81,8 +81,7 @@ edit the files yourself. [The bar guide](docs/bar.md) covers formats, modules an
 ## Working on it
 
 The native shell is in `native/`; `bin/kusanagi` is the command that starts and controls it.
-`lib/` and `scripts/` contain the system helpers. The older Quickshell engine remains in
-`shell/` and can be selected with `kusanagi engine qml` if Quickshell is installed.
+`lib/` and `scripts/` contain the system helpers.
 
 [Build notes](native/BUILDING.md) | [Architecture](docs/native.md) |
 [Contributing](CONTRIBUTING.md) | [Packaging](packaging/README.md)

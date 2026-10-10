@@ -1,11 +1,9 @@
 #!/bin/bash
-# kt <slot> up|down|restart|shot <png>|msg <ipc command...>|log|qml-shot <png> ['target fn'...]
+# kt <slot> up|down|restart|shot <png>|msg <ipc command...>|log
 #   A private headless mango (1920x1080) + the native kusanagi-shell with a copy of your Kusanagi
 #   settings (HOME=/tmp/kusanagi-dev/home<slot>). Nothing touches the real desktop.
-#   qml-shot: the QML Kusanagi (a copy of ~/kusanagi/shell) on the same kind of output, for comparison;
-#   each 'target fn' is sent over its IPC (2.5 s apart) before the screenshot.
-# KT_BUS=1 kt <slot> ...: run the shells on a private session bus ($D/bus, no service activation) so
-#   their notification servers can register; `kt <slot> notify <notify-send args...>` posts on it.
+# KT_BUS=1 kt <slot> ...: run the shell on a private session bus ($D/bus, no service activation) so
+#   its notification server can register; `kt <slot> notify <notify-send args...>` posts on it.
 set -u
 ROOT=$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)
 N=$1; shift
@@ -63,15 +61,5 @@ case "${1:-}" in
   shot) WAYLAND_DISPLAY=wayland-0 timeout 5 grim -o HEADLESS-1 "$2" && echo "$2" ;;
   msg) shift; WAYLAND_DISPLAY=wayland-0 $ROOT/build/kusanagi-shell msg "$@" ;;
   log) cat $D/shell.log ;;
-  qml-shot)
-    shell_down; mango_up; bus_up
-    rm -rf $D/qml; cp -r "$(getent passwd "$(id -un)" | cut -d: -f6)/kusanagi/shell" $D/qml
-    # the copy must never register a real polkit agent on the shared system bus (Config's default applies
-    # before settings.json loads)
-    sed -i 's/active: Config.polkit.enabled \&\& root.attempt/active: false/' $D/qml/Polkit.qml
-    WAYLAND_DISPLAY=wayland-0 MANGO_INSTANCE_SIGNATURE=$(sig) QSG_RHI_BACKEND=vulkan PATH=$B/nobin:$PATH setsid qs -p $D/qml > $D/qml.log 2>&1 & q=$!
-    sleep 6; shift; out=$1; shift
-    for c in "$@"; do WAYLAND_DISPLAY=wayland-0 qs -p $D/qml ipc call $c >/dev/null 2>&1; sleep 2.5; done
-    WAYLAND_DISPLAY=wayland-0 timeout 5 grim -o HEADLESS-1 "$out"; kill $q; echo "$out" ;;
   *) sed -n '2,6p' "$0" ;;
 esac

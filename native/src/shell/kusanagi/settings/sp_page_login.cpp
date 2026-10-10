@@ -1,8 +1,6 @@
 // Settings > Login screen: Kusanagi as the greetd greeter. Actions go through `kusanagi greeter`; install
 // and uninstall need sudo, so they run in a terminal.
 
-#include "core/deferred_call.h"
-#include "core/process/process.h"
 #include "shell/kusanagi/kusanagi_ipc.h"
 #include "shell/kusanagi/settings/sp_kit.h"
 #include "shell/kusanagi/settings/sp_pages.h"
@@ -26,12 +24,6 @@ namespace kusanagi::sp {
       return ss.str();
     }
 
-    std::string trimmed(std::string s) {
-      s.erase(0, s.find_first_not_of(" \t\r\n"));
-      s.erase(s.find_last_not_of(" \t\r\n") + 1);
-      return s;
-    }
-
     // Parsed from /etc/greetd/config.toml (world-readable): is greetd set up, and what does it run.
     struct Greetd {
       std::string text;
@@ -50,18 +42,13 @@ namespace kusanagi::sp {
     struct State {
       Greetd greetd;
       std::string note;
-      std::string pendingEngine; // Picked, but the CLI hasn't answered yet.
     };
 
-    std::string configDir() {
-      const char* xdg = std::getenv("XDG_CONFIG_HOME");
-      return (xdg != nullptr && *xdg != '\0' ? std::string(xdg) : expandHome("~/.config")) + "/kusanagi";
-    }
-
-    // `kusanagi greeter engine` prints qml (the default) or native.
-    std::string engine() {
-      const std::string e = trimmed(readFile(configDir() + "/greeter-engine"));
-      return e.empty() ? "qml" : e;
+    // Launchers written before 0.3.0 run the old QML login screen; `kusanagi greeter install` replaces them.
+    // The current one carries this word (lib/greeter.sh writes it).
+    bool launcherOutdated() {
+      const std::string l = readFile("/usr/local/bin/kusanagi-greeter");
+      return !l.empty() && l.find("kusanagi-greeter-native") == std::string::npos;
     }
 
     // Installed Wayland sessions, sorted by file name: value is the file stem, label is its Name=.
@@ -106,7 +93,7 @@ namespace kusanagi::sp {
       return true;
     };
     readConf();
-    // Watch the greetd config and the engine file the CLI writes.
+    // Watch the greetd config.
     page.add<Poll>(2000, [readConf]() {
       (void)readConf();
       refresh();
@@ -123,6 +110,9 @@ namespace kusanagi::sp {
     {
       auto* g = page.add<Group>("Login screen", std::string(), 0xf0004);
       g->bindHint([st]() -> std::string {
+        if (st->greetd.installed() && launcherOutdated()) {
+          return "The installed login screen is the old QML one. Update it once (asks for your password) to get the native one.";
+        }
         if (st->greetd.installed()) return "Kusanagi greets you when you log in — your lock screen design, with you and your session to pick.";
         if (st->greetd.has()) {
           return "greetd (your login daemon) uses \"" + st->greetd.current() + "\" now. Kusanagi can be the login screen instead.";
@@ -134,6 +124,10 @@ namespace kusanagi::sp {
           ->onWhen([]() { return true; })
           ->onClick([]() { inTerminal(cliCommand() + " greeter install"); })
           ->showIf([st]() { return st->greetd.has() && !st->greetd.installed(); });
+      flow->add<Chip>("Update the login screen…", 0xf0415)
+          ->onWhen([]() { return true; })
+          ->onClick([]() { inTerminal(cliCommand() + " greeter install"); })
+          ->showIf([st]() { return st->greetd.installed() && launcherOutdated(); });
       flow->add<Chip>("Preview", 0xf0208)->onClick([run]() { run({"preview"}, ""); });
       flow->add<Chip>("Sync now", 0xf0450)
           ->onClick([run]() { run({"sync"}, "Synced — it shows your current design, colours and wallpaper."); })
@@ -191,40 +185,6 @@ namespace kusanagi::sp {
       const char* user = std::getenv("USER");
       g->add<Row>("User", "blank: the first person on this machine",
                   textField("greeter.user", 200.0F, user != nullptr ? user : "", true));
-
-      // Which program draws the login screen (`kusanagi greeter engine qml|native`).
-      g->add<Row>("Engine", "native = kusanagi-shell --greeter (falls back to the QML one if it can't start)",
-                  std::make_unique<Segmented>(
-                      Binding{
-                          .get = [st]() -> json { return st->pendingEngine.empty() ? engine() : st->pendingEngine; },
-                          .set = [st](const json& v) {
-                            if (!v.is_string()) return;
-                            std::weak_ptr<State> weak = st;
-                            st->pendingEngine = v.get<std::string>();
-                            const bool started = process::runAsync(
-                                std::vector<std::string>{cliCommand(), "greeter", "engine", v.get<std::string>()},
-                                process::RunCallbacks{
-                                    .onExit = [weak](process::RunResult r) {
-                                      // The CLI's answer: the new engine, what to run next, or why it failed.
-                                      std::string msg;
-                                      std::istringstream in(trimmed(r.out + "\n" + r.err));
-                                      for (std::string l; std::getline(in, l);) {
-                                        l = trimmed(l);
-                                        if (!l.empty()) msg += (msg.empty() ? "" : " · ") + l;
-                                      }
-                                      DeferredCall::callLater([weak, msg]() {
-                                        auto s = weak.lock();
-                                        if (!s) return;
-                                        s->note = msg;
-                                        s->pendingEngine.clear();
-                                        refresh();
-                                      });
-                                    },
-                                });
-                            if (!started) st->pendingEngine.clear();
-                          },
-                      },
-                      std::vector<Option>{{"QML", "qml"}, {"Native", "native"}}, 240.0F));
     }
   }
 

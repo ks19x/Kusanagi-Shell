@@ -2,16 +2,18 @@
 # greeter.sh — Kusanagi's login screen for greetd. Used by `kusanagi greeter <cmd>`:
 #   install     (asks for sudo once) cage if missing, /var/lib/kusanagi-greeter, the kusanagi-greeter
 #               launcher, greetd's config pointed at it (the old one kept as config.toml.pre-kusanagi)
-#   sync        copy the shell, your settings, colours, wallpaper and picture where the greeter reads them
+#   sync        copy kusanagi-shell and its assets, your settings, colours, wallpaper and picture where the
+#               greeter reads them
 #   preview     the login screen in a window (logs nobody in)
-#   (engine)    which one runs: greeter.qml (qs) or the native `kusanagi-shell --greeter` (opt-in, stored in
-#               ~/.config/kusanagi/greeter-engine by `kusanagi greeter engine`; sync copies the binary over)
 #   status      installed? synced?
 #   uninstall   (sudo) greetd back to exactly what it was before
-# The greeter runs as greetd's greeter user inside cage with HOME=/var/lib/kusanagi-greeter; that folder
-# is yours (group: the greeter user, read-only for it), so syncing never needs root.
+# The login screen is `kusanagi-shell --greeter` in cage, run as greetd's greeter user with
+# HOME=/var/lib/kusanagi-greeter; that folder is yours (group: the greeter user, read-only for it), so
+# syncing never needs root.
 # If it can't start, the launcher falls back to the greeter greetd had before (agreety …): you can
 # always log in. TTY logins (Ctrl+Alt+F1 / F2) are untouched.
+# Launchers written before 0.3.0 run the old QML login screen from $D/shell. sync never touches that copy
+# while one of them is installed, so the login keeps working until `kusanagi greeter install` replaces it.
 set -u
 
 # (KG_* override the paths, and KG_TEST=1 skips the root checks — only for testing this script)
@@ -24,6 +26,10 @@ die() { echo "kusanagi greeter: $*" >&2; exit 1; }
 # the value of `key` inside [section] of greetd's config
 toml_get() { sed -n "/^\[$1\]/,/^\[/{s/^[[:space:]]*$2[[:space:]]*=[[:space:]]*\"\(.*\)\"[[:space:]]*$/\1/p}" "$CONF" | head -1; }
 installed() { [ -f "$CONF" ] && [ "$(toml_get default_session command)" = "kusanagi-greeter" ]; }
+# the launcher root_install writes says this word; older ones (QML login screen) don't
+MARK=kusanagi-greeter-native
+launcher_current() { [ -f "$LAUNCHER" ] && grep -qF "$MARK" "$LAUNCHER"; }
+launcher_outdated() { [ -f "$LAUNCHER" ] && ! grep -qF "$MARK" "$LAUNCHER"; }
 
 pkg_install() {   # pkg_install <name> — with whatever this distro uses
     if command -v xbps-install >/dev/null; then xbps-install -y "$1"
@@ -59,8 +65,8 @@ root_install() {
     cat > "$LAUNCHER" <<EOF
 #!/bin/sh
 # kusanagi-greeter — Kusanagi's login screen for greetd (written by \`kusanagi greeter install\`).
-# Runs the shell's greeter.qml in cage (or first the native kusanagi-shell --greeter, when that's the
-# engine picked); if that can't start, the previous greeter takes over.
+# $MARK: runs kusanagi-shell --greeter in cage; if that can't start, the previous greeter takes over.
+# (\`kusanagi greeter sync\` looks for that word to tell this launcher from older ones.)
 D=$D
 # a readable note of what happened at the last start (for \`kusanagi greeter status\`), and the
 # greeter's own output — both in /tmp: the runtime folder can vanish under us at boot
@@ -89,34 +95,16 @@ chmod 700 "\$XDG_RUNTIME_DIR"; export XDG_RUNTIME_DIR
 # the greeter user can only read \$D: caches and state go in the runtime folder
 R=\$XDG_RUNTIME_DIR/kusanagi-greeter
 mkdir -p "\$R" || note "can't create \$R"
-export HOME=\$D XDG_CONFIG_HOME=\$D/.config XDG_CACHE_HOME=\$R/cache XDG_STATE_HOME=\$R/state QSG_RENDER_LOOP=threaded
+export HOME=\$D XDG_CONFIG_HOME=\$D/.config XDG_CACHE_HOME=\$R/cache XDG_STATE_HOME=\$R/state
 export KUSANAGI_GREETER_MARK=\$R/launched
 
-# the native login screen, when it's the one picked (kusanagi greeter engine native). One try: if it
-# can't start, or dies before handing a session over, the QML one below takes over
-if [ "\$(cat "\$D/engine" 2>/dev/null)" = native ] && [ -x "\$D/native/kusanagi-shell" ] && command -v cage >/dev/null; then
-    waitready
-    rm -f "\$KUSANAGI_GREETER_MARK"
-    t0=\$(date +%s)
-    note "native: starting cage + kusanagi-shell --greeter"
-    cage -s -- "\$D/native/kusanagi-shell" --greeter >"\$OUT" 2>&1
-    rc=\$?
-    note "cage exited \$rc after \$(( \$(date +%s) - t0 )) s"
-    sleep 0.2
-    [ -f "\$KUSANAGI_GREETER_MARK" ] && exit 0
-    [ \$rc -eq 0 ] && [ \$(( \$(date +%s) - t0 )) -gt 3 ] && exit 0
-    tail -n 25 "\$OUT" | sed 's/^/    /' >> "\$NOTE" 2>/dev/null
-    note "the native login screen failed: the QML one takes over"
-    sleep 1
-fi
-
-if [ -f "\$D/shell/greeter.qml" ] && command -v cage >/dev/null && command -v qs >/dev/null; then
+if [ -x "\$D/native/kusanagi-shell" ] && command -v cage >/dev/null; then
     for try in 1 2 3; do
         waitready
         rm -f "\$KUSANAGI_GREETER_MARK"
         t0=\$(date +%s)
-        note "try \$try: starting cage + qs"
-        cage -s -- qs -p "\$D/shell/greeter.qml" >"\$OUT" 2>&1
+        note "try \$try: starting cage + kusanagi-shell --greeter"
+        cage -s -- "\$D/native/kusanagi-shell" --greeter >"\$OUT" 2>&1
         rc=\$?
         note "cage exited \$rc after \$(( \$(date +%s) - t0 )) s"
         sleep 0.2
@@ -128,7 +116,7 @@ if [ -f "\$D/shell/greeter.qml" ] && command -v cage >/dev/null && command -v qs
         sleep 2
     done
 else
-    note "not starting: greeter.qml \$([ -f "\$D/shell/greeter.qml" ] && echo ok || echo missing), cage \$(command -v cage || echo missing), qs \$(command -v qs || echo missing)"
+    note "not starting: kusanagi-shell \$([ -x "\$D/native/kusanagi-shell" ] && echo ok || echo 'missing (kusanagi greeter sync)'), cage \$(command -v cage || echo missing)"
 fi
 # cage can leave the screen in graphics mode: back to text, or the fallback is an invisible prompt
 python3 -c 'import os, fcntl; fd = os.open("/dev/tty", os.O_RDWR); fcntl.ioctl(fd, 0x4B3A, 0)' 2>/dev/null
@@ -152,43 +140,43 @@ root_uninstall() {
 }
 
 # ---------------- your part ----------------
-sync_greeter() {   # sync_greeter <shell dir> [-q]
-    src=$1; quiet=${2:-}
+sync_greeter() {   # sync_greeter [-q]
+    quiet=${1:-}
     [ -d "$D" ] && [ -w "$D" ] || die "not installed yet — run: kusanagi greeter install"
     cfg=${XDG_CONFIG_HOME:-$HOME/.config}/kusanagi
     mkdir -p "$D/.config/kusanagi" "$D/faces"
-    # the shell: replaced whole, so a half-copied one is never what the greeter loads
-    rm -rf "$D/shell.new" && cp -r "$src" "$D/shell.new" && rm -rf "$D/shell" && mv "$D/shell.new" "$D/shell"
     # the wallpaper the greeter shows: a copy (yours lives in your home, which it can't read)
     wall=$(cat "$cfg/wallpaper" 2>/dev/null)
     gwall=""
     if [ -n "$wall" ] && [ -f "$wall" ]; then gwall="$D/wallpaper.${wall##*.}"; rm -f "$D"/wallpaper.*; cp "$wall" "$gwall"; fi
     printf '%s\n' "$gwall" > "$D/.config/kusanagi/wallpaper"
     [ -f "$cfg/colors.json" ] && cp "$cfg/colors.json" "$D/.config/kusanagi/colors.json"
-    # the engine (kusanagi greeter engine): the native one runs a copy of kusanagi-shell and its assets.
-    # KG_NATIVE_BIN is the binary `kusanagi` runs; it's big, so it's only copied when it changed.
-    engine=$(cat "$cfg/greeter-engine" 2>/dev/null || { command -v qs >/dev/null && echo qml || echo native; }); [ "$engine" = native ] || engine=qml
-    if [ "$engine" = native ]; then
-        bin=${KG_NATIVE_BIN:-$(command -v kusanagi-shell 2>/dev/null || echo "$src/../native/build/kusanagi-shell")}
-        assets=""
-        for a in "$(dirname "$bin")/assets" "$(dirname "$bin")/../assets" "$(dirname "$bin")/../share/kusanagi/assets"; do
-            [ -f "$a/translations/en.json" ] && { assets=$a; break; }
-        done
-        if [ ! -x "$bin" ] || [ -z "$assets" ]; then
-            echo "kusanagi greeter: the native login screen isn't built ($bin) — the QML one stays" >&2
-            engine=qml
-        elif ! "$bin" --greeter --probe >/dev/null 2>&1; then
-            echo "kusanagi greeter: $bin has no native login screen yet (rebuild / reinstall it) — the QML one stays" >&2
-            engine=qml
-        elif ! cmp -s "$bin" "$D/native/kusanagi-shell" || [ ! -d "$D/native/assets" ]; then
-            rm -rf "$D/native.new" && mkdir -p "$D/native.new" && cp "$bin" "$D/native.new/kusanagi-shell" \
-                && cp -r "$assets" "$D/native.new/assets" \
-                && rm -rf "$D/native" && mv "$D/native.new" "$D/native" \
-                || { echo "kusanagi greeter: couldn't copy the native login screen — the QML one stays" >&2; engine=qml; }
-        fi
+    # the login screen: a copy of kusanagi-shell and its assets. KG_NATIVE_BIN is the binary `kusanagi`
+    # runs; it's big, so it's only copied when it changed. A failed copy keeps the last good one.
+    bin=${KG_NATIVE_BIN:-$(command -v kusanagi-shell 2>/dev/null)}
+    assets=""
+    [ -n "$bin" ] && for a in "$(dirname "$bin")/assets" "$(dirname "$bin")/../assets" "$(dirname "$bin")/../share/kusanagi/assets"; do
+        [ -f "$a/translations/en.json" ] && { assets=$a; break; }
+    done
+    if [ -z "$bin" ] || [ ! -x "$bin" ] || [ -z "$assets" ]; then
+        echo "kusanagi greeter: kusanagi-shell isn't built${bin:+ ($bin)}, so the login screen's copy isn't updated" >&2
+    elif ! "$bin" --greeter --probe >/dev/null 2>&1; then
+        echo "kusanagi greeter: $bin has no login screen (rebuild / reinstall it), so the login screen's copy isn't updated" >&2
+    elif ! cmp -s "$bin" "$D/native/kusanagi-shell" || [ ! -d "$D/native/assets" ]; then
+        rm -rf "$D/native.new" && mkdir -p "$D/native.new" && cp "$bin" "$D/native.new/kusanagi-shell" \
+            && cp -r "$assets" "$D/native.new/assets" \
+            && rm -rf "$D/native" && mv "$D/native.new" "$D/native" \
+            || { rm -rf "$D/native.new"; echo "kusanagi greeter: couldn't copy kusanagi-shell to $D/native" >&2; }
     fi
-    [ "$engine" = native ] || rm -rf "$D/native" "$D/native.new"
-    echo "$engine" > "$D/engine"
+    have_native=0; [ -x "$D/native/kusanagi-shell" ] && [ -d "$D/native/assets" ] && have_native=1
+    if launcher_current; then
+        # the QML copy and engine note were only for older launchers
+        rm -rf "$D/shell" "$D/shell.new" "$D/engine"
+    elif [ -f "$LAUNCHER" ]; then
+        # an older launcher: it runs the native login screen first when $D/engine says so, else the QML
+        # copy in $D/shell, which stays exactly as it is
+        if [ $have_native = 1 ]; then echo native; else echo qml; fi > "$D/engine"
+    fi
     # settings: yours, with the login screen's own design (if you picked one) as the lock style
     last=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/kusanagi/last-session" 2>/dev/null)
     python3 -I - "$cfg/settings.json" "$D/.config/kusanagi/settings.json" "$last" "$(id -un)" <<'PY'
@@ -208,12 +196,18 @@ PY
     [ -f "$HOME/.face" ] && cp "$HOME/.face" "$D/faces/$(id -un)"
     chmod -R g+rX "$D"
     [ -n "$quiet" ] || echo "login screen synced ($D)"
+    # an older launcher still has its QML copy to show; the current one would fall back to greetd's old greeter
+    if [ $have_native = 0 ] && ! { launcher_outdated && [ -f "$D/shell/greeter.qml" ]; }; then
+        echo "kusanagi greeter: there's no login screen in $D/native yet; greetd falls back to its old greeter" >&2
+        return 1
+    fi
 }
 
 case "${1:-}" in
     root-install)   root_install "${2:-}" ;;
     root-uninstall) root_uninstall ;;
-    sync)           sync_greeter "$2" "${3:-}" ;;
+    sync)           sync_greeter "${2:-}" ;;
     installed)      installed ;;
+    launcher-outdated) launcher_outdated ;;
     *)              die "internal: $*" ;;
 esac

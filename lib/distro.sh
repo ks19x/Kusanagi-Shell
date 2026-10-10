@@ -12,7 +12,7 @@
 #                                           services that exists for this init ("" = already on, exit 1 = none)
 # Sourced (. lib/distro.sh) it only defines FAM, ARTIX, D_ID and pkg() — the installer uses that.
 # Testing: KUSANAGI_OS_RELEASE=<fake os-release>, KUSANAGI_INIT=<init>, KUSANAGI_UPDATES_TIMEOUT=<s>.
-# Logical names: shell-build quickshell python magick wl-clipboard cliphist grim slurp gammastep gamemode swappy foot
+# Logical names: shell-build python magick wl-clipboard cliphist grim slurp gammastep gamemode swappy foot
 # font nm pavucontrol hyprlock libnotify pipewire portal seat wtype wf-recorder gpu-screen-recorder polkit
 # fd checkupdates mango hyprland niri sway labwc kde (KDE Plasma / KWin) dwl ddcutil bluez gi (PyGObject)
 
@@ -54,7 +54,6 @@ pkg() {
         arch:shell-build) echo "base-devel meson ninja wayland wayland-protocols libglvnd freetype2 fontconfig cairo pango harfbuzz libxkbcommon glib2 libsecret libsodium sdbus-cpp libpipewire wireplumber polkit pam curl libwebp libjxl libsndfile librsvg libqalculate libxml2 md4c tomlplusplus nlohmann-json stb jemalloc libical" ;;
         fedora:shell-build) echo "meson ninja-build gcc-c++ wayland-devel wayland-protocols-devel libEGL-devel mesa-libGLES-devel freetype-devel fontconfig-devel cairo-devel pango-devel harfbuzz-devel libxkbcommon-devel glib2-devel libsecret-devel libsodium-devel sdbus-cpp-devel pipewire-devel wireplumber-devel pam-devel polkit-devel libcurl-devel libwebp-devel libjxl-devel libsndfile-devel librsvg2-devel libqalculate-devel libxml2-devel md4c-devel tomlplusplus-devel json-devel stb_image_resize2-devel stb_image_write-devel jemalloc-devel libical-devel" ;;
         debian:shell-build) echo "build-essential meson ninja-build pkg-config libwayland-dev wayland-protocols libfreetype-dev libfontconfig-dev libcairo2-dev libpango1.0-dev librsvg2-dev libxkbcommon-dev libepoxy-dev libgles-dev libwebp-dev libjxl-dev libsndfile1-dev libcurl4-gnutls-dev libmd4c-dev nlohmann-json3-dev libsdbus-c++-dev libsecret-1-dev libsodium-dev libstb-dev libtomlplusplus-dev libpipewire-0.3-dev libpam0g-dev libpolkit-agent-1-dev libpolkit-gobject-1-dev libqalculate-dev libwireplumber-0.5-dev libxml2-dev libjemalloc-dev libical-dev" ;;
-        arch:quickshell) echo quickshell ;;            void:quickshell) echo quickshell ;;
         arch:python) echo python ;;                    void:python) echo python3 ;;
         arch:magick) echo imagemagick ;;               void:magick) echo ImageMagick ;;
         arch:font) echo ttf-jetbrains-mono-nerd ;;     void:font) echo nerd-fonts-ttf ;;
@@ -68,15 +67,15 @@ pkg() {
         arch:portal|void:portal) echo "xdg-desktop-portal-gtk" ;;
         arch:seat) [ $ARTIX = 1 ] && echo "elogind elogind-$INIT dbus-$INIT" || echo "" ;;
         void:seat) echo "elogind dbus" ;;
-        fedora:quickshell) echo quickshell ;;          fedora:python) echo python3 ;;
-        fedora:magick) echo ImageMagick ;;             fedora:font) echo "" ;;
+        fedora:python) echo python3 ;;                 fedora:magick) echo ImageMagick ;;
+        fedora:font) echo "" ;;
         fedora:nm) echo NetworkManager ;;              fedora:mango) echo "" ;;
         fedora:hyprland) echo "hyprland xdg-desktop-portal-hyprland" ;;
         fedora:niri) echo "niri xdg-desktop-portal-gnome xwayland-satellite" ;;
         fedora:pipewire) echo "pipewire wireplumber" ;; fedora:portal) echo "xdg-desktop-portal-gtk" ;;
         fedora:seat) echo "" ;;
-        gentoo:quickshell) echo gui-apps/quickshell ;; gentoo:python) echo dev-lang/python ;;
-        gentoo:magick) echo media-gfx/imagemagick ;;   gentoo:font) echo "" ;;
+        gentoo:python) echo dev-lang/python ;;         gentoo:magick) echo media-gfx/imagemagick ;;
+        gentoo:font) echo "" ;;
         gentoo:nm) echo net-misc/networkmanager ;;     gentoo:mango) echo "" ;;
         gentoo:hyprland) echo gui-wm/hyprland ;;       gentoo:niri) echo gui-wm/niri ;;
         gentoo:pipewire) echo "media-video/pipewire media-video/wireplumber" ;; gentoo:portal) echo sys-apps/xdg-desktop-portal-gtk ;;
@@ -85,8 +84,8 @@ pkg() {
         debian:nm) echo network-manager ;;             debian:pipewire) echo "pipewire wireplumber" ;;
         debian:portal) echo xdg-desktop-portal-gtk ;;  debian:niri) echo niri ;;
         debian:hyprland) echo hyprland ;;              debian:libnotify) echo libnotify-bin ;;
-        suse:quickshell) echo quickshell ;;            suse:python) echo python3 ;;
-        suse:magick) echo ImageMagick ;;               suse:nm) echo NetworkManager ;;
+        suse:python) echo python3 ;;                   suse:magick) echo ImageMagick ;;
+        suse:nm) echo NetworkManager ;;
         suse:pipewire) echo "pipewire wireplumber" ;;  suse:portal) echo xdg-desktop-portal-gtk ;;
         suse:niri) echo niri ;;                        suse:hyprland) echo hyprland ;;
         alpine:python) echo python3 ;;                 alpine:magick) echo imagemagick ;;
@@ -94,7 +93,7 @@ pkg() {
         alpine:hyprland) echo "hyprland xdg-desktop-portal-hyprland" ;; alpine:niri) echo niri ;;
         alpine:pipewire) echo "pipewire wireplumber" ;; alpine:portal) echo xdg-desktop-portal-gtk ;;
         alpine:seat) echo seatd ;;
-        *:shell-build|*:quickshell|*:python|*:magick|*:font|*:nm|*:mango|*:hyprland|*:niri|*:pipewire|*:portal|*:seat) echo "" ;;
+        *:shell-build|*:python|*:magick|*:font|*:nm|*:mango|*:hyprland|*:niri|*:pipewire|*:portal|*:seat) echo "" ;;
         # more compositors (each with its desktop portal); dwl is configured by editing config.h, so most
         # people build it from source — the package gives you dwl's default keys only
         gentoo:sway) echo "gui-wm/sway gui-libs/xdg-desktop-portal-wlr" ;;
@@ -136,7 +135,6 @@ _d_su() { if [ "$(id -u)" = 0 ]; then echo ""; elif _d_have doas; then echo "doa
 _d_hint() {
     case "$1" in
         shell-build)         echo "Kusanagi's build packages aren't listed for $FAM — install meson, ninja, a C++23 compiler and the libraries in native/meson.build, then: sh lib/build-native.sh" ;;
-        quickshell)          echo "quickshell isn't packaged on $FAM — build it from source: https://quickshell.org/docs/guide/install-setup/" ;;
         gpu-screen-recorder) echo "gpu-screen-recorder isn't packaged on $FAM — use the Flatpak: flatpak install flathub com.dec05eba.gpu_screen_recorder" ;;
         font)                echo "no Nerd Font package on $FAM — get JetBrainsMono Nerd Font from https://www.nerdfonts.com/font-downloads into ~/.local/share/fonts, then: fc-cache -f" ;;
         mango)               echo "mango isn't packaged on $FAM — build it from source: https://github.com/DreamMaoMao/mangowc" ;;
@@ -158,11 +156,9 @@ install_cmd() {
 # $h"; continue; fi
         pk="$pk $p"
         case "$FAM:$w" in
-            fedora:quickshell) notes="$notes
-# quickshell comes from COPR first: ${su}dnf copr enable errornointernet/quickshell" ;;
             fedora:hyprland)   notes="$notes
 # hyprland comes from COPR first: ${su}dnf copr enable solopasha/hyprland" ;;
-            gentoo:quickshell|gentoo:niri|gentoo:cliphist) notes="$notes
+            gentoo:niri|gentoo:cliphist) notes="$notes
 # $w is in the GURU overlay: ${su}eselect repository enable guru && ${su}emaint sync -r guru" ;;
         esac
     done

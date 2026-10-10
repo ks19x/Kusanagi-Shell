@@ -42,7 +42,6 @@ optdepends=(
   'foot: a terminal'
   'greetd: the Kusanagi login screen'
   'cage: the Kusanagi login screen'
-  'quickshell: the legacy QML engine (kusanagi engine qml)'
   'mangowm: a compositor Kusanagi sets up'
   'hyprland: a compositor Kusanagi sets up'
   'niri: a compositor Kusanagi sets up'
