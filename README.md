@@ -140,3 +140,8 @@ contents only exist while open; the wallpaper is kept as a GPU texture only; jem
 freed memory immediately, and Qt draws through Vulkan when there's a hardware Vulkan driver — the same
 pixels as OpenGL for ~11 MB less RAM and ~25% less CPU while things animate (it falls back to OpenGL by
 itself if Vulkan doesn't work; `KUSANAGI_RENDERER=opengl` forces it; see `bin/kusanagi`).
+
+## License
+
+MIT, see [LICENSE](LICENSE). Bundled third-party code keeps its own notices: see
+[native/THIRD_PARTY_LICENSES](native/THIRD_PARTY_LICENSES).
