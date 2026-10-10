@@ -35,11 +35,15 @@ if [ -d "$preferred" ]; then
     host_has "$name" || missing="$missing $name"
   done
   if [ -n "$missing" ]; then
-    # one folder per extracted copy, holding links to just the libraries this system lacks
+    # One folder per extracted copy, holding links to just the libraries this system lacks. Several
+    # launches can run at once (the shell and a `msg`), so only ever add or replace links here.
     key=$(printf '%s' "$bundle" | cksum | cut -d' ' -f1)
     dir="${XDG_RUNTIME_DIR:-/tmp}/kusanagi-portable-$(id -u)-$key"
-    rm -rf "$dir" && mkdir -p "$dir"
-    for name in $missing; do ln -s "$preferred/$name" "$dir/$name"; done
+    mkdir -p "$dir"
+    for name in $missing; do ln -sfn "$preferred/$name" "$dir/$name"; done
+    for link in "$dir"/*; do
+      case " $missing " in *" ${link##*/} "*) ;; *) rm -f "$link" ;; esac
+    done
     export LD_LIBRARY_PATH="$dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
   fi
 fi

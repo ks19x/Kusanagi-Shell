@@ -8,7 +8,7 @@ export XDG_STATE_HOME="$work/state" XDG_SESSION_TYPE=wayland
 mkdir -p "$XDG_RUNTIME_DIR" "$XDG_CONFIG_HOME/kusanagi"
 chmod 700 "$XDG_RUNTIME_DIR"
 printf '{"polkit":{"enabled":false},"idle":{"enabled":false}}\n' > "$XDG_CONFIG_HOME/kusanagi/settings.json"
-printf 'output * mode 1280x720\n' > "$work/sway.conf"
+printf 'output * mode 1280x720\nxwayland disable\n' > "$work/sway.conf"
 compositor= shell_pid=
 cleanup() {
   [ -z "$shell_pid" ] || kill "$shell_pid" 2>/dev/null || true

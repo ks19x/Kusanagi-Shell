@@ -147,7 +147,9 @@ jobs:
           bundle=$(find "$PWD" -maxdepth 1 -type d -name 'kusanagi-*-linux-x86_64')
           useradd --create-home tester
           chmod -R a+rX "$GITHUB_WORKSPACE"
-          runuser -u tester -- dbus-run-session -- timeout 45 \
+          # Some distros give sway file capabilities, which a CI container refuses to exec.
+          install -m 755 "$(command -v sway)" /usr/local/bin/sway
+          runuser -u tester -- env PATH="/usr/local/bin:$PATH" dbus-run-session -- timeout 45 \
             bash "$GITHUB_WORKSPACE/packaging/portable/smoke-session.sh" "$bundle"
 
   publish:
