@@ -132,7 +132,9 @@ h3 { margin: 0 0 28px; font-size: clamp(22px, 3vw, 30px); line-height: 1.25; fon
 .strip img { width: 100%; height: auto; aspect-ratio: auto; object-fit: contain; }
 .strip figcaption, .sidebar-shot figcaption, .designs figcaption { margin-top: 6px; font-size: 13px; color: var(--dim); }
 .strip figcaption b, .sidebar-shot figcaption b, .designs figcaption b { color: var(--text); font-weight: 500; }
-.sidebar-shot { margin: 28px 0 0; max-width: 560px; }
+.sidebar-shot { margin: 28px 0 0; display: flex; align-items: center; gap: 24px; }
+.sidebar-shot img { height: min(520px, 70vh); width: auto; border-radius: 10px; border: 1px solid var(--line); }
+.sidebar-shot figcaption { max-width: 40ch; margin: 0; }
 .designs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 20px; }
 .designs figure { margin: 0; }
 .designs .shot img { aspect-ratio: 16 / 10; object-fit: contain; background: #050506; }
@@ -262,8 +264,9 @@ footer { border-top: 1px solid var(--line); padding-block: 36px 56px; color: var
     <h3>Twenty bar layouts to start from. Every piece of each one is yours to change.</h3>
     <div class="strips" id="strips"></div>
     <figure class="sidebar-shot">
-      <div class="shot"><img loading="lazy" src="shots/bars/sidebar.webp" width="1440" height="810" alt="The Sidebar layout: a vertical bar on the left edge with workspace pills, a turned clock and stacked stats."></div>
-      <figcaption><b>sidebar</b> · vertical bar on the left: pills, turned clock, stacked stats</figcaption>
+      <img loading="lazy" src="shots/bars/sidebar.webp" width="116" height="1080" alt="The Sidebar layout: a vertical bar on the left edge with workspace pills, a turned clock and stacked stats.">
+      <figcaption><b>sidebar</b> · a vertical bar on the left edge: workspace pills, a turned clock, stacked stats.
+        Any layout can sit on the left or right edge instead of the top or bottom.</figcaption>
     </figure>
     <p class="caption" style="min-height:0">Settings has a live editor: drag modules between sections, group them into islands, give each one its own
       colours, caps, gradients, formats, icons and click actions. Layouts live in <code>settings.json</code> as plain data.</p>
