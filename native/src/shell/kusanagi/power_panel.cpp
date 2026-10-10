@@ -319,8 +319,8 @@ void KusanagiPowerPanel::doLayout(Renderer& renderer, float width, float height)
         : current                ? colorSpecFromRole(ColorRole::Primary)
                                  : colorSpecFromRole(ColorRole::OnSurface, b.hovered ? 0.1F : 0.06F);
     const ColorSpec glyphInk = current || armed ? ink : text;
-    const float bx = padH + (list ? 0.0F : i * (bw + spacing));
-    const float by = padV + (list ? i * (bh + spacing) : 0.0F);
+    const float bx = padH + (list ? 0.0F : static_cast<float>(i) * (bw + spacing));
+    const float by = padV + (list ? static_cast<float>(i) * (bh + spacing) : 0.0F);
     b.area->setPosition(bx, by);
     b.area->setSize(bw, bh);
 

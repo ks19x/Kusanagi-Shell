@@ -37,7 +37,8 @@ VirtualKeyboardService::VirtualKeyboardService() = default;
 
 VirtualKeyboardService::~VirtualKeyboardService() { cleanup(); }
 
-bool VirtualKeyboardService::bind(zwp_virtual_keyboard_manager_v1* manager, wl_seat* seat) {
+bool VirtualKeyboardService::bind(zwp_virtual_keyboard_manager_v1* manager, wl_seat* seat, wl_display* display) {
+  m_display = display;
   if (manager == nullptr || seat == nullptr) {
     cleanup();
     return false;
@@ -92,9 +93,8 @@ bool VirtualKeyboardService::sendPasteShortcut(VirtualPasteShortcut shortcut) {
     break;
   }
 
-  auto* display = wl_proxy_get_display(reinterpret_cast<wl_proxy*>(m_keyboard));
-  if (display != nullptr) {
-    (void)wl_display_flush(display);
+  if (m_display != nullptr) {
+    (void)wl_display_flush(m_display);
   }
   return true;
 }
