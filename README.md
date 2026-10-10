@@ -9,7 +9,7 @@ I build and use it on Void. It works with MangoWM, Hyprland, niri, sway and labw
 additional integration for KDE Plasma and dwl. Your compositor still runs the session;
 Kusanagi provides the desktop around it.
 
-[Install](docs/install.md) | [Releases](https://github.com/ks19x/Kusanagi-Shell/releases) |
+[Website](https://ks19x.github.io/Kusanagi-Shell/) | [Install](docs/install.md) | [Releases](https://github.com/ks19x/Kusanagi-Shell/releases) |
 [Bar configuration](docs/bar.md) | [Changelog](CHANGELOG.md) |
 [Issues](https://github.com/ks19x/Kusanagi-Shell/issues)
 
