@@ -13,10 +13,10 @@ depends=(
   'cairo' 'curl' 'fontconfig' 'freetype2' 'gcc-libs' 'glib2' 'glibc' 'harfbuzz' 'jemalloc'
   'libglvnd' 'libical' 'libjxl' 'libpipewire' 'libqalculate' 'librsvg' 'libsecret' 'libsndfile'
   'libsodium' 'libwebp' 'libwireplumber' 'libxkbcommon' 'libxml2' 'md4c' 'pam' 'pango' 'polkit'
-  'sdbus-cpp' 'wayland'
+  'sdbus-cpp' 'tomlplusplus' 'wayland'
   'cliphist' 'grim' 'imagemagick' 'libnotify' 'python' 'slurp' 'ttf-jetbrains-mono-nerd' 'wl-clipboard'
 )
-makedepends=('git' 'meson' 'ninja' 'nlohmann-json' 'stb' 'tomlplusplus' 'wayland-protocols')
+makedepends=('git' 'meson' 'ninja' 'nlohmann-json' 'stb' 'wayland-protocols')
 optdepends=(
   'pipewire: audio (volume, mic, recording sound)'
   'wireplumber: PipeWire session manager'

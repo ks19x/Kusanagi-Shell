@@ -33,6 +33,7 @@ pkgbase = kusanagi-bin
 	depends = pango
 	depends = polkit
 	depends = sdbus-cpp
+	depends = tomlplusplus
 	depends = wayland
 	depends = cliphist
 	depends = grim

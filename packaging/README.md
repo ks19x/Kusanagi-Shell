@@ -36,22 +36,67 @@ starts the shell anyway and shows a notification asking for one `kusanagi` in a 
 `install.sh` leaves `~/.config/kusanagi/.installed`; users who already have a `settings.json` count as set
 up. `kusanagi install` runs the installer again.
 
+## GitHub releases (no AUR account needed)
+
+The release workflow builds on Arch Linux x86_64, then installs the resulting package in a separate,
+fresh Arch container. It verifies all checksums, package file integrity, shared-library resolution
+and `kusanagi-shell --help`. A tagged release is published only after those checks pass.
+This is an installation smoke test, not a graphical-session test.
+
+Each release includes:
+
+- `kusanagi-<version>-x86_64.tar.zst` and its `.sha256`: staged installation tree.
+- `kusanagi-bin-<version>-<pkgrel>-x86_64.pkg.tar.zst`: pacman-installable package.
+- `kusanagi-bin-<version>-recipe.tar.gz`: PKGBUILD with the actual archive checksum, generated
+  `.SRCINFO`, and `kusanagi.install`.
+- `SHA256SUMS`: checksums for all three archives/packages.
+
+`packaging/package-arch.sh [outdir]` creates the pacman package and recipe from the raw archive.
+It requires Arch's `makepkg` and must run as an unprivileged user. The temporary recipe uses the
+locally built archive before the public release URL exists. It skips build-time dependency checks
+because it only copies files; the fresh CI install job resolves and tests runtime dependencies.
+The recipe in the source tree is a template; use the checksum-pinned release recipe for distribution.
+
 ## Cutting a release
 
-1. Bump `VERSION`, note it in `CHANGELOG.md`, commit.
-2. Tag and push: `git tag v$(cat VERSION) && git push origin main v$(cat VERSION)`.
-3. `.github/workflows/release.yml` builds `kusanagi-<version>-x86_64.tar.zst` in an `archlinux` container
-   with `packaging/release.sh` and attaches it and its `.sha256` to the tag's GitHub release (creating
-   the release if there isn't one yet).
-4. In `packaging/aur/kusanagi-bin/PKGBUILD`: set `pkgver`, reset `pkgrel=1`, put the `.sha256` value in
-   `sha256sums_x86_64` (or run `updpkgsums`), then `makepkg --printsrcinfo > .SRCINFO`. Test with
-   `makepkg -si` in a clean chroot or at least a clean checkout.
-5. Push to the AUR (once: an AUR account with your SSH key, then
-   `git clone ssh://aur@aur.archlinux.org/kusanagi-bin.git`): copy `PKGBUILD`, `.SRCINFO` and
-   `kusanagi.install` into that clone, commit, push. `kusanagi-git` only needs a push when its
-   `PKGBUILD` changes.
+1. Set `VERSION`, update `CHANGELOG.md` and the example version in `docs/install.md`. Set the binary
+   PKGBUILD's `pkgver` to match; reset `pkgrel=1` for a new upstream version. Review
+   `packaging/RELEASE_NOTES.md` and commit the release changes.
+2. Push the branch. Run the `release` workflow manually on that branch in GitHub Actions (or
+   `gh workflow run release.yml --ref main`). Manual runs build and test downloadable Actions artifacts
+   without creating a public release. Wait for both `arch` and `install` jobs to succeed.
+3. Tag the tested commit and push the tag:
 
-`packaging/release.sh [outdir]` also works locally (output in `./dist` by default). A binary only runs
-against the libraries it was built with, so the tarball for Arch has to come from Arch (the CI job); one
-built elsewhere is only good for that distro. `KUSANAGI_LTO=0` turns link-time optimization off and
-`KUSANAGI_BUILD_DIR=<dir>` keeps the build for a quicker second run.
+   ```sh
+   git tag "v$(cat VERSION)"
+   git push origin "v$(cat VERSION)"
+   ```
+
+4. Wait for the tagged workflow to succeed. It creates the GitHub release with installation notes
+   and all assets. Download the public assets and verify `SHA256SUMS` before announcing it.
+5. Keep published release archives immutable. For fixes, use a new version/tag rather than replacing
+   binaries behind an existing checksum. Arch library transitions can require a new build.
+
+The build uses two compiler jobs and disables LTO to keep memory usage suitable for hosted runners.
+CPU-specific optimizations are disabled for distributable binaries.
+
+## Publishing to AUR later
+
+Once you have an AUR account with a registered SSH public key:
+
+```sh
+git clone ssh://aur@aur.archlinux.org/kusanagi-bin.git
+```
+
+Extract the release's recipe archive somewhere separate, then copy its `PKGBUILD`, `.SRCINFO` and
+`kusanagi.install` into the AUR clone. Review the version and checksum, test `makepkg -si` on Arch,
+commit those three files and push. Do not commit binary archives to AUR.
+The `kusanagi-git` recipe builds the development branch and has a separate AUR repository.
+
+## Local builds
+
+`packaging/release.sh [outdir]` works locally (output in `./dist` by default). A binary only runs
+against compatible libraries, so the release for Arch must be built on Arch. A build from Void or
+another distribution is not a substitute for the Arch artifact.
+`KUSANAGI_LTO=0` turns link-time optimization off; `KUSANAGI_BUILD_DIR=<dir>` keeps the build directory;
+`KUSANAGI_JOBS=2` limits compiler concurrency.

@@ -70,21 +70,39 @@ Your saved looks: `~/.config/kusanagi/presets.json`.
 
 ## Install
 
-**Arch (AUR):** the prebuilt package, no compiling:
+**Start here: [full installation guide](docs/install.md)** — downloads, first run, compositor
+setup, optional features, updates, troubleshooting and uninstalling.
 
+**Arch Linux, x86_64:** download the `kusanagi-bin-<version>-<pkgrel>-x86_64.pkg.tar.zst`
+package and `SHA256SUMS` from [GitHub Releases](https://github.com/ks19x/Kusanagi-Shell/releases).
+In the download folder, verify and install (replace the filename with the one you downloaded):
+
+```sh
+sha256sum --ignore-missing -c SHA256SUMS
+sudo pacman -Syu
+sudo pacman -U ./kusanagi-bin-<version>-<pkgrel>-x86_64.pkg.tar.zst
+kusanagi
 ```
-yay -S kusanagi-bin          # or paru -S kusanagi-bin · kusanagi-git builds the latest commit
-kusanagi                     # once per user, in a terminal
+
+Check that the package is reported as `OK` before installing. Run `kusanagi` as your regular user
+in a terminal inside your Wayland session. It sets up compositor autostart and keybinds, then opens
+the shell's setup wizard. `kusanagi doctor` explains missing optional features.
+
+**AUR publication is pending.** You do not need an AUR account or helper to use the GitHub package.
+The release also includes a checksum-pinned recipe for `makepkg -si`; see the guide.
+
+**Other distributions and ARM:** build from source using the installer. The prebuilt download is
+built against Arch Linux libraries and is not a universal Linux binary.
+
+```sh
+git clone https://github.com/ks19x/Kusanagi-Shell.git
+cd Kusanagi-Shell
+./install.sh --dry-run
+./install.sh
 ```
 
-The first `kusanagi` in a terminal runs the per-user part of the installer (which compositors start
-Kusanagi, and its keybinds), then starts the shell, whose Setup opens by itself. Started without a
-terminal (a menu, a compositor's autostart) it starts anyway and leaves a notification to run `kusanagi`
-in a terminal once. Again any time: `kusanagi install`. `kusanagi doctor` lists what's missing.
-
-**Other distros:** build it from source with the installer below, or package it: `meson setup build native
---prefix=/usr --buildtype=release -Dtests=disabled -Druntime=true && meson install -C build --destdir
-<pkgdir>` installs everything (see [packaging/README.md](packaging/README.md)).
+The installer presents compositor and keybind choices before making changes. Run it as your regular
+user; it requests elevated privileges for system packages and services when needed.
 
 **From source** (a git checkout; builds `kusanagi-shell` into `~/.local`):
 

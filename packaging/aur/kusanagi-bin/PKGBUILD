@@ -15,7 +15,7 @@ depends=(
   'cairo' 'curl' 'fontconfig' 'freetype2' 'gcc-libs' 'glib2' 'glibc' 'harfbuzz' 'jemalloc'
   'libglvnd' 'libical' 'libjxl' 'libpipewire' 'libqalculate' 'librsvg' 'libsecret' 'libsndfile'
   'libsodium' 'libwebp' 'libwireplumber' 'libxkbcommon' 'libxml2' 'md4c' 'pam' 'pango' 'polkit'
-  'sdbus-cpp' 'wayland'
+  'sdbus-cpp' 'tomlplusplus' 'wayland'
   # what the kusanagi command and the shell run
   'cliphist' 'grim' 'imagemagick' 'libnotify' 'python' 'slurp' 'ttf-jetbrains-mono-nerd' 'wl-clipboard'
 )
