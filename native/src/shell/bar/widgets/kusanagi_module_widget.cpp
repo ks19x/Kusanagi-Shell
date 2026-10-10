@@ -295,6 +295,35 @@ namespace {
     return std::regex_replace(out, fontClose, "</span>");
   }
 
+  std::string stripTags(std::string_view s) {
+    std::string out;
+    bool inTag = false;
+    for (const char c : s) {
+      if (c == '<') inTag = true;
+      else if (c == '>') inTag = false;
+      else if (!inTag) out += c;
+    }
+    return out;
+  }
+
+  // One codepoint (plus an optional variation selector) from the private use areas or the symbol
+  // blocks (arrows through dingbats and misc symbols), e.g. a Nerd Font icon or the power sign.
+  bool isLoneIconGlyph(std::string_view s) {
+    std::vector<char32_t> cps;
+    for (std::size_t i = 0; i < s.size();) {
+      const auto b = static_cast<unsigned char>(s[i]);
+      const int len = b < 0x80 ? 1 : (b & 0xE0) == 0xC0 ? 2 : (b & 0xF0) == 0xE0 ? 3 : 4;
+      if (i + static_cast<std::size_t>(len) > s.size()) return false;
+      char32_t cp = len == 1 ? b : len == 2 ? (b & 0x1FU) : len == 3 ? (b & 0x0FU) : (b & 0x07U);
+      for (int k = 1; k < len; ++k) cp = (cp << 6) | (static_cast<unsigned char>(s[i + static_cast<std::size_t>(k)]) & 0x3FU);
+      if (cp != 0xFE0E && cp != 0xFE0F) cps.push_back(cp);
+      i += static_cast<std::size_t>(len);
+    }
+    if (cps.size() != 1) return false;
+    const char32_t cp = cps[0];
+    return (cp >= 0x2190 && cp <= 0x2BFF) || (cp >= 0xE000 && cp <= 0xF8FF) || cp >= 0xF0000;
+  }
+
   // Fills in {var}, {var:N} (pad left) and {var:-N} (pad right).
   std::string render(const std::string& fmt, const json& vars) {
     static const std::regex token("\\{(\\w+)(?::(-?\\d+))?\\}");
@@ -1191,6 +1220,16 @@ void KusanagiModuleWidget::doUpdate(Renderer& renderer) {
       markup = "<span line_height=\"" + std::to_string(std::lround(pitch * 1024.0F * renderer.renderScale())) + "\">" + markup + "</span>";
     }
   }
+  // A lone icon glyph can draw wider than its advance (Nerd Font icons in a proportional font).
+  // Its box then takes the ink's width with the advance centred, as the classic bar did; text
+  // labels keep their advance width.
+  float iconWidth = 0.0F;
+  if (isLoneIconGlyph(stripTags(markup))) {
+    const auto tm = renderer.measureText(markup, static_cast<float>(size) * fontScale(), bold ? FontWeight::Bold : labelFontWeight(), 0.0F, 1,
+                                         TextAlign::Center, font.empty() ? labelFontFamily() : font, TextEllipsize::End, true);
+    iconWidth = std::ceil(std::max(tm.width, tm.inkRight - std::min(0.0F, tm.inkLeft)));
+  }
+  m_label->setMinWidth(iconWidth);
   m_label->setText(markup);
   m_label->measure(renderer);
   requestRedraw();

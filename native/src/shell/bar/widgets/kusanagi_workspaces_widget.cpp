@@ -11,6 +11,7 @@
 
 #include "cursor-shape-v1-client-protocol.h"
 
+#include <linux/input-event-codes.h>
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
@@ -34,8 +35,38 @@ KusanagiWorkspacesWidget::KusanagiWorkspacesWidget(CompositorPlatform& platform,
   nlohmann::json spec = nlohmann::json::parse(specJson, nullptr, false);
   if (!spec.is_object()) spec = nlohmann::json::object();
   m_spec = spec;
+  if (const auto& v = spec["_groupInset"]; v.is_array() && v.size() >= 2 && v[0].is_number() && v[1].is_number()) {
+    m_groupEdge = v[0].get<float>();
+    m_groupInner = v[1].get<float>();
+  } else if (v.is_number()) {
+    m_groupEdge = m_groupInner = v.get<float>();
+  }
+  m_farEdge = spec.value("_edge", std::string()) == "bottom" || spec.value("_edge", std::string()) == "right";
+  applyOptions(spec);
+}
+
+// Effective options: the spec with the `when` states that apply (hover, alt) laid over it.
+nlohmann::json KusanagiWorkspacesWidget::effectiveSpec() const {
+  json eff = m_spec;
+  const auto when = m_spec.find("when");
+  if (when == m_spec.end() || !when->is_object()) return eff;
+  for (const auto& st : m_states) {
+    if (const auto it = when->find(st); it != when->end() && it->is_object()) {
+      for (auto kv = it->begin(); kv != it->end(); ++kv) eff[kv.key()] = kv.value();
+    }
+  }
+  return eff;
+}
+
+void KusanagiWorkspacesWidget::applyOptions(const nlohmann::json& eff) {
+  m_eff = eff;
+  m_gapStart = m_gapEnd = 2.0F;
+  m_insetEdge = m_insetInner = 0.0F;
+  m_padStart = m_padEnd = 10.0F;
   auto pairOf = [&](const char* key, float& a, float& b) {
-    const auto& v = spec[key];
+    const auto it = eff.find(key);
+    if (it == eff.end()) return;
+    const auto& v = *it;
     if (v.is_array() && v.size() >= 2 && v[0].is_number() && v[1].is_number()) {
       a = v[0].get<float>();
       b = v[1].get<float>();
@@ -45,26 +76,30 @@ KusanagiWorkspacesWidget::KusanagiWorkspacesWidget(CompositorPlatform& platform,
   };
   pairOf("gap", m_gapStart, m_gapEnd);
   pairOf("inset", m_insetEdge, m_insetInner);
-  pairOf("_groupInset", m_groupEdge, m_groupInner);
-  m_farEdge = spec.value("_edge", std::string()) == "bottom" || spec.value("_edge", std::string()) == "right";
+  pairOf("padding", m_padStart, m_padEnd);
   // Module options win over the workspaces settings. icons may be a list or a space-separated string.
-  m_style = spec.value("style", json()).is_string() && !spec["style"].get<std::string>().empty() ? spec["style"].get<std::string>()
-                                                                                                : kusanagi::opt<std::string>("workspaces", "style", "pills");
+  const auto styleIt = eff.find("style");
+  m_style = styleIt != eff.end() && styleIt->is_string() && !styleIt->get<std::string>().empty()
+      ? styleIt->get<std::string>()
+      : kusanagi::opt<std::string>("workspaces", "style", "pills");
   m_shown = kusanagi::opt<int>("workspaces", "shown", 5);
   m_activeColor = kusanagi::opt<std::string>("workspaces", "activeColor", "accent");
-  m_glow = spec.value("glow", json()).is_boolean() ? spec["glow"].get<bool>() : kusanagi::opt<bool>("workspaces", "glow", true);
+  const auto glowIt = eff.find("glow");
+  m_glow = glowIt != eff.end() && glowIt->is_boolean() ? glowIt->get<bool>() : kusanagi::opt<bool>("workspaces", "glow", true);
   std::string iconString = kusanagi::opt<std::string>("workspaces", "icons", "");
-  if (const auto& ic = spec["icons"]; ic.is_array()) {
+  if (const auto ic = eff.find("icons"); ic != eff.end() && ic->is_array()) {
     iconString.clear();
-    for (const auto& x : ic) iconString += (iconString.empty() ? "" : " ") + (x.is_string() ? x.get<std::string>() : x.dump());
-  } else if (ic.is_string() && !ic.get<std::string>().empty()) {
-    iconString = ic.get<std::string>();
+    for (const auto& x : *ic) iconString += (iconString.empty() ? "" : " ") + (x.is_string() ? x.get<std::string>() : x.dump());
+  } else if (ic != eff.end() && ic->is_string() && !ic->get<std::string>().empty()) {
+    iconString = ic->get<std::string>();
   }
+  m_icons.clear();
   std::istringstream icons(iconString);
   for (std::string s; icons >> s;) m_icons.push_back(s);
   // fontSize may be relative to the bar's ("+2"). Without one, dwl uses the bar's font size and the rest 12.
-  const double barFont = spec.value("_barFontSize", kusanagi::opt<double>("bar", "fontSize", 11.0));
-  const auto& fs = spec["fontSize"];
+  const double barFont = eff.value("_barFontSize", kusanagi::opt<double>("bar", "fontSize", 11.0));
+  const auto fsIt = eff.find("fontSize");
+  const json fs = fsIt != eff.end() ? *fsIt : json();
   if (fs.is_string() && !fs.get<std::string>().empty() && (fs.get<std::string>()[0] == '+' || fs.get<std::string>()[0] == '-')) {
     m_fontSize = static_cast<float>(barFont + std::atof(fs.get<std::string>().c_str()));
   } else if (fs.is_number() && fs.get<double>() > 0) {
@@ -72,12 +107,32 @@ KusanagiWorkspacesWidget::KusanagiWorkspacesWidget(CompositorPlatform& platform,
   } else {
     m_fontSize = static_cast<float>(m_style == "dwl" ? kusanagi::opt<double>("bar", "fontSize", 11.0) : 12.0);
   }
-  if (const auto& pad = spec["padding"]; pad.is_array() && pad.size() >= 2) {
-    m_padStart = pad[0].get<float>();
-    m_padEnd = pad[1].get<float>();
-  } else if (pad.is_number()) {
-    m_padStart = m_padEnd = pad.get<float>();
+}
+
+// A `when` state's click or scroll runs instead of the binding; "alt" toggles the alt state.
+std::optional<kusanagi::bar::WidgetAction> KusanagiWorkspacesWidget::gestureOverride(kusanagi::bar::Gesture gesture) {
+  const auto acts = m_spec.find("_stateActions");
+  if (acts == m_spec.end() || !acts->is_object()) return std::nullopt;
+  const std::string key(kusanagi::bar::gestureConfigKey(gesture));
+  std::optional<std::string> chosen;
+  for (const auto& st : m_states) {
+    if (const auto it = acts->find(st); it != acts->end() && it->is_object() && it->contains(key) && (*it)[key].is_string()) {
+      chosen = (*it)[key].get<std::string>();
+    }
   }
+  if (!chosen) {
+    const auto base = m_spec.find("_stateBase");
+    if (base == m_spec.end() || !base->is_object() || !base->contains(key)) return std::nullopt;
+    chosen = (*base)[key].is_string() ? (*base)[key].get<std::string>() : std::string("none");
+  }
+  if (*chosen == "alt") {
+    m_altOn = !m_altOn;
+    requestUpdate();
+    return kusanagi::bar::WidgetAction{};
+  }
+  auto parsed = kusanagi::bar::parseWidgetAction(*chosen);
+  if (!parsed) return kusanagi::bar::WidgetAction{};
+  return *parsed;
 }
 
 void KusanagiWorkspacesWidget::create() {
@@ -87,7 +142,21 @@ void KusanagiWorkspacesWidget::create() {
   // module has a click action of its own.
   auto hover = ui::inputArea({});
   m_hoverArea = hover.get();
-  m_hoverArea->setAcceptedButtons(0);
+  // "alt" on a button toggles the alt state, as on other modules. Left clicks on a slot still switch.
+  std::uint32_t altButtons = 0;
+  for (const auto& [key, button] : {std::pair{"click", BTN_LEFT}, {"rightClick", BTN_RIGHT}, {"middleClick", BTN_MIDDLE}}) {
+    if (const auto it = m_spec.find(key); it != m_spec.end() && it->is_string() && it->get<std::string>() == "alt") {
+      altButtons |= InputArea::buttonMask(button);
+    }
+  }
+  m_hoverArea->setAcceptedButtons(altButtons);
+  if (altButtons != 0) {
+    m_hoverArea->setOnClick([this, altButtons](const InputArea::PointerData& data) {
+      if ((altButtons & InputArea::buttonMask(data.button)) == 0) return;
+      m_altOn = !m_altOn;
+      requestUpdate();
+    });
+  }
   m_hoverArea->setCursorShape(m_spec.value("_pointer", false) ? WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER : WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
   m_hoverArea->setOnEnter([this](const InputArea::PointerData&) {
     m_hovered = true;
@@ -97,10 +166,12 @@ void KusanagiWorkspacesWidget::create() {
     m_hovered = false;
     requestUpdate();
   });
-  root->addChild(std::move(hover));
+  // The slots sit inside the hover area, so a press a slot doesn't take (an "alt" button) and the
+  // padding around them reach it.
   auto slots = ui::node({});
   m_slotsNode = slots.get();
-  root->addChild(std::move(slots));
+  hover->addChild(std::move(slots));
+  root->addChild(std::move(hover));
   setRoot(std::move(root));
 }
 
@@ -134,6 +205,16 @@ std::vector<KusanagiWorkspacesWidget::Slot> KusanagiWorkspacesWidget::collect() 
 }
 
 void KusanagiWorkspacesWidget::doUpdate(Renderer& /*renderer*/) {
+  std::vector<std::string> states;
+  if (m_altOn) states.push_back("alt");
+  if (m_hovered) states.push_back("hover");
+  if (states != m_states) {
+    m_states = std::move(states);
+    if (json eff = effectiveSpec(); eff != m_eff) {
+      applyOptions(eff);
+      requestRedraw();
+    }
+  }
   auto slots = collect();
   const bool changed = slots.size() != m_slots.size()
       || !std::equal(slots.begin(), slots.end(), m_slots.begin(), [](const Slot& a, const Slot& b) {
@@ -193,7 +274,7 @@ void KusanagiWorkspacesWidget::doLayout(Renderer& renderer, float containerWidth
   const bool text = textStyle(m_style);
   const bool dwl = m_style == "dwl";
   // colors {active, occupied, empty, urgent, onActive} override the defaults.
-  const nlohmann::json colors = m_spec.value("colors", nlohmann::json::object());
+  const nlohmann::json colors = m_eff.value("colors", nlohmann::json::object());
   auto colorOr = [&colors](const char* key, const std::string& fallback) {
     const auto it = colors.find(key);
     return kusanagi_bar::color(it != colors.end() && it->is_string() && !it->get<std::string>().empty() ? it->get<std::string>() : fallback);
@@ -212,8 +293,8 @@ void KusanagiWorkspacesWidget::doLayout(Renderer& renderer, float containerWidth
   const float boxCross = std::max(0.0F, cross - edgeIn - innerIn);
   const float boxC0 = m_farEdge ? innerIn : edgeIn;
   const float slotCross = boxCross;
-  const float capS = KusanagiBox::capSize(m_spec.value("capStart", std::string("none")), boxCross);
-  const float capE = KusanagiBox::capSize(m_spec.value("capEnd", std::string("none")), boxCross);
+  const float capS = KusanagiBox::capSize(m_eff.value("capStart", std::string("none")), boxCross);
+  const float capE = KusanagiBox::capSize(m_eff.value("capEnd", std::string("none")), boxCross);
   float along = (m_gapStart + m_padStart) * s + capS;
   for (std::size_t i = 0; i < m_slots.size(); ++i) {
     const Slot& slot = m_slots[i];
@@ -315,11 +396,12 @@ void KusanagiWorkspacesWidget::doLayout(Renderer& renderer, float containerWidth
   }
   along += m_padEnd * s + capE;
   const float boxAlong = along - m_gapStart * s;
-  if (m_vertical) m_box.apply(m_spec, m_hovered, true, boxC0, m_gapStart * s, boxCross, boxAlong, s);
-  else m_box.apply(m_spec, m_hovered, false, m_gapStart * s, boxC0, boxAlong, boxCross, s);
+  if (m_vertical) m_box.apply(m_eff, m_hovered, true, boxC0, m_gapStart * s, boxCross, boxAlong, s);
+  else m_box.apply(m_eff, m_hovered, false, m_gapStart * s, boxC0, boxAlong, boxCross, s);
   m_hoverArea->setPosition(m_vertical ? boxC0 : m_gapStart * s, m_vertical ? m_gapStart * s : boxC0);
   m_hoverArea->setSize(m_vertical ? boxCross : boxAlong, m_vertical ? boxAlong : boxCross);
   along += m_gapEnd * s;
+  m_slotsNode->setPosition(-m_hoverArea->x(), -m_hoverArea->y());
   m_slotsNode->setSize(m_vertical ? containerWidth : along, m_vertical ? along : containerHeight);
   rootNode->setSize(m_vertical ? containerWidth : along, m_vertical ? along : containerHeight);
 }

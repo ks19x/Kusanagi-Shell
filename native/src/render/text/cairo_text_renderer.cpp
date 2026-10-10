@@ -115,6 +115,61 @@ namespace {
     return false;
   }
 
+  bool isColorFont(PangoFont* font) {
+    hb_font_t* hbFont = font != nullptr ? pango_font_get_hb_font(font) : nullptr;
+    if (hbFont == nullptr) {
+      return false;
+    }
+    hb_face_t* face = hb_font_get_face(hbFont);
+    return hb_ot_color_has_png(face) != 0 || hb_ot_color_has_layers(face) != 0 || hb_ot_color_has_paint(face) != 0
+        || hb_ot_color_has_svg(face) != 0;
+  }
+
+  // Emoji fonts draw their glyphs wider than an em (Noto Color Emoji: 1.25 em), so an emoji
+  // stands out next to the text around it. Scale each colour-font run so its widest glyph is
+  // one em. Other runs are left alone.
+  void fitColorGlyphsToEm(PangoLayout* layout, std::string_view text) {
+    if (std::ranges::all_of(text, [](char c) { return static_cast<unsigned char>(c) < 0x80; })) {
+      return;
+    }
+    PangoAttrList* attrs = nullptr;
+    PangoLayoutIter* iter = pango_layout_get_iter(layout);
+    do {
+      PangoLayoutRun* run = pango_layout_iter_get_run_readonly(iter);
+      if (run == nullptr || run->glyphs == nullptr || !isColorFont(run->item->analysis.font)) {
+        continue;
+      }
+      hb_font_t* hbFont = pango_font_get_hb_font(run->item->analysis.font);
+      int xScale = 0;
+      int yScale = 0;
+      hb_font_get_scale(hbFont, &xScale, &yScale);
+      hb_position_t widest = 0;
+      for (int i = 0; i < run->glyphs->num_glyphs; ++i) {
+        const PangoGlyph glyph = run->glyphs->glyphs[i].glyph;
+        if (glyph == PANGO_GLYPH_EMPTY || (glyph & PANGO_GLYPH_UNKNOWN_FLAG) != 0) {
+          continue;
+        }
+        widest = std::max(widest, hb_font_get_glyph_h_advance(hbFont, glyph));
+      }
+      if (xScale <= 0 || widest <= xScale) {
+        continue;
+      }
+      if (attrs == nullptr) {
+        PangoAttrList* current = pango_layout_get_attributes(layout);
+        attrs = current != nullptr ? pango_attr_list_copy(current) : pango_attr_list_new();
+      }
+      PangoAttribute* scale = pango_attr_scale_new(static_cast<double>(xScale) / static_cast<double>(widest));
+      scale->start_index = static_cast<guint>(run->item->offset);
+      scale->end_index = static_cast<guint>(run->item->offset + run->item->length);
+      pango_attr_list_insert(attrs, scale);
+    } while (pango_layout_iter_next_run(iter));
+    pango_layout_iter_free(iter);
+    if (attrs != nullptr) {
+      pango_layout_set_attributes(layout, attrs);
+      pango_attr_list_unref(attrs);
+    }
+  }
+
   struct VerticalExtents {
     float top = 0.0F;
     float bottom = 0.0F;
@@ -610,6 +665,7 @@ PangoLayout* CairoTextRenderer::buildLayout(
     pangoAlign = PANGO_ALIGN_RIGHT;
   }
   pango_layout_set_alignment(layout, pangoAlign);
+  fitColorGlyphsToEm(layout, text);
 
   return layout;
 }

@@ -9,6 +9,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -46,6 +47,9 @@ private:
 
   void doLayout(Renderer& renderer, float containerWidth, float containerHeight) override;
   void doUpdate(Renderer& renderer) override;
+  [[nodiscard]] std::optional<kusanagi::bar::WidgetAction> gestureOverride(kusanagi::bar::Gesture gesture) override;
+  [[nodiscard]] nlohmann::json effectiveSpec() const;
+  void applyOptions(const nlohmann::json& eff);
   [[nodiscard]] std::vector<Slot> collect() const;
   [[nodiscard]] std::string glyph(int n) const;
   void rebuild(std::size_t count);
@@ -68,6 +72,9 @@ private:
   float m_groupInner = 0.0F;
   bool m_farEdge = false;    // bottom or right bar: insets count from the other side
   nlohmann::json m_spec = nlohmann::json::object();
+  nlohmann::json m_eff = nlohmann::json::object(); // m_spec with the active `when` states applied
+  std::vector<std::string> m_states;                // hover, alt
+  bool m_altOn = false;
   KusanagiBox m_box;
   Node* m_slotsNode = nullptr;
   InputArea* m_hoverArea = nullptr; // the module's hover area, over its box
