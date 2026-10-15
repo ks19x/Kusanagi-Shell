@@ -528,10 +528,10 @@ case "$cmd" in
               esac ;;
     greeter)  G="$ROOT/lib/greeter.sh"
               GD=${KG_DIR:-/var/lib/kusanagi-greeter}
-              if [ -f "$ROOT/.portable" ]; then
-                  case "${1:-status}" in install|sync)
-                      die "the portable build is for desktop sessions; use a native system installation for the greetd login screen" ;;
-                  esac
+              # the portable build can't be the login screen itself (it needs its bundle), but it still keeps an
+              # installed one's wallpaper, colours and settings in step
+              if [ -f "$ROOT/.portable" ] && [ "${1:-status}" = install ]; then
+                  die "the portable build is for desktop sessions; use a native system installation for the greetd login screen"
               fi
               case "${1:-status}" in
                   install)   command -v greetd >/dev/null || die "greetd isn't installed (it's the login daemon this uses)"

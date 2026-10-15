@@ -161,8 +161,10 @@ sync_greeter() {   # sync_greeter [-q]
     if [ -z "$bin" ] || [ ! -x "$bin" ] || [ -z "$assets" ]; then
         echo "kusanagi greeter: kusanagi-shell isn't built${bin:+ ($bin)}, so the login screen's copy isn't updated" >&2
     elif [ "$(head -c 4 "$bin" | od -An -c | tr -d ' ')" != '177ELF' ]; then
-        # the portable download's kusanagi-shell is a launcher script that needs its bundle next to it
-        echo "kusanagi greeter: $bin isn't the program itself (a portable download?), so the login screen's copy isn't updated" >&2
+        # the portable download's kusanagi-shell is a launcher script that needs its bundle next to it, so the
+        # login screen keeps the program it has; only say so when it has none
+        [ -x "$D/native/kusanagi-shell" ] \
+            || echo "kusanagi greeter: $bin isn't the program itself (a portable download?), so the login screen has no copy of it" >&2
     elif ! "$bin" --greeter --probe >/dev/null 2>&1; then
         echo "kusanagi greeter: $bin has no login screen (rebuild / reinstall it), so the login screen's copy isn't updated" >&2
     elif ! cmp -s "$bin" "$D/native/kusanagi-shell" || [ ! -d "$D/native/assets" ]; then
