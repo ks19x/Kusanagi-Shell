@@ -78,6 +78,7 @@
 #include "shell/kusanagi/settings/sp_kit.h"
 #include "shell/kusanagi/wm_layout.h"
 #include "shell/kusanagi/greeter_sync.h"
+#include "shell/kusanagi/terminal_colors.h"
 #include "shell/kusanagi/power_panel.h"
 #include "shell/kusanagi/clipboard_panel.h"
 #include "shell/kusanagi/wallpaper_picker.h"
@@ -668,6 +669,9 @@ void Application::initNotificationAndOsd() {
   // Keep the installed login screen in line with the lock design, colours and wallpaper.
   kusanagi::GreeterSync::instance().start(m_fileWatcher);
   m_configService.addReloadCallback([]() { kusanagi::GreeterSync::instance().onConfigReload(); });
+  // Terminal colours that follow the palette (Settings > Appearance > Terminal colours).
+  kusanagi::TerminalColors::instance().start();
+  m_configService.addReloadCallback([]() { kusanagi::TerminalColors::instance().onConfigReload(); });
   KusanagiMediaPopup::instance().initialize(
       m_wayland, &m_renderContext, m_mprisService.get(), &m_httpClient,
       [this](const Node* node) { return m_bar.popupParentContextForNode(node); }

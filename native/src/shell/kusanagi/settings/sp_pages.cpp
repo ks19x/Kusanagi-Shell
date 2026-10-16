@@ -11,7 +11,7 @@ namespace kusanagi::sp {
         {"presets", "PERSONALIZE", "Presets", 0xf0e09, "Whole looks in one click — bar, motion, popups and colours together.",
          "looks themes minimal dwl glass zen terminal save", buildPresets},
         {"appearance", "", "Appearance", 0xf03d8, "Colours, font, corners, shadows and how lively animations feel.",
-         "theme colour accent font corners shadow animation speed", buildAppearance},
+         "theme colour accent font corners shadow animation speed terminal kitty foot alacritty", buildAppearance},
         {"bar", "", "Bar", 0xf04e9, "Build any bar: start from a template, then change every piece.",
          "style islands solid floating modules clock scroll media marquee", buildBar},
         {"workspaces", "", "Workspaces", 0xf0570, "How workspaces look on the bar.", "tags icons pills dots roman kanji glow",

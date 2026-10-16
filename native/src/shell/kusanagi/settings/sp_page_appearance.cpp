@@ -7,6 +7,7 @@
 #include "render/core/renderer.h"
 #include "shell/kusanagi/settings/sp_kit.h"
 #include "shell/kusanagi/settings/sp_pages.h"
+#include "shell/kusanagi/terminal_colors.h"
 #include "ui/builders.h"
 #include "ui/controls/box.h"
 #include "ui/controls/label.h"
@@ -271,6 +272,20 @@ namespace kusanagi::sp {
                                                 return json(v);
                                               },
                                           }));
+    }
+
+    {
+      auto* g = page.add<Group>("Terminal colours",
+                                "Your terminals take on the shell's colours and follow every change, open windows "
+                                "included. Works with foot, kitty, Alacritty, Ghostty and WezTerm.",
+                                0xf018d);
+      const std::string found = terminalsFound();
+      g->add<Row>("Match the shell",
+                  found.empty() ? std::string("no supported terminal found")
+                                : "found: " + found + (found.find("WezTerm") != std::string::npos
+                                                           ? " (WezTerm: set color_scheme = \"Kusanagi\")"
+                                                           : ""),
+                  std::make_unique<Switch>(bind("terminal.colors")));
     }
 
     {

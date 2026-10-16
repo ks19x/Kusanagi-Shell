@@ -825,6 +825,8 @@ _kusanagi_sources = files(
   'src/shell/kusanagi/wm_layout.cpp',
   'src/shell/kusanagi/bt_request.cpp',
   'src/shell/kusanagi/greeter_sync.cpp',
+  'src/shell/kusanagi/terminal_colors.cpp',
+  'src/shell/kusanagi/terminal_theme.cpp',
   'src/shell/kusanagi/kusanagi_style.cpp',
   'src/shell/kusanagi/presets.cpp',
   'src/shell/kusanagi/bar_templates.cpp',
@@ -1385,6 +1387,7 @@ if build_tests
     'window_switcher_shortcut_state',
     'workspace_alert_service',
     'workspaces_widget',
+    'terminal_theme',
   ]
 
   foreach test_name : _cpp_test_names

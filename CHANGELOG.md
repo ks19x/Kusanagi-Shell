@@ -34,6 +34,8 @@ New:
 - Control panel tabs for sound, network and Bluetooth, a weather card, and layout options.
 - Settings has 19 pages and a setup wizard that opens on first start.
 - Window gaps and borders from Settings on MangoWM, Hyprland and sway.
+- Terminal colours (Settings > Appearance): foot, kitty, Alacritty, Ghostty and WezTerm take on
+  the shell's colours and follow every palette change, open windows included.
 
 Fixed:
 
