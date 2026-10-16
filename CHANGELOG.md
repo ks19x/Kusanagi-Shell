@@ -1,6 +1,21 @@
 # Changelog
 
-## 0.3.0 (unreleased)
+## 0.3.1 (2026-10-16)
+
+New:
+
+- Terminal colours (Settings > Appearance): foot, kitty, Alacritty, Ghostty and WezTerm take on
+  the shell's colours and follow every palette change, open windows included. Off by default.
+
+Fixed:
+
+- With the portable download, the login screen now keeps up with your wallpaper, colours and
+  settings. Before, it kept the wallpaper it was installed with.
+- The font picker in Settings lists font families the way other apps do.
+- Colour emoji are drawn at the size of the text around them.
+- Bar labels with icons are no longer cut off or padded too wide.
+
+## 0.3.0 (2026-10-10)
 
 Kusanagi is now a native C++ program (`kusanagi-shell`) instead of a Quickshell config. It reads the
 same `settings.json`, keeps the same look and is driven by the same `kusanagi` command, but starts
@@ -34,8 +49,6 @@ New:
 - Control panel tabs for sound, network and Bluetooth, a weather card, and layout options.
 - Settings has 19 pages and a setup wizard that opens on first start.
 - Window gaps and borders from Settings on MangoWM, Hyprland and sway.
-- Terminal colours (Settings > Appearance): foot, kitty, Alacritty, Ghostty and WezTerm take on
-  the shell's colours and follow every palette change, open windows included.
 
 Fixed:
 

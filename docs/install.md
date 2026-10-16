@@ -5,7 +5,7 @@ niri, sway or labwc are the usual choices. KDE Plasma and dwl have additional se
 
 ## Portable download
 
-Get `kusanagi-0.3.0-linux-x86_64.tar.xz` and `SHA256SUMS` from the same
+Get `kusanagi-0.3.1-linux-x86_64.tar.xz` and `SHA256SUMS` from the same
 [GitHub release](https://github.com/ks19x/Kusanagi-Shell/releases). Substitute the version
 below if you downloaded a newer one. The separate `library-sources` archive is for
 rebuilding the bundled libraries; it is not needed to run Kusanagi.
@@ -20,8 +20,8 @@ Check that the archive is listed with `OK`. Then extract it into a permanent loc
 
 ```sh
 mkdir -p ~/.local/opt
-tar -xJf kusanagi-0.3.0-linux-x86_64.tar.xz -C ~/.local/opt
-cd ~/.local/opt/kusanagi-0.3.0-linux-x86_64
+tar -xJf kusanagi-0.3.1-linux-x86_64.tar.xz -C ~/.local/opt
+cd ~/.local/opt/kusanagi-0.3.1-linux-x86_64
 ./install
 ./kusanagi
 ```
@@ -160,7 +160,7 @@ The installer has package mappings for Void, Arch, Fedora, Gentoo, Debian/Ubuntu
 Older distribution releases may not have the necessary compiler or library versions. See the
 [build requirements](../native/BUILDING.md) for manual builds.
 
-To build a particular release, run `git checkout v0.3.0` before the installer, replacing the tag
+To build a particular release, run `git checkout v0.3.1` before the installer, replacing the tag
 with the version you want.
 
 ### Arch and AUR
